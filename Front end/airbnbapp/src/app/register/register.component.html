@@ -1,1 +1,94 @@
-<p>register works!</p>
+<div class="container d-flex justify-content-center mt-5">
+  <form class="w-50" [formGroup]="form" (ngSubmit)="submit()">
+    <fieldset>
+      <legend>Register</legend>
+
+      <input
+        type="text"
+        class="form-control mb-2"
+        id="username"
+        name="username"
+        placeholder="Username"
+        formControlName="username"
+      />
+
+      <input
+        type="email"
+        class="form-control mb-2"
+        id="email"
+        name="email"
+        placeholder="Email"
+        formControlName="email"
+      />
+
+      <input
+        type="text"
+        class="form-control mb-2"
+        id="firstName"
+        name="firstName"
+        placeholder="First name"
+        formControlName="firstName"
+      />
+
+      <input
+        type="text"
+        class="form-control mb-2"
+        id="lastName"
+        name="lastName"
+        placeholder="Last name"
+        formControlName="lastName"
+      />
+
+      <input
+        type="text"
+        class="form-control mb-2"
+        id="country"
+        name="country"
+        placeholder="Country"
+        formControlName="country"
+      />
+
+      <input
+        type="text"
+        class="form-control mb-2"
+        id="city"
+        name="city"
+        placeholder="City"
+        formControlName="city"
+      />
+
+      <input
+        type="text"
+        class="form-control mb-2"
+        id="streetName"
+        name="streetName"
+        placeholder="Street name"
+        formControlName="streetName"
+      />
+
+      <input
+        type="text"
+        class="form-control mb-2"
+        id="streetNumber"
+        name="streetNumber"
+        placeholder="Street number"
+        formControlName="streetNumber"
+      />
+
+      <input
+        type="password"
+        class="form-control mb-2"
+        id="password"
+        name="password"
+        placeholder="Password"
+        formControlName="password"
+      />
+
+      <div class="d-flex justify-content-end">
+        <button type="submit" class="btn btn-primary" [disabled]="!form.valid">
+          Register
+        </button>
+      </div>
+    </fieldset>
+  </form>
+</div>
