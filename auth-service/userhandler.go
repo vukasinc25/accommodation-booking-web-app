@@ -13,22 +13,24 @@ import (
 	"github.com/vukasinc25/fst-airbnb/token"
 )
 
+// UserHandler handles HTTP requests related to user operations.
 type UserHandler struct {
 	logger   *log.Logger
 	db       *UserRepo
 	jwtMaker token.Maker
 }
 
+// NewUserHandler creates a new UserHandler.
 func NewUserHandler(l *log.Logger, r *UserRepo, jwtMaker token.Maker) *UserHandler {
 	return &UserHandler{l, r, jwtMaker}
 }
 
+// Auth handles authentication requests.
 func (uh *UserHandler) Auth(w http.ResponseWriter, req *http.Request) {
-
 	header := req.Header.Get("Authorization")
-
 	uh.logger.Println(header)
 
+	// Check if the request is for accommodations, and allow it without authentication
 	if req.Header.Get("X-Original-Uri") == "/api/accommodations/" {
 		w.WriteHeader(http.StatusOK)
 		return
@@ -41,9 +43,9 @@ func (uh *UserHandler) Auth(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-
 }
 
+// createUser handles user creation requests.
 func (uh *UserHandler) createUser(w http.ResponseWriter, req *http.Request) {
 	contentType := req.Header.Get("Content-Type")
 	mediatype, _, err := mime.ParseMediaType(contentType)
@@ -58,14 +60,14 @@ func (uh *UserHandler) createUser(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	//pre nego decodujemo requuest podatke kazemo da proveri sve stringove da li imaju "<" u sebi ako imaju da zameni < sa &lt mozemo da stavimo i ako string sadrzi rec "script"
-
+	// Decode the request body
 	rt, err := decodeBody(req.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
+	// Sanitize input data
 	sanitizedUsername := sanitizeInput(rt.Username)
 	sanitizedPassword := sanitizeInput(rt.Password)
 	sanitizedRole := sanitizeInput(rt.Role)
@@ -74,6 +76,7 @@ func (uh *UserHandler) createUser(w http.ResponseWriter, req *http.Request) {
 	rt.Password = sanitizedPassword
 	rt.Role = sanitizedRole
 
+	// Fetch the blacklist
 	blacklist, err := NewBlacklistFromURL()
 	if err != nil {
 		log.Println("Error fetching blacklist: %v\n", err)
@@ -84,13 +87,15 @@ func (uh *UserHandler) createUser(w http.ResponseWriter, req *http.Request) {
 	log.Println(sanitizedPassword)
 	log.Println(sanitizedRole)
 
+	// Check if the password is blacklisted
 	if blacklist.IsBlacklisted(rt.Password) {
 		w.WriteHeader(http.StatusBadRequest)
-		log.Println("Password nije dobar")
+		log.Println("Password is not good")
 		return
 	}
 
 	log.Println("Not hashed Password: %w", rt.Password)
+	// Hash the password before storing
 	hashedPassword, err := HashPassword(rt.Password)
 	if err != nil {
 		http.Error(w, "", http.StatusInternalServerError)
@@ -98,11 +103,12 @@ func (uh *UserHandler) createUser(w http.ResponseWriter, req *http.Request) {
 	rt.Password = hashedPassword
 	log.Println("Hashed Password: %w", rt.Password)
 
-	// uh.db.Insert(rt)
 	w.WriteHeader(http.StatusCreated)
 }
 
+// getAllUsers handles requests to retrieve all users.
 func (uh *UserHandler) getAllUsers(w http.ResponseWriter, req *http.Request) {
+	// Retrieve all users from the database
 	users, err := uh.db.GetAll()
 	ctx := req.Context()
 
@@ -114,24 +120,29 @@ func (uh *UserHandler) getAllUsers(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// Retrieve the authorization payload from the request context
 	authPayload, ok := ctx.Value(AuthorizationPayloadKey).(*token.Payload)
 	if !ok || authPayload == nil {
-		http.Error(w, "Authorisation payload not found", http.StatusInternalServerError)
+		http.Error(w, "Authorization payload not found", http.StatusInternalServerError)
 		return
 	}
 
+	// Check user role for authorization
 	if authPayload.Role == "guest" {
 		http.Error(w, "Unauthorized access", http.StatusUnauthorized)
 		return
 	}
+
+	// Convert users to JSON and send the response
 	err = users.ToJSON(w)
 	if err != nil {
-		http.Error(w, "Unable to convert to json", http.StatusInternalServerError)
-		uh.logger.Fatal("Unable to convert to json :", err)
+		http.Error(w, "Unable to convert to JSON", http.StatusInternalServerError)
+		uh.logger.Fatal("Unable to convert to JSON:", err)
 		return
 	}
 }
 
+// loginUser handles user login requests.
 func (uh *UserHandler) loginUser(w http.ResponseWriter, req *http.Request) {
 	rt, err := decodeLoginBody(req.Body)
 	if err != nil {
@@ -141,37 +152,36 @@ func (uh *UserHandler) loginUser(w http.ResponseWriter, req *http.Request) {
 	username := rt.Username
 	password := rt.Password
 
+	// Retrieve user from the database based on the provided username
 	user, err := uh.db.GetByUsername(username)
 
 	if err != nil {
 		uh.logger.Print("Database exception: ", err)
 	}
 
+	// If user is not found, return an error
 	if user == nil {
-		http.Error(w, "invalid username or password", http.StatusNotFound)
+		http.Error(w, "Invalid username or password", http.StatusNotFound)
 		return
 	}
 
+	// Check if the provided password matches the hashed password in the database
 	err = CheckHashedPassword(password, user.Password)
 	if err != nil {
-		http.Error(w, "invalid username or password", http.StatusUnauthorized)
+		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
 		return
 	}
 
-	if err != nil {
-		uh.logger.Println("token encoding error")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
+	// Generate and send JWT token as a response
 	jwtToken(user, w, uh)
 }
 
+// jwtToken generates and sends a JWT token as a response.
 func jwtToken(user *User, w http.ResponseWriter, uh *UserHandler) {
-	durationStr := "15m" // treba da bude u konstanta izvan funkcije
+	durationStr := "15m" // Should be a constant outside the function
 	duration, err := time.ParseDuration(durationStr)
 	if err != nil {
-		log.Println("Cant make duration")
+		log.Println("Cannot parse duration")
 		return
 	}
 
@@ -196,6 +206,7 @@ func jwtToken(user *User, w http.ResponseWriter, uh *UserHandler) {
 	e.Encode(rsp)
 }
 
+// decodeBody decodes the request body into a User struct.
 func decodeBody(r io.Reader) (*User, error) {
 	dec := json.NewDecoder(r)
 	dec.DisallowUnknownFields()
@@ -207,6 +218,7 @@ func decodeBody(r io.Reader) (*User, error) {
 	return &rt, nil
 }
 
+// decodeLoginBody decodes the request body into a LoginUser struct.
 func decodeLoginBody(r io.Reader) (*LoginUser, error) {
 	dec := json.NewDecoder(r)
 	dec.DisallowUnknownFields()
@@ -218,12 +230,13 @@ func decodeLoginBody(r io.Reader) (*LoginUser, error) {
 	return &rt, nil
 }
 
+// sanitizeInput replaces "<" with "&lt;" to prevent potential HTML/script injection.
 func sanitizeInput(input string) string {
 	sanitizedInput := strings.ReplaceAll(input, "<", "&lt;")
-
 	return sanitizedInput
 }
 
+// renderJSON writes JSON data to the response writer.
 func renderJSON(w http.ResponseWriter, v interface{}) {
 	js, err := json.Marshal(v)
 	if err != nil {
@@ -235,11 +248,13 @@ func renderJSON(w http.ResponseWriter, v interface{}) {
 	w.Write(js)
 }
 
+// ToJSON converts a Users object to JSON and writes it to the response writer.
 func (u *Users) ToJSON(w io.Writer) error {
 	e := json.NewEncoder(w)
 	return e.Encode(u)
 }
 
+// ToJSON converts a User object to JSON and writes it to the response writer.
 func (u *User) ToJSON(w io.Writer) error {
 	e := json.NewEncoder(w)
 	return e.Encode(u)
