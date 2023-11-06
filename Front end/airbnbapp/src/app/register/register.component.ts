@@ -21,6 +21,7 @@ export class RegisterComponent {
       streetName: [null, Validators.required],
       streetNumber: [null, Validators.required],
       password: [null, Validators.required],
+      userRole: ['', Validators.required],
     });
   }
 
