@@ -39,9 +39,9 @@ func (ah *accoHandler) createAccommodation(w http.ResponseWriter, req *http.Requ
 	renderJSON(w, rt)
 }
 
-func (uh *accoHandler) getAllAccommodations(w http.ResponseWriter, req *http.Request) {
+func (ah *accoHandler) getAllAccommodations(w http.ResponseWriter, req *http.Request) {
 	allAccommodations := []*Accommodation{}
-	for _, v := range uh.db {
+	for _, v := range ah.db {
 		allAccommodations = append(allAccommodations, v)
 	}
 
