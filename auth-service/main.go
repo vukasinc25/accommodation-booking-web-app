@@ -19,9 +19,24 @@ func main() {
 	router := mux.NewRouter()
 	router.StrictSlash(true)
 
-	service := &userHandler{
-		db: map[string]*User{},
+	timeoutContext, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	//Initialize the logger we are going to use, with prefix and datetime for every log
+	logger := log.New(os.Stdout, "[product-api] ", log.LstdFlags)
+	storeLogger := log.New(os.Stdout, "[patient-store] ", log.LstdFlags)
+
+	// NoSQL: Initialize Product Repository store
+	store, err := New(timeoutContext, storeLogger)
+	if err != nil {
+		logger.Fatal(err)
 	}
+	defer store.Disconnect(timeoutContext)
+
+	// NoSQL: Checking if the connection was established
+	store.Ping()
+
+	service := NewUserHandler(logger, store)
 	router.HandleFunc("/user/", service.createUser).Methods("POST")
 	router.HandleFunc("/users/", service.getAllUsers).Methods("GET")
 

@@ -4,14 +4,18 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log"
 	"mime"
 	"net/http"
-
-	"github.com/google/uuid"
 )
 
 type userHandler struct {
-	db map[string]*User // izigrava bazu podataka
+	logger *log.Logger
+	db     *UserRepo
+}
+
+func NewUserHandler(l *log.Logger, r *UserRepo) *userHandler {
+	return &userHandler{l, r}
 }
 
 func (uh *userHandler) createUser(w http.ResponseWriter, req *http.Request) {
@@ -34,18 +38,27 @@ func (uh *userHandler) createUser(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	id := uuid.New().String()
-	uh.db[id] = rt
-	renderJSON(w, rt)
+	uh.db.Insert(rt)
+	w.WriteHeader(http.StatusCreated)
 }
 
 func (uh *userHandler) getAllUsers(w http.ResponseWriter, req *http.Request) {
-	allUsers := []*User{}
-	for _, v := range uh.db {
-		allUsers = append(allUsers, v)
+	users, err := uh.db.GetAll()
+
+	if err != nil {
+		uh.logger.Print("Database exception: ", err)
 	}
 
-	renderJSON(w, allUsers)
+	if users == nil {
+		return
+	}
+
+	err = users.ToJSON(w)
+	if err != nil {
+		http.Error(w, "Unable to convert to json", http.StatusInternalServerError)
+		uh.logger.Fatal("Unable to convert to json :", err)
+		return
+	}
 }
 
 func decodeBody(r io.Reader) (*User, error) {
@@ -68,4 +81,9 @@ func renderJSON(w http.ResponseWriter, v interface{}) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(js)
+}
+
+func (u *Users) ToJSON(w io.Writer) error {
+	e := json.NewEncoder(w)
+	return e.Encode(u)
 }

@@ -1,9 +1,12 @@
 package main
 
 type User struct {
-	Username       string `json:"username"`
-	HashedPassword string `json:"hashed_password"`
-	FullName       string `json:"fullname"`
-	Email          string `json:"email"`
-	CreatedAt      string `json:"created_at"`
+	ID       string `bson:"_id,omitempty" json:"_id,omitempty"`
+	Username string `bson:"username,omitempty" json:"username"`
+	// HashedPassword string `bson:"hashed_password,omitempty" json:"hashed_password"`
+	// FullName       string `bson:"fullname,omitempty" json:"fullname"`
+	// Email          string `bson:"email,omitempty" json:"email"`
+	// CreatedAt      string `bson:"created_at,omitempty" json:"created_at"`
 }
+
+type Users []*Users
