@@ -16,7 +16,6 @@ export class LoginComponent {
       password: [null, Validators.required],
     });
   }
-  ngOnInit() {}
 
   submit() {}
 }
