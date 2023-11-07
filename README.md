@@ -1,2 +1,2 @@
 # fst-airbnb
-University project
+Team of 4 making an airbnb clone using golang, multiple NoSQL databases, docker, etc...
