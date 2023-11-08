@@ -27,7 +27,7 @@ func main() {
 
 	// start servergo get -u github.com/gorilla/mux
 
-	srv := &http.Server{Addr: "0.0.0.0:8000", Handler: router}
+	srv := &http.Server{Addr: "0.0.0.0:8002", Handler: router}
 	go func() {
 		log.Println("server starting")
 		if err := srv.ListenAndServe(); err != nil {

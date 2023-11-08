@@ -9,4 +9,4 @@ type User struct {
 	// CreatedAt      string `bson:"created_at,omitempty" json:"created_at"`
 }
 
-type Users []*Users
+type Users []*User
