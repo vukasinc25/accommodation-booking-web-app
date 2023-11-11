@@ -44,6 +44,7 @@ func main() {
 
 	service := NewUserHandler(logger, store)
 	router.HandleFunc("/api/users/register", service.createUser).Methods("POST")
+	router.HandleFunc("/api/users/login", service.getUserByUsername).Methods("GET")
 	router.HandleFunc("/users/", service.getAllUsers).Methods("GET")
 
 	server := http.Server{

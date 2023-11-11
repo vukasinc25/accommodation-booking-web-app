@@ -95,6 +95,24 @@ func (uh *UserRepo) GetAll() (Users, error) {
 	return users, nil
 }
 
+func (ur *UserRepo) GetByUsername(username string) (*User, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	usersCollection := ur.getCollection()
+
+	var user User
+	log.Println("UsersCollection: ", usersCollection)
+	log.Println("UserName: ", username)
+	// objUsername, _ := primitive.ObjectIDFromHex(username)
+	err := usersCollection.FindOne(ctx, bson.M{"username": username}).Decode(&user)
+	if err != nil {
+		ur.logger.Println(err)
+		return nil, err
+	}
+	return &user, nil
+}
+
 func (uh *UserRepo) getCollection() *mongo.Collection {
 	userDatabase := uh.cli.Database("mongoDemo")
 	usersCollection := userDatabase.Collection("users")

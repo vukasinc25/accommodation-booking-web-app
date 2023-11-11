@@ -11,4 +11,9 @@ type User struct {
 	// CreatedAt      string `bson:"created_at,omitempty" json:"created_at"`
 }
 
+type LoginUser struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
 type Users []*User
