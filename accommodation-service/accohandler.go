@@ -11,7 +11,8 @@ import (
 )
 
 type accoHandler struct {
-	db map[string]*Accommodation // izigrava bazu podataka
+	db           map[string]*Accommodation // izigrava bazu podataka
+	accomodation *Accommodation
 }
 
 func (ah *accoHandler) createAccommodation(w http.ResponseWriter, req *http.Request) {
@@ -40,12 +41,15 @@ func (ah *accoHandler) createAccommodation(w http.ResponseWriter, req *http.Requ
 }
 
 func (ah *accoHandler) getAllAccommodations(w http.ResponseWriter, req *http.Request) {
-	allAccommodations := []*Accommodation{}
-	for _, v := range ah.db {
-		allAccommodations = append(allAccommodations, v)
+	newAccomodation := Accommodation{
+		ID:   1,
+		Name: "Sample Accommodation",
 	}
-
-	renderJSON(w, allAccommodations)
+	renderJSON(w, newAccomodation)
+	// allAccommodations := []*Accommodation{}
+	// for _, v := range ah.db {
+	// 	allAccommodations = append(allAccommodations, v)
+	// }
 }
 
 func decodeBody(r io.Reader) (*Accommodation, error) {

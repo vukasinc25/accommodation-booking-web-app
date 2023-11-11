@@ -1,17 +1,34 @@
 version: "3.8"
 
 services:
-
   auth-service:
-#    image: auth-service
-#    hostname: auth-service
+    image: auth-service
+    hostname: auth-service
     build:
       context: ./auth-service/
       dockerfile: Dockerfile
     restart: always
     environment:
-      - PORT=8001
-      - MONGO_DB_URI=mongodb://root:pass@mongo:27017
+      PORT: ${AUTH_SERVICE_PORT}
+      MONGO_DB_URI: ${MONGO_DB_URI}
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - network
+
+  prof-service:
+    image: prof-service
+    hostname: prof-service
+    build:
+      context: ./prof-service/
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      PORT: ${PROF_SERVICE_PORT}
+      MONGO_DB_URI: ${MONGO_DB_URI}
+      ACCOMMODATIONS_SERVICE_HOST: ${ACCOMMODATIONS_SERVICE_HOST}
+      ACCOMMODATIONS_SERVICE_PORT: ${ACCOMMODATIONS_SERVICE_PORT}
     depends_on:
       mongo:
         condition: service_healthy
@@ -19,15 +36,16 @@ services:
       - network
 
   accommodation-service:
-#    image: accommodation-service
-#    hostname: accommodation-service
+    image: accommodation-service
+    hostname: ${ACCOMMODATIONS_SERVICE_HOST}
     build:
       context: ./accommodation-service/
       dockerfile: Dockerfile
     restart: always
     environment:
-      - PORT=8000
-      - MONGO_DB_URI=mongodb://root:pass@mongo:27017
+      HOST: ${ACCOMMODATIONS_SERVICE_HOST}
+      PORT: ${ACCOMMODATIONS_SERVICE_PORT}
+      MONGO_DB_URI: ${MONGO_DB_URI}
     depends_on:
       mongo:
         condition: service_healthy
@@ -36,7 +54,7 @@ services:
 
   api_gateway:
     build:
-      context: ./API Gateway/
+      context: ./api-gateway/
       dockerfile: Dockerfile
     container_name: api-gateway
     restart: on-failure
@@ -45,6 +63,7 @@ services:
     depends_on:
       - auth-service
       - accommodation-service
+      - prof-service
     networks:
       - network
 

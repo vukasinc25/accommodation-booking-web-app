@@ -25,7 +25,7 @@ func main() {
 	router.HandleFunc("/location/", service.createLocation).Methods("POST")
 	router.HandleFunc("/locations/", service.getAllLocations).Methods("GET")
 
-	srv := &http.Server{Addr: "0.0.0.0:8003", Handler: router}
+	srv := &http.Server{Addr: "0.0.0.0:8000", Handler: router}
 	go func() {
 		log.Println("server starting")
 		if err := srv.ListenAndServe(); err != nil {

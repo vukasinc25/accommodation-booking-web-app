@@ -1,4 +1,4 @@
-module Reservation-service
+module github.com/vukasinc25/fst-airbnb
 
 go 1.21
 

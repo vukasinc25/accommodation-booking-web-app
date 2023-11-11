@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -16,20 +17,23 @@ func main() {
 	quit := make(chan os.Signal)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 
+	config := loadConfig()
+
 	router := mux.NewRouter()
 	router.StrictSlash(true)
 
 	service := &accoHandler{
 		db: map[string]*Accommodation{},
 	}
-	router.HandleFunc("/accommodation/", service.createAccommodation).Methods("POST")
-	router.HandleFunc("/accommodations/", service.getAllAccommodations).Methods("GET")
+	router.HandleFunc("/accommodation", service.createAccommodation).Methods("POST")
+	router.HandleFunc("/accommodations", service.getAllAccommodations).Methods("GET")
 
 	// start servergo get -u github.com/gorilla/mux
 
-	srv := &http.Server{Addr: "0.0.0.0:8002", Handler: router}
+	srv := &http.Server{Addr: config["address"], Handler: router}
 	go func() {
 		log.Println("server starting")
+		log.Println("Port:", config["address"])
 		if err := srv.ListenAndServe(); err != nil {
 			if err != http.ErrServerClosed {
 				log.Fatal(err)
@@ -50,4 +54,12 @@ func main() {
 	}
 	log.Println("server stopped")
 
+}
+
+func loadConfig() map[string]string {
+	config := make(map[string]string)
+	config["host"] = os.Getenv("HOST")
+	config["port"] = os.Getenv("PORT")
+	config["address"] = fmt.Sprintf(":%s", os.Getenv("PORT"))
+	return config
 }
