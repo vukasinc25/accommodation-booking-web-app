@@ -38,7 +38,7 @@ func (uh *UserHandler) createUser(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	log.Println("Not hashed Password: %w", rt.Password)
-	rt.Password = util.HashPassword(rt.Password)
+	rt.Password = HashPassword(rt.Password)
 	log.Println("Hashed Password: %w", rt.Password)
 
 	uh.db.Insert(rt)
