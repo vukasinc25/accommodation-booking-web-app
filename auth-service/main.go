@@ -9,22 +9,28 @@ import (
 	"syscall"
 	"time"
 
+	gorillaHandlers "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
 
 func main() {
-	quit := make(chan os.Signal)
-	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+
+	port := os.Getenv("PORT")
+
+	if len(port) == 0 {
+		port = "8001"
+	}
+
+	timeoutContext, cancel := context.WithTimeout(context.Background(), 50*time.Second)
+	defer cancel()
 
 	router := mux.NewRouter()
 	router.StrictSlash(true)
-
-	timeoutContext, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
+	cors := gorillaHandlers.CORS(gorillaHandlers.AllowedOrigins([]string{"*"}))
 
 	//Initialize the logger we are going to use, with prefix and datetime for every log
-	logger := log.New(os.Stdout, "[product-api] ", log.LstdFlags)
-	storeLogger := log.New(os.Stdout, "[patient-store] ", log.LstdFlags)
+	logger := log.New(os.Stdout, "[auth-api] ", log.LstdFlags)
+	storeLogger := log.New(os.Stdout, "[auth-store] ", log.LstdFlags)
 
 	// NoSQL: Initialize Product Repository store
 	store, err := New(timeoutContext, storeLogger)
@@ -37,32 +43,38 @@ func main() {
 	store.Ping()
 
 	service := NewUserHandler(logger, store)
-	router.HandleFunc("/user/", service.createUser).Methods("POST")
+	router.HandleFunc("/api/users/register", service.createUser).Methods("POST")
 	router.HandleFunc("/users/", service.getAllUsers).Methods("GET")
 
-	// start servergo get -u github.com/gorilla/mux
+	server := http.Server{
+		Addr:         ":" + port,
+		Handler:      cors(router),
+		IdleTimeout:  120 * time.Second,
+		ReadTimeout:  1 * time.Second,
+		WriteTimeout: 1 * time.Second,
+	}
 
-	srv := &http.Server{Addr: "0.0.0.0:8001", Handler: router}
+	logger.Println("Server listening on port", port)
+	//Distribute all the connections to goroutines
 	go func() {
-		log.Println("server starting")
-		if err := srv.ListenAndServe(); err != nil {
-			if err != http.ErrServerClosed {
-				log.Fatal(err)
-			}
+		err := server.ListenAndServe()
+		if err != nil {
+			logger.Fatal(err)
 		}
 	}()
 
-	<-quit
+	sigCh := make(chan os.Signal)
+	signal.Notify(sigCh, syscall.SIGINT)
+	signal.Notify(sigCh, syscall.SIGKILL)
 
-	log.Println("service shutting down ...")
+	sig := <-sigCh
+	logger.Println("Received terminate, graceful shutdown", sig)
+	timeoutContext, _ = context.WithTimeout(context.Background(), 30*time.Second)
 
-	// gracefully stop server
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatal(err)
+	//Try to shutdown gracefully
+	if server.Shutdown(timeoutContext) != nil {
+		logger.Fatal("Cannot gracefully shutdown...")
 	}
-	log.Println("server stopped")
+	logger.Println("Server stopped")
 
 }

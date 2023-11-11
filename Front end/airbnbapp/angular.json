@@ -61,7 +61,8 @@
               "browserTarget": "airbnbapp:build:production"
             },
             "development": {
-              "browserTarget": "airbnbapp:build:development"
+              "browserTarget": "airbnbapp:build:development",
+              "proxyConfig": "src/proxy.conf.json"
             }
           },
           "defaultConfiguration": "development"

@@ -9,16 +9,16 @@ import (
 	"net/http"
 )
 
-type userHandler struct {
+type UserHandler struct {
 	logger *log.Logger
 	db     *UserRepo
 }
 
-func NewUserHandler(l *log.Logger, r *UserRepo) *userHandler {
-	return &userHandler{l, r}
+func NewUserHandler(l *log.Logger, r *UserRepo) *UserHandler {
+	return &UserHandler{l, r}
 }
 
-func (uh *userHandler) createUser(w http.ResponseWriter, req *http.Request) {
+func (uh *UserHandler) createUser(w http.ResponseWriter, req *http.Request) {
 	contentType := req.Header.Get("Content-Type")
 	mediatype, _, err := mime.ParseMediaType(contentType)
 	if err != nil {
@@ -27,7 +27,7 @@ func (uh *userHandler) createUser(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if mediatype != "application/json" {
-		err := errors.New("Expect application/json Content-Type")
+		err := errors.New("expect application/json Content-Type")
 		http.Error(w, err.Error(), http.StatusUnsupportedMediaType)
 		return
 	}
@@ -42,7 +42,7 @@ func (uh *userHandler) createUser(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 }
 
-func (uh *userHandler) getAllUsers(w http.ResponseWriter, req *http.Request) {
+func (uh *UserHandler) getAllUsers(w http.ResponseWriter, req *http.Request) {
 	users, err := uh.db.GetAll()
 
 	if err != nil {

@@ -3,14 +3,14 @@ version: "3.8"
 services:
 
   auth-service:
-    image: auth-service
-    hostname: auth-service
+#    image: auth-service
+#    hostname: auth-service
     build:
       context: ./auth-service/
       dockerfile: Dockerfile
     restart: always
     environment:
-      - PORT=8000
+      - PORT=8001
       - MONGO_DB_URI=mongodb://root:pass@mongo:27017
     depends_on:
       mongo:
@@ -19,8 +19,8 @@ services:
       - network
 
   accommodation-service:
-    image: accommodation-service
-    hostname: accommodation-service
+#    image: accommodation-service
+#    hostname: accommodation-service
     build:
       context: ./accommodation-service/
       dockerfile: Dockerfile
@@ -50,8 +50,7 @@ services:
 
   mongo:
     image: mongo
-    container_name: mongo-db
-    hostname: mongo-db
+    hostname: mongo
     restart: on-failure
     ports:
       - "27017:27017"
@@ -67,6 +66,8 @@ services:
       retries: 10
     volumes:
       - mongo_store:/data/db
+    networks:
+      - network
 
   # NoSQL: MognoExpress
   mongo-express:
@@ -74,7 +75,7 @@ services:
     restart: always
     environment:
       # hostname of mongo databse
-      - ME_CONFIG_MONGODB_SERVER=mongo-db
+      - ME_CONFIG_MONGODB_SERVER=mongo
       - ME_CONFIG_MONGODB_ADMINUSERNAME=root
       - ME_CONFIG_MONGODB_ADMINPASSWORD=pass
       - ME_CONFIG_BASICAUTH_USERNAME=admin
@@ -85,6 +86,8 @@ services:
       - "8081:8081"
     volumes:
       - mongo_express_data:/data/db
+    networks:
+      - network
 
 volumes:
   mongo_store:

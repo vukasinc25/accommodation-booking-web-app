@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -18,14 +19,11 @@ type UserRepo struct {
 }
 
 func New(ctx context.Context, logger *log.Logger) (*UserRepo, error) {
-	dburi := "mongodb+srv://mongo:mongo@cluster0.gdaah26.mongodb.net/?retryWrites=true&w=majority"
+	//dburi := "mongodb+srv://mongo:mongo@cluster0.gdaah26.mongodb.net/?retryWrites=true&w=majority"
 
-	client, err := mongo.NewClient(options.Client().ApplyURI(dburi))
-	if err != nil {
-		return nil, err
-	}
+	dburi := os.Getenv("MONGO_DB_URI")
 
-	err = client.Connect(ctx)
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(dburi))
 	if err != nil {
 		return nil, err
 	}
@@ -44,61 +42,61 @@ func (uh *UserRepo) Disconnect(ctx context.Context) error {
 	return nil
 }
 
-func (pr *UserRepo) Ping() {
+func (uh *UserRepo) Ping() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	// Check connection -> if no error, connection is established
-	err := pr.cli.Ping(ctx, readpref.Primary())
+	err := uh.cli.Ping(ctx, readpref.Primary())
 	if err != nil {
-		pr.logger.Println(err)
+		uh.logger.Println(err)
 	}
 
 	// Print available databases
-	databases, err := pr.cli.ListDatabaseNames(ctx, bson.M{})
+	databases, err := uh.cli.ListDatabaseNames(ctx, bson.M{})
 	if err != nil {
-		pr.logger.Println(err)
+		uh.logger.Println(err)
 	}
 	fmt.Println(databases)
 }
 
-func (ur *UserRepo) Insert(patient *User) error {
+func (uh *UserRepo) Insert(user *User) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	patientsCollection := ur.getCollection()
+	usersCollection := uh.getCollection()
 
-	result, err := patientsCollection.InsertOne(ctx, &patient)
+	result, err := usersCollection.InsertOne(ctx, &user)
 	if err != nil {
-		ur.logger.Println(err)
+		uh.logger.Println(err)
 		return err
 	}
-	ur.logger.Printf("Documents ID: %v\n", result.InsertedID)
+	uh.logger.Printf("Documents ID: %v\n", result.InsertedID)
 	return nil
 }
 
-func (pr *UserRepo) GetAll() (Users, error) {
+func (uh *UserRepo) GetAll() (Users, error) {
 	// Initialise context (after 5 seconds timeout, abort operation)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	usersCollection := pr.getCollection()
-	pr.logger.Println("Collection: ", usersCollection)
+	usersCollection := uh.getCollection()
+	uh.logger.Println("Collection: ", usersCollection)
 
 	var users Users
 	usersCursor, err := usersCollection.Find(ctx, bson.M{})
 	if err != nil {
-		pr.logger.Println("Cant find userCollection: ", err)
+		uh.logger.Println("Cant find userCollection: ", err)
 		return nil, err
 	}
 	if err = usersCursor.All(ctx, &users); err != nil {
-		pr.logger.Println("User Cursor.All: ", err)
+		uh.logger.Println("User Cursor.All: ", err)
 		return nil, err
 	}
 	return users, nil
 }
 
-func (pr *UserRepo) getCollection() *mongo.Collection {
-	patientDatabase := pr.cli.Database("mongoDemo")
-	patientsCollection := patientDatabase.Collection("users")
-	return patientsCollection
+func (uh *UserRepo) getCollection() *mongo.Collection {
+	userDatabase := uh.cli.Database("mongoDemo")
+	usersCollection := userDatabase.Collection("users")
+	return usersCollection
 }
