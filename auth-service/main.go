@@ -32,6 +32,11 @@ func main() {
 	logger := log.New(os.Stdout, "[auth-api] ", log.LstdFlags)
 	storeLogger := log.New(os.Stdout, "[auth-store] ", log.LstdFlags)
 
+	tokenMaker, err := NewJWTMaker("12345678901234567890123456789012") // 12345678901234567890123456789012 treba da bude izvan primajuceg parametra
+	if err != nil {
+		logger.Fatal(err)
+	}
+
 	// NoSQL: Initialize Product Repository store
 	store, err := New(timeoutContext, storeLogger)
 	if err != nil {
@@ -42,10 +47,13 @@ func main() {
 	// NoSQL: Checking if the connection was established
 	store.Ping()
 
-	service := NewUserHandler(logger, store)
+	service := NewUserHandler(logger, store, tokenMaker)
+	authRoutes := router.PathPrefix("/").Subrouter()
+	authRoutes.Use(authMiddleware(tokenMaker))
+
 	router.HandleFunc("/api/users/register", service.createUser).Methods("POST")
-	router.HandleFunc("/api/users/login", service.getUserByUsername).Methods("GET")
-	router.HandleFunc("/users/", service.getAllUsers).Methods("GET")
+	router.HandleFunc("/api/users/login", service.loginUser).Methods("GET")
+	authRoutes.HandleFunc("/api/users/users", service.getAllUsers).Methods("GET")
 
 	server := http.Server{
 		Addr:         ":" + port,

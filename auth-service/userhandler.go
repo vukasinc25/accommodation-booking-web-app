@@ -7,15 +7,17 @@ import (
 	"log"
 	"mime"
 	"net/http"
+	"time"
 )
 
 type UserHandler struct {
-	logger *log.Logger
-	db     *UserRepo
+	logger   *log.Logger
+	db       *UserRepo
+	jwtMaker Maker
 }
 
-func NewUserHandler(l *log.Logger, r *UserRepo) *UserHandler {
-	return &UserHandler{l, r}
+func NewUserHandler(l *log.Logger, r *UserRepo, jwtMaker Maker) *UserHandler {
+	return &UserHandler{l, r, jwtMaker}
 }
 
 func (uh *UserHandler) createUser(w http.ResponseWriter, req *http.Request) {
@@ -51,6 +53,7 @@ func (uh *UserHandler) createUser(w http.ResponseWriter, req *http.Request) {
 
 func (uh *UserHandler) getAllUsers(w http.ResponseWriter, req *http.Request) {
 	users, err := uh.db.GetAll()
+	ctx := req.Context()
 
 	if err != nil {
 		uh.logger.Print("Database exception: ", err)
@@ -60,6 +63,14 @@ func (uh *UserHandler) getAllUsers(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	authPayload, ok := ctx.Value(authorizationPayloadKey).(*Payload)
+	if !ok || authPayload == nil {
+		http.Error(w, "Autorisation payload not found", http.StatusInternalServerError)
+		return
+	}
+
+	log.Println("Autorisation payload:", authPayload)
+
 	err = users.ToJSON(w)
 	if err != nil {
 		http.Error(w, "Unable to convert to json", http.StatusInternalServerError)
@@ -68,8 +79,7 @@ func (uh *UserHandler) getAllUsers(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (uh *UserHandler) getUserByUsername(w http.ResponseWriter, req *http.Request) {
-
+func (uh *UserHandler) loginUser(w http.ResponseWriter, req *http.Request) {
 	rt, err := decodeLoginBody(req.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -95,13 +105,35 @@ func (uh *UserHandler) getUserByUsername(w http.ResponseWriter, req *http.Reques
 		return
 	}
 
-	// needs to return JWT
-	err = user.ToJSON(w)
+	jwtToken(user, w, uh)
+}
+
+func jwtToken(user *User, w http.ResponseWriter, uh *UserHandler) {
+	durationStr := "15m" // treba da bude u konstanta izvan funkcije
+	duration, err := time.ParseDuration(durationStr)
 	if err != nil {
-		http.Error(w, "Unable to convert to json", http.StatusInternalServerError)
-		uh.logger.Fatal("Unable to convert to json :", err)
+		log.Println("Cant make duration")
 		return
 	}
+
+	accessToken, accessPayload, err := uh.jwtMaker.CreateToken(
+		user.Username,
+		user.Role,
+		duration,
+	)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	rsp := LoginUserResponse{
+		AccessToken:          accessToken,
+		AccessTokenExpiresAt: accessPayload.ExpiredAt,
+	}
+
+	e := json.NewEncoder(w)
+	e.Encode(rsp)
 }
 
 func decodeBody(r io.Reader) (*User, error) {
