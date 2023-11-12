@@ -9,6 +9,7 @@ import { LoginComponent } from './login/login.component';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { HTTP_INTERCEPTORS, HttpClientModule } from '@angular/common/http';
 import { RegisterComponent } from './register/register.component';
+import { AccommoAddComponent } from './accommo-add/accommo-add.component';
 
 @NgModule({
   declarations: [
@@ -17,6 +18,7 @@ import { RegisterComponent } from './register/register.component';
     MainPageComponent,
     LoginComponent,
     RegisterComponent,
+    AccommoAddComponent,
   ],
   imports: [
     BrowserModule,

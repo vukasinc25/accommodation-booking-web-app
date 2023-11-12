@@ -10,49 +10,76 @@ import (
 	"syscall"
 	"time"
 
+	gorillaHandlers "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
 
 func main() {
-	quit := make(chan os.Signal)
-	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 
 	config := loadConfig()
 
-	router := mux.NewRouter()
-	router.StrictSlash(true)
+	timeoutContext, cancel := context.WithTimeout(context.Background(), 50*time.Second)
+	defer cancel()
 
-	service := &accoHandler{
-		db: map[string]*Accommodation{},
+	logger := log.New(os.Stdout, "[accommo-api] ", log.LstdFlags)
+	storeLogger := log.New(os.Stdout, "[accommo-store] ", log.LstdFlags)
+
+	store, err := New(timeoutContext, storeLogger)
+	if err != nil {
+		logger.Fatal(err)
 	}
-	router.HandleFunc("/accommodation", service.createAccommodation).Methods("POST")
-	router.HandleFunc("/accommodations", service.getAllAccommodations).Methods("GET")
+	defer store.Disconnect(timeoutContext)
 
-	// start servergo get -u github.com/gorilla/mux
+	store.Ping()
 
-	srv := &http.Server{Addr: config["address"], Handler: router}
+	router := mux.NewRouter()
+	//router.StrictSlash(true)
+	cors := gorillaHandlers.CORS(gorillaHandlers.AllowedOrigins([]string{"*"}))
+
+	//service := &accoHandler{
+	//	db: map[string]*Accommodation{},
+	//}
+	service := NewAccoHandler(logger, store)
+
+	router.Use(service.MiddlewareContentTypeSet)
+
+	postRouter := router.Methods(http.MethodPost).Subrouter()
+	postRouter.HandleFunc("/api/accommodations/create", service.createAccommodation)
+	postRouter.Use(service.MiddlewareAccommodationDeserialization)
+
+	//router.HandleFunc("/api/accommodations/create", service.createAccommodation).Methods("POST")
+	router.HandleFunc("/api/accommodations/", service.getAllAccommodations).Methods("GET")
+
+	server := http.Server{
+		Addr:         ":" + config["port"],
+		Handler:      cors(router),
+		IdleTimeout:  120 * time.Second,
+		ReadTimeout:  1 * time.Second,
+		WriteTimeout: 1 * time.Second,
+	}
+
+	logger.Println("Server listening on port", config["port"])
+	//Distribute all the connections to goroutines
 	go func() {
-		log.Println("server starting")
-		log.Println("Port:", config["address"])
-		if err := srv.ListenAndServe(); err != nil {
-			if err != http.ErrServerClosed {
-				log.Fatal(err)
-			}
+		err := server.ListenAndServe()
+		if err != nil {
+			logger.Fatal(err)
 		}
 	}()
 
-	<-quit
+	sigCh := make(chan os.Signal)
+	signal.Notify(sigCh, syscall.SIGINT)
+	signal.Notify(sigCh, syscall.SIGKILL)
 
-	log.Println("service shutting down ...")
+	sig := <-sigCh
+	logger.Println("Received terminate, graceful shutdown", sig)
+	timeoutContext, _ = context.WithTimeout(context.Background(), 30*time.Second)
 
-	// gracefully stop server
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatal(err)
+	//Try to shutdown gracefully
+	if server.Shutdown(timeoutContext) != nil {
+		logger.Fatal("Cannot gracefully shutdown...")
 	}
-	log.Println("server stopped")
+	logger.Println("Server stopped")
 
 }
 

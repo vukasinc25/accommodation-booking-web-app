@@ -95,11 +95,11 @@ func (uh *UserRepo) GetAll() (Users, error) {
 	return users, nil
 }
 
-func (ur *UserRepo) GetByUsername(username string) (*User, error) {
+func (uh *UserRepo) GetByUsername(username string) (*User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	usersCollection := ur.getCollection()
+	usersCollection := uh.getCollection()
 
 	var user User
 	log.Println("UsersCollection: ", usersCollection)
@@ -107,7 +107,7 @@ func (ur *UserRepo) GetByUsername(username string) (*User, error) {
 	// objUsername, _ := primitive.ObjectIDFromHex(username)
 	err := usersCollection.FindOne(ctx, bson.M{"username": username}).Decode(&user)
 	if err != nil {
-		ur.logger.Println(err)
+		uh.logger.Println(err)
 		return nil, err
 	}
 	return &user, nil

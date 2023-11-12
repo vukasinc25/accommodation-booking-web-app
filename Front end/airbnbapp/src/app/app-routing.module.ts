@@ -3,6 +3,7 @@ import { RouterModule, Routes } from '@angular/router';
 import { MainPageComponent } from './main-page/main-page.component';
 import { LoginComponent } from './login/login.component';
 import { RegisterComponent } from './register/register.component';
+import { AccommoAddComponent } from './accommo-add/accommo-add.component';
 
 const routes: Routes = [
   {
@@ -16,6 +17,10 @@ const routes: Routes = [
   {
     path: '',
     component: MainPageComponent,
+  },
+  {
+    path: 'accommodations/create',
+    component: AccommoAddComponent,
   },
   {
     path: '**',
