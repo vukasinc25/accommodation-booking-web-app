@@ -1,37 +1,54 @@
-/* Add any global styles if needed */
-body {
-    font-family: 'Arial', sans-serif;
+.container {
+    display: flex;
+    justify-content: center;
+    margin-top: 5%;
   }
   
-  /* Style the container */
-  .container {
-    text-align: center;
-  }
-  
-  /* Style the form */
   form {
     width: 50%;
   }
   
-  /* Style form fields and labels */
-  .form-group {
-    margin-bottom: 20px;
+  fieldset {
+    border: 1px solid #ccc;
+    padding: 20px;
+    border-radius: 5px;
+    background-color: #f8f9fa;
   }
   
-  /* Style the legend */
-  fieldset legend {
-    font-size: 1.5em;
+  legend {
+    font-size: 1.5rem;
     font-weight: bold;
-    margin-bottom: 20px;
+    margin-bottom: 15px;
   }
   
-  /* Style the submit button */
+  .form-group {
+    margin-bottom: 15px;
+  }
+  
+  .form-check-label {
+    margin-left: 5px;
+  }
+  
   .btn-primary {
-    padding: 10px 20px;
+    width: 100%;
   }
   
-  /* Add spacing between radio buttons */
-  .form-check {
-    margin-bottom: 10px;
+  /* Additional styles for better consistency */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="radio"] {
+    width: 100%;
+    padding: 10px;
+    margin: 5px 0;
+    box-sizing: border-box;
+  }
+  
+  input[type="radio"] {
+    margin-right: 5px;
+  }
+  
+  .d-flex {
+    display: flex;
   }
   
