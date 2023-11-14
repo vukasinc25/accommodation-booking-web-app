@@ -7,12 +7,12 @@ import (
 )
 
 type Accommodation struct {
-	ID        primitive.ObjectID `bson:"id,omitempty" json:"id"`
+	ID        primitive.ObjectID `bson:"_id,omitempty" json:"_id"`
 	Name      string             `bson:"name,omitempty" json:"name"`
 	Location  Location           `bson:"location,omitempty,inline" json:"location"`
 	Amenities []Amenity          `bson:"amenities,omitempty" json:"amenities"`
-	MinGuests int                `bson:"minGuests,omitempty" json:"min_guests"`
-	MaxGuests int                `bson:"maxGuests,omitempty" json:"max_guests"`
+	MinGuests int                `bson:"minGuests,omitempty" json:"minGuests"`
+	MaxGuests int                `bson:"maxGuests,omitempty" json:"maxGuests"`
 	// Availability bool   `json:"availability"`
 	// Details      string `json:"details"`
 	// Price        string `json:"price"`

@@ -12,7 +12,7 @@ export class AccommodationService {
   private headers = new HttpHeaders({ 'Content-Type': 'application/json' });
 
   getAll(): Observable<any> {
-    return this.http.get('/api/accommodations', {
+    return this.http.get('/api/accommodations/', {
       headers: this.headers,
       responseType: 'json',
     });

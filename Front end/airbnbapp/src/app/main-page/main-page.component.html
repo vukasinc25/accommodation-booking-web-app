@@ -3,38 +3,13 @@
     Create Accommodation
   </button>
   <div class="row row-cols-3 g-4">
-    <div class="col">
+    <div class="col" *ngFor="let accommodation of accommodations">
       <div class="card h-100">
         <div class="card-body">
-          <h3>Test</h3>
+          <h3>{{ accommodation.name }}</h3>
           <p>rexdtcfbgvyhuinjmoctygvubhtdvgfhuebi;k</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="col">
-      <div class="card h-100">
-        <div class="card-body">
-          <h3>Test</h3>
-          <p>rexdtcfbgvyhuinjmoctyg</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="col">
-      <div class="card h-100">
-        <div class="card-body">
-          <h3>Test</h3>
-          <p>rexdtcfbgvyhuinjmoctygvubhig fiowe;ngiwrniw fevnwoviown</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="col">
-      <div class="card h-100">
-        <div class="card-body">
-          <h3>Test</h3>
-          <p>rexdtcfbgvyhuinjmoctygvubhbrwn;brwiw;hnubwrnhiuwrh;rw</p>
+          <p>{{ "Min:" + accommodation.minGuests }}</p>
+          <p>{{ "Max:" + accommodation.maxGuests }}</p>
         </div>
       </div>
     </div>

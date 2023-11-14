@@ -11,10 +11,10 @@ export class AuthService {
 
   private headers = new HttpHeaders({ 'Content-Type': 'application/json' });
 
-  login(): Observable<any> {
+  login(user: any): Observable<any> {
     return this.http.post(
-      '',
-      {},
+      '/api/users/login',
+      { username: user.username, password: user.password },
       { headers: this.headers, responseType: 'json' }
     );
   }
@@ -27,5 +27,7 @@ export class AuthService {
     );
   }
 
-  logout() {}
+  logout() {
+    localStorage.removeItem('jwt');
+  }
 }

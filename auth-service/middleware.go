@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/vukasinc25/fst-airbnb/token"
 	"net/http"
 	"strings"
 
@@ -14,11 +15,11 @@ import (
 const (
 	authorizationHeaderKey  = "authorization"
 	authorizationTypeBearer = "bearer"
-	authorizationPayloadKey = "authorization_payload"
+	AuthorizationPayloadKey = "authorization_payload"
 )
 
 // AuthMiddleware creates a gorila middleware for authorization
-func authMiddleware(tokenMaker Maker) mux.MiddlewareFunc {
+func AuthMiddleware(tokenMaker token.Maker) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			authorizationHeader := r.Header.Get(authorizationHeaderKey)
@@ -51,7 +52,7 @@ func authMiddleware(tokenMaker Maker) mux.MiddlewareFunc {
 			}
 
 			// Store the payload in the request context
-			r = r.WithContext(context.WithValue(r.Context(), authorizationPayloadKey, payload))
+			r = r.WithContext(context.WithValue(r.Context(), AuthorizationPayloadKey, payload))
 
 			// Call the next handler in the chain
 			next.ServeHTTP(w, r)

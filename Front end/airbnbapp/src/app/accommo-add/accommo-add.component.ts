@@ -26,8 +26,7 @@ export class AccommoAddComponent {
   submit() {
     this.accommodationService.insert(this.form.value).subscribe({
       next: (data) => {
-        console.log('Register success');
-        this.router.navigate(['login']);
+        console.log('create success');
       },
       error: (err) => {
         console.log(err);

@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"github.com/vukasinc25/fst-airbnb/token"
 	"io"
 	"log"
 	"mime"
@@ -13,10 +14,10 @@ import (
 type UserHandler struct {
 	logger   *log.Logger
 	db       *UserRepo
-	jwtMaker Maker
+	jwtMaker token.Maker
 }
 
-func NewUserHandler(l *log.Logger, r *UserRepo, jwtMaker Maker) *UserHandler {
+func NewUserHandler(l *log.Logger, r *UserRepo, jwtMaker token.Maker) *UserHandler {
 	return &UserHandler{l, r, jwtMaker}
 }
 
@@ -63,13 +64,13 @@ func (uh *UserHandler) getAllUsers(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	authPayload, ok := ctx.Value(authorizationPayloadKey).(*Payload)
+	authPayload, ok := ctx.Value(AuthorizationPayloadKey).(*token.Payload)
 	if !ok || authPayload == nil {
-		http.Error(w, "Autorisation payload not found", http.StatusInternalServerError)
+		http.Error(w, "Authorisation payload not found", http.StatusInternalServerError)
 		return
 	}
 
-	log.Println("Autorisation payload:", authPayload)
+	log.Println("Authorisation payload:", authPayload)
 
 	err = users.ToJSON(w)
 	if err != nil {
@@ -95,13 +96,19 @@ func (uh *UserHandler) loginUser(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if user == nil {
-		http.Error(w, "User not found", http.StatusNotFound)
+		http.Error(w, "invalid username or password", http.StatusNotFound)
 		return
 	}
 
 	err = CheckHashedPassword(password, user.Password)
 	if err != nil {
-		http.Error(w, "Invalid password", http.StatusUnauthorized)
+		http.Error(w, "invalid username or password", http.StatusUnauthorized)
+		return
+	}
+
+	if err != nil {
+		uh.logger.Println("token encoding error")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -117,6 +124,7 @@ func jwtToken(user *User, w http.ResponseWriter, uh *UserHandler) {
 	}
 
 	accessToken, accessPayload, err := uh.jwtMaker.CreateToken(
+		user.ID,
 		user.Username,
 		user.Role,
 		duration,

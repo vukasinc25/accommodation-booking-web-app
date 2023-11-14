@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/vukasinc25/fst-airbnb/token"
 	"log"
 	"net/http"
 	"os"
@@ -32,7 +33,7 @@ func main() {
 	logger := log.New(os.Stdout, "[auth-api] ", log.LstdFlags)
 	storeLogger := log.New(os.Stdout, "[auth-store] ", log.LstdFlags)
 
-	tokenMaker, err := NewJWTMaker("12345678901234567890123456789012") // 12345678901234567890123456789012 treba da bude izvan primajuceg parametra
+	tokenMaker, err := token.NewJWTMaker("12345678901234567890123456789012") // 12345678901234567890123456789012 treba da bude izvan primajuceg parametra
 	if err != nil {
 		logger.Fatal(err)
 	}
@@ -49,10 +50,10 @@ func main() {
 
 	service := NewUserHandler(logger, store, tokenMaker)
 	authRoutes := router.PathPrefix("/").Subrouter()
-	authRoutes.Use(authMiddleware(tokenMaker))
+	authRoutes.Use(AuthMiddleware(tokenMaker))
 
 	router.HandleFunc("/api/users/register", service.createUser).Methods("POST")
-	router.HandleFunc("/api/users/login", service.loginUser).Methods("GET")
+	router.HandleFunc("/api/users/login", service.loginUser).Methods("POST")
 	authRoutes.HandleFunc("/api/users/users", service.getAllUsers).Methods("GET")
 
 	server := http.Server{

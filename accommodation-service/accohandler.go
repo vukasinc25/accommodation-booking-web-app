@@ -10,60 +10,25 @@ import (
 
 type KeyProduct struct{}
 
-type accoHandler struct {
+type AccoHandler struct {
 	logger *log.Logger
 	db     *AccoRepo
 }
 
-//type accoHandler struct {
-//	db           map[string]*Accommodation // izigrava bazu podataka
-//	accomodation *Accommodation
-//}
-
-func NewAccoHandler(l *log.Logger, r *AccoRepo) *accoHandler {
-	return &accoHandler{l, r}
+func NewAccoHandler(l *log.Logger, r *AccoRepo) *AccoHandler {
+	return &AccoHandler{l, r}
 }
 
-func (ah *accoHandler) createAccommodation(rw http.ResponseWriter, req *http.Request) {
+func (ah *AccoHandler) createAccommodation(rw http.ResponseWriter, req *http.Request) {
 
 	accommodation := req.Context().Value(KeyProduct{}).(*Accommodation)
 	ah.db.Insert(accommodation)
 	rw.WriteHeader(http.StatusCreated)
 
-	//contentType := req.Header.Get("Content-Type")
-	//mediatype, _, err := mime.ParseMediaType(contentType)
-	//if err != nil {
-	//	http.Error(w, err.Error(), http.StatusBadRequest)
-	//	return
-	//}
-	//
-	//if mediatype != "application/json" {
-	//	err := errors.New("Expect application/json Content-Type")
-	//	http.Error(w, err.Error(), http.StatusUnsupportedMediaType)
-	//	return
-	//}
-	//
-	//rt, err := decodeBody(req.Body)
-	//if err != nil {
-	//	http.Error(w, err.Error(), http.StatusBadRequest)
-	//	return
-	//}
-	//
-	////id := uuid.New().String()
-	////ah.db[id] = rt
-	//renderJSON(w, rt)
 }
 
-func (ah *accoHandler) getAllAccommodations(rw http.ResponseWriter, req *http.Request) {
-	//newAccomodation := Accommodation{
-	//	ID:   1,
-	//	Name: "Sample Accommodation",
-	//}
-	//renderJSON(w, newAccomodation)
-	// allAccommodations := []*Accommodation{}
-	// for _, v := range ah.db {
-	// 	allAccommodations = append(allAccommodations, v)
-	// }
+func (ah *AccoHandler) getAllAccommodations(rw http.ResponseWriter, req *http.Request) {
+
 	accommodations, err := ah.db.GetAll()
 	if err != nil {
 		ah.logger.Print("Database exception: ", err)
@@ -81,7 +46,7 @@ func (ah *accoHandler) getAllAccommodations(rw http.ResponseWriter, req *http.Re
 	}
 }
 
-func (ah *accoHandler) MiddlewareAccommodationDeserialization(next http.Handler) http.Handler {
+func (ah *AccoHandler) MiddlewareAccommodationDeserialization(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, h *http.Request) {
 		accommodation := &Accommodation{}
 		err := accommodation.FromJSON(h.Body)
@@ -98,7 +63,7 @@ func (ah *accoHandler) MiddlewareAccommodationDeserialization(next http.Handler)
 	})
 }
 
-func (ah *accoHandler) MiddlewareContentTypeSet(next http.Handler) http.Handler {
+func (ah *AccoHandler) MiddlewareContentTypeSet(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, h *http.Request) {
 		ah.logger.Println("Method [", h.Method, "] - Hit path :", h.URL.Path)
 
