@@ -2,13 +2,14 @@ package main
 
 import (
 	"context"
-	"github.com/vukasinc25/fst-airbnb/token"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/vukasinc25/fst-airbnb/token"
 
 	gorillaHandlers "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -68,6 +69,7 @@ func main() {
 	//Distribute all the connections to goroutines
 	go func() {
 		err := server.ListenAndServe()
+		// err := server.ListenAndServeTLS("../cert/server.crt", "../cert/serve.key")
 		if err != nil {
 			logger.Fatal(err)
 		}

@@ -3,12 +3,13 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"github.com/vukasinc25/fst-airbnb/token"
 	"io"
 	"log"
 	"mime"
 	"net/http"
 	"time"
+
+	"github.com/vukasinc25/fst-airbnb/token"
 )
 
 type UserHandler struct {
@@ -40,6 +41,19 @@ func (uh *UserHandler) createUser(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	blacklist, err := NewBlacklistFromURL()
+	if err != nil {
+		log.Println("Error fetching blacklist: %v\n", err)
+		return
+	}
+
+	if blacklist.IsBlacklisted(rt.Password) {
+		w.WriteHeader(http.StatusBadRequest)
+		log.Println("Password nije dobar")
+		return
+	}
+
 	log.Println("Not hashed Password: %w", rt.Password)
 	hashedPassword, err := HashPassword(rt.Password)
 	if err != nil {
