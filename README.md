@@ -3,7 +3,7 @@
 <!-- "docker-compose build"
 "docker-compose up" -->
 
-Team of 4 making an airbnb clone using golang, multiple NoSQL databases, docker, etc...
+Team of 4 making an airbnb clone using golang, angular, multiple NoSQL databases, docker, etc...
 
 <!--
 Enter PEM pass phrase: pass

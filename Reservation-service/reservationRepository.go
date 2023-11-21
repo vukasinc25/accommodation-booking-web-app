@@ -12,12 +12,12 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
-type LocationRepo struct {
+type ReservationRepo struct {
 	cli    *mongo.Client
 	logger *log.Logger
 }
 
-func New(ctx context.Context, logger *log.Logger) (*LocationRepo, error) {
+func New(ctx context.Context, logger *log.Logger) (*ReservationRepo, error) {
 	// dburi := "mongodb+srv://mongo:mongo@cluster0.gdaah26.mongodb.net/?retryWrites=true&w=majority"
 
 	client, err := mongo.NewClient(options.Client().ApplyURI(dburi))
@@ -30,13 +30,13 @@ func New(ctx context.Context, logger *log.Logger) (*LocationRepo, error) {
 		return nil, err
 	}
 
-	return &LocationRepo{
+	return &ReservationRepo{
 		cli:    client,
 		logger: logger,
 	}, nil
 }
 
-func (uh *LocationRepo) Disconnect(ctx context.Context) error {
+func (uh *ReservationRepo) Disconnect(ctx context.Context) error {
 	err := uh.cli.Disconnect(ctx)
 	if err != nil {
 		return err
@@ -44,7 +44,7 @@ func (uh *LocationRepo) Disconnect(ctx context.Context) error {
 	return nil
 }
 
-func (pr *LocationRepo) Ping() {
+func (pr *ReservationRepo) Ping() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -62,7 +62,7 @@ func (pr *LocationRepo) Ping() {
 	fmt.Println(databases)
 }
 
-func (ur *LocationRepo) Insert(patient *Location) error {
+func (ur *ReservationRepo) Insert(patient *Reservation) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	patientsCollection := ur.getCollection()
@@ -76,29 +76,29 @@ func (ur *LocationRepo) Insert(patient *Location) error {
 	return nil
 }
 
-func (pr *LocationRepo) GetAll() (Locations, error) {
+func (pr *ReservationRepo) GetAll() (Reservations, error) {
 	// Initialise context (after 5 seconds timeout, abort operation)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	locationsCollection := pr.getCollection()
-	pr.logger.Println("Collection: ", locationsCollection)
+	reservationsCollection := pr.getCollection()
+	pr.logger.Println("Collection: ", reservationsCollection)
 
-	var locations Locations
-	locationsCursor, err := locationsCollection.Find(ctx, bson.M{})
+	var reservations Reservations
+	reservationsCursor, err := reservationsCollection.Find(ctx, bson.M{})
 	if err != nil {
-		pr.logger.Println("Cant find locationCollection: ", err)
+		pr.logger.Println("Cant find reservationCollection: ", err)
 		return nil, err
 	}
-	if err = locationsCursor.All(ctx, &locations); err != nil {
-		pr.logger.Println("Location Cursor.All: ", err)
+	if err = reservationsCursor.All(ctx, &reservations); err != nil {
+		pr.logger.Println("Reservation Cursor.All: ", err)
 		return nil, err
 	}
-	return locations, nil
+	return reservations, nil
 }
 
-func (pr *LocationRepo) getCollection() *mongo.Collection {
+func (pr *ReservationRepo) getCollection() *mongo.Collection {
 	patientDatabase := pr.cli.Database("mongoDemo")
-	patientsCollection := patientDatabase.Collection("locations")
+	patientsCollection := patientDatabase.Collection("reservations")
 	return patientsCollection
 }

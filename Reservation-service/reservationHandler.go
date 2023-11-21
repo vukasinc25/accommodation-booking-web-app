@@ -11,14 +11,14 @@ import (
 
 type userHandler struct {
 	logger *log.Logger
-	db     *LocationRepository
+	db     *ReservationRepository
 }
 
-func NewLocationHandler(l *log.Logger, r *LocationRepository) *userHandler {
+func NewReservationHandler(l *log.Logger, r *ReservationRepository) *userHandler {
 	return &userHandler{l, r}
 }
 
-func (uh *userHandler) createLocation(w http.ResponseWriter, req *http.Request) {
+func (uh *userHandler) createReservation(w http.ResponseWriter, req *http.Request) {
 	contentType := req.Header.Get("Content-Type")
 	mediatype, _, err := mime.ParseMediaType(contentType)
 	if err != nil {
@@ -42,7 +42,7 @@ func (uh *userHandler) createLocation(w http.ResponseWriter, req *http.Request) 
 	w.WriteHeader(http.StatusCreated)
 }
 
-func (uh *userHandler) getAllLocations(w http.ResponseWriter, req *http.Request) {
+func (uh *userHandler) getAllReservations(w http.ResponseWriter, req *http.Request) {
 	users, err := uh.db.GetAll()
 
 	if err != nil {
@@ -61,11 +61,11 @@ func (uh *userHandler) getAllLocations(w http.ResponseWriter, req *http.Request)
 	}
 }
 
-func decodeBody(r io.Reader) (*Location, error) {
+func decodeBody(r io.Reader) (*Reservation, error) {
 	dec := json.NewDecoder(r)
 	dec.DisallowUnknownFields()
 
-	var rt Location
+	var rt Reservation
 	if err := dec.Decode(&rt); err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func renderJSON(w http.ResponseWriter, v interface{}) {
 	w.Write(js)
 }
 
-func (u *Locations) ToJSON(w io.Writer) error {
+func (u *Reservations) ToJSON(w io.Writer) error {
 	e := json.NewEncoder(w)
 	return e.Encode(u)
 }

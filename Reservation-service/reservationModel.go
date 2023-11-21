@@ -1,9 +1,12 @@
 package main
 
+import (
+	"time"
+)
+
 type Location struct {
-	ID           int    `json:"ID"`
-	Country      string `json:"country"`
-	City         string `json:"city"`
-	StreetName   string `json:"streetName"`
-	StreetNumber string `json:"streetNumber"`
+	ID     int       `json:"ID"`
+	Date   time.Time `json:"date"`
+	accoId int       `json:"accoId"`
+	userId int       `json:"userId"`
 }
