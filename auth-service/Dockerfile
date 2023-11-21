@@ -9,5 +9,7 @@ RUN go build -o server
 FROM alpine
 WORKDIR /usr/bin
 COPY --from=build_container /app/server .
+RUN mkdir cert
+COPY ./cert ./cert/
 EXPOSE 8000
 ENTRYPOINT ["server"]

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"log"
 	"net/http"
 	"os"
@@ -63,13 +64,19 @@ func main() {
 		IdleTimeout:  120 * time.Second,
 		ReadTimeout:  1 * time.Second,
 		WriteTimeout: 1 * time.Second,
+		TLSConfig: &tls.Config{
+			MinVersion:   tls.VersionTLS12, // or tls.VersionTLS13
+			CipherSuites: []uint16{tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384},
+			// Add other cipher suites as needed
+		},
 	}
 
 	logger.Println("Server listening on port", port)
 	//Distribute all the connections to goroutines
 	go func() {
-		err := server.ListenAndServe()
-		// err := server.ListenAndServeTLS("../cert/server.crt", "../cert/serve.key")
+		// err := server.ListenAndServe()
+		err := server.ListenAndServeTLS("cert/auth-server.crt", "cert/auth-server.key")
+
 		if err != nil {
 			logger.Fatal(err)
 		}
