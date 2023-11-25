@@ -58,17 +58,31 @@ func (uh *UserHandler) createUser(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	//pre nego decodujemo requuest podatke kazemo da proveri sve stringove da li imaju "<" u sebi ako imaju da zameni < sa &lt mozemo da stavimo i ako string sadrzi rec "script"
+
 	rt, err := decodeBody(req.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
+	sanitizedUsername := sanitizeInput(rt.Username)
+	sanitizedPassword := sanitizeInput(rt.Password)
+	sanitizedRole := sanitizeInput(rt.Role)
+
+	rt.Username = sanitizedUsername
+	rt.Password = sanitizedPassword
+	rt.Role = sanitizedRole
+
 	blacklist, err := NewBlacklistFromURL()
 	if err != nil {
 		log.Println("Error fetching blacklist: %v\n", err)
 		return
 	}
+
+	log.Println(sanitizedUsername)
+	log.Println(sanitizedPassword)
+	log.Println(sanitizedRole)
 
 	if blacklist.IsBlacklisted(rt.Password) {
 		w.WriteHeader(http.StatusBadRequest)
@@ -84,7 +98,7 @@ func (uh *UserHandler) createUser(w http.ResponseWriter, req *http.Request) {
 	rt.Password = hashedPassword
 	log.Println("Hashed Password: %w", rt.Password)
 
-	uh.db.Insert(rt)
+	// uh.db.Insert(rt)
 	w.WriteHeader(http.StatusCreated)
 }
 
@@ -106,8 +120,10 @@ func (uh *UserHandler) getAllUsers(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	log.Println("Authorisation payload:", authPayload)
-
+	if authPayload.Role == "guest" {
+		http.Error(w, "Unauthorized access", http.StatusUnauthorized)
+		return
+	}
 	err = users.ToJSON(w)
 	if err != nil {
 		http.Error(w, "Unable to convert to json", http.StatusInternalServerError)
@@ -200,6 +216,12 @@ func decodeLoginBody(r io.Reader) (*LoginUser, error) {
 		return nil, err
 	}
 	return &rt, nil
+}
+
+func sanitizeInput(input string) string {
+	sanitizedInput := strings.ReplaceAll(input, "<", "&lt;")
+
+	return sanitizedInput
 }
 
 func renderJSON(w http.ResponseWriter, v interface{}) {

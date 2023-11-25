@@ -43,40 +43,40 @@ func (uh *userHandler) createUser(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 }
 
-type Accomodation struct {
-	ID   int    `json:"ID"`
-	Name string `json:"Name"`
-}
+// type Accomodation struct {
+// 	ID   int    `json:"ID"`
+// 	Name string `json:"Name"`
+// }
 
-func (uh *userHandler) getAccomodations(w http.ResponseWriter) (*Accomodation, error) {
-	log.Println("Enterd in GetAccomodations")
-	url := uh.accomodation_address + "/accommodations"
-	log.Println("Accomodation address:", uh.accomodation_address)
-	log.Println("Url:", url)
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		log.Println("Error in creating request")
-		return nil, err
-	}
+// func (uh *userHandler) getAccomodations(w http.ResponseWriter) (*Accomodation, error) {
+// 	log.Println("Enterd in GetAccomodations")
+// 	url := uh.accomodation_address + "/accommodations"
+// 	log.Println("Accomodation address:", uh.accomodation_address)
+// 	log.Println("Url:", url)
+// 	req, err := http.NewRequest(http.MethodGet, url, nil)
+// 	if err != nil {
+// 		log.Println("Error in creating request")
+// 		return nil, err
+// 	}
 
-	httpResp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		log.Println("Error in sendding or receving Resoponse from Accommodation service", req)
-		return nil, err
-	}
-	log.Println("HttpRespons: ", httpResp)
+// 	httpResp, err := http.DefaultClient.Do(req)
+// 	if err != nil {
+// 		log.Println("Error in sendding or receving Resoponse from Accommodation service", req)
+// 		return nil, err
+// 	}
+// 	log.Println("HttpRespons: ", httpResp)
 
-	var resp *Accomodation
+// 	var resp *Accomodation
 
-	err = json.NewDecoder(httpResp.Body).Decode(&resp)
-	if err != nil {
-		log.Println("Error decoding response")
-		return nil, err
-	}
+// 	err = json.NewDecoder(httpResp.Body).Decode(&resp)
+// 	if err != nil {
+// 		log.Println("Error decoding response")
+// 		return nil, err
+// 	}
 
-	renderJSON(w, resp)
-	return resp, nil
-}
+//		renderJSON(w, resp)
+//		return resp, nil
+//	}
 func (uh *userHandler) getAllUsers(w http.ResponseWriter, req *http.Request) {
 
 	// log.Println("Get All Users method enterd geting Accomodation")
