@@ -7,6 +7,7 @@ import (
 	"log"
 	"mime"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/vukasinc25/fst-airbnb/token"
@@ -20,6 +21,27 @@ type UserHandler struct {
 
 func NewUserHandler(l *log.Logger, r *UserRepo, jwtMaker token.Maker) *UserHandler {
 	return &UserHandler{l, r, jwtMaker}
+}
+
+func (uh *UserHandler) Auth(w http.ResponseWriter, req *http.Request) {
+
+	header := req.Header.Get("Authorization")
+
+	uh.logger.Println(header)
+
+	if req.Header.Get("X-Original-Uri") == "/api/accommodations/" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	fields := strings.Fields(header)
+	_, err := uh.jwtMaker.VerifyToken(fields[1])
+
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
 }
 
 func (uh *UserHandler) createUser(w http.ResponseWriter, req *http.Request) {

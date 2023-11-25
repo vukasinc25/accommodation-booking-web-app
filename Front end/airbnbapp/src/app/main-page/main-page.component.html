@@ -1,5 +1,9 @@
 <div class="container">
-  <button routerLink="/accommodations/create" class="btn btn-primary mb-4">
+  <button
+    *ngIf="isLoggedin && userRole === 'HOST'"
+    routerLink="/accommodations/create"
+    class="btn btn-primary mb-4"
+  >
     Create Accommodation
   </button>
   <div class="row row-cols-3 g-4">

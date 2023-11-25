@@ -29,6 +29,8 @@ export class LoginComponent {
         console.log(data);
         localStorage.setItem('jwt', data.access_token);
         this.router.navigate(['']);
+        this.authService.checkLoggin();
+        this.authService.checkRole();
       },
       error: (err) => {
         console.log(err);

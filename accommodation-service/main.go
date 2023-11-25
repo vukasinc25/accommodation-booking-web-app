@@ -36,9 +36,6 @@ func main() {
 	//router.StrictSlash(true)
 	cors := gorillaHandlers.CORS(gorillaHandlers.AllowedOrigins([]string{"*"}))
 
-	//service := &accoHandler{
-	//	db: map[string]*Accommodation{},
-	//}
 	service := NewAccoHandler(logger, store)
 
 	router.Use(service.MiddlewareContentTypeSet)

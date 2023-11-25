@@ -28,7 +28,7 @@ func main() {
 	defer cancel()
 
 	router := mux.NewRouter()
-	router.StrictSlash(true)
+	//router.StrictSlash(true)
 	cors := gorillaHandlers.CORS(gorillaHandlers.AllowedOrigins([]string{"*"}))
 
 	//Initialize the logger we are going to use, with prefix and datetime for every log
@@ -54,6 +54,7 @@ func main() {
 	authRoutes := router.PathPrefix("/").Subrouter()
 	authRoutes.Use(AuthMiddleware(tokenMaker))
 
+	router.HandleFunc("/api/users/auth", service.Auth)
 	router.HandleFunc("/api/users/register", service.createUser).Methods("POST")
 	router.HandleFunc("/api/users/login", service.loginUser).Methods("POST")
 	authRoutes.HandleFunc("/api/users/users", service.getAllUsers).Methods("GET")

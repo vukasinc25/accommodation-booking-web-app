@@ -10,6 +10,8 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { HTTP_INTERCEPTORS, HttpClientModule } from '@angular/common/http';
 import { RegisterComponent } from './register/register.component';
 import { AccommoAddComponent } from './accommo-add/accommo-add.component';
+import { ProfileComponent } from './profile/profile.component';
+import { TokenInterceptor } from './interceptor/token.interceptor';
 
 @NgModule({
   declarations: [
@@ -19,6 +21,7 @@ import { AccommoAddComponent } from './accommo-add/accommo-add.component';
     LoginComponent,
     RegisterComponent,
     AccommoAddComponent,
+    ProfileComponent,
   ],
   imports: [
     BrowserModule,
@@ -27,7 +30,9 @@ import { AccommoAddComponent } from './accommo-add/accommo-add.component';
     ReactiveFormsModule,
     HttpClientModule,
   ],
-  providers: [],
+  providers: [
+    { provide: HTTP_INTERCEPTORS, useClass: TokenInterceptor, multi: true },
+  ],
   bootstrap: [AppComponent],
 })
 export class AppModule {}

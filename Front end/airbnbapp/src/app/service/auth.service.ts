@@ -1,15 +1,31 @@
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Router } from '@angular/router';
-import { Observable } from 'rxjs';
+import { JwtHelperService } from '@auth0/angular-jwt';
+import { BehaviorSubject, Observable, Subject } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
 })
 export class AuthService {
-  constructor(private http: HttpClient, private router: Router) {}
+  private logginSubject: BehaviorSubject<boolean> =
+    new BehaviorSubject<boolean>(false);
+
+  private roleSubject: BehaviorSubject<string> = new BehaviorSubject<string>(
+    ''
+  );
+
+  public isLoggedin: Observable<boolean>;
+
+  public role: Observable<string>;
+
+  constructor(private http: HttpClient, private router: Router) {
+    this.isLoggedin = this.logginSubject.asObservable();
+    this.role = this.roleSubject.asObservable();
+  }
 
   private headers = new HttpHeaders({ 'Content-Type': 'application/json' });
+  jwt: JwtHelperService = new JwtHelperService();
 
   login(user: any): Observable<any> {
     return this.http.post(
@@ -29,5 +45,37 @@ export class AuthService {
 
   logout() {
     localStorage.removeItem('jwt');
+    this.checkLoggin();
+    this.checkRole();
+  }
+
+  checkLoggin(): boolean {
+    if (!localStorage.getItem('jwt')) {
+      this.setLoggin(false);
+      return false;
+    } else {
+      this.setLoggin(true);
+      return true;
+    }
+  }
+
+  setLoggin(value: boolean) {
+    this.logginSubject.next(value);
+  }
+
+  setRole(value: string) {
+    this.roleSubject.next(value);
+  }
+
+  guardCheck(): string {
+    let token = localStorage.getItem('jwt');
+    if (token != null) return this.jwt.decodeToken(token).role;
+    else return '';
+  }
+
+  checkRole() {
+    let token = localStorage.getItem('jwt');
+    if (token != null) this.setRole(this.jwt.decodeToken(token).role);
+    else this.setRole('');
   }
 }

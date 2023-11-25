@@ -16,10 +16,13 @@
       <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
         <div class="navbar-nav">
           <a class="nav-link" routerLink="/">Home</a>
-          <a class="nav-link" routerLink="/">Profile</a>
-          <a class="nav-link" routerLink="/register">Register</a>
-          <a class="nav-link" routerLink="/login">Log in</a>
-          <button class="nav-link" (click)="logout()">Logout</button>
+          <a *ngIf="isLoggedin" class="nav-link" routerLink="/profile"
+            >Profile</a
+          >
+          <a *ngIf="!isLoggedin" class="nav-link" routerLink="/register"
+            >Register</a
+          >
+          <a *ngIf="!isLoggedin" class="nav-link" routerLink="/login">Log in</a>
         </div>
       </div>
     </div>
