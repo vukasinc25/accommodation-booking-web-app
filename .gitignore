@@ -19,3 +19,8 @@
 
 # Go workspace file
 go.work
+
+#Moje
+.idea
+.DS_Store
+.env
