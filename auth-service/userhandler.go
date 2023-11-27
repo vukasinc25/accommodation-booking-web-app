@@ -98,7 +98,7 @@ func (uh *UserHandler) createUser(w http.ResponseWriter, req *http.Request) {
 	rt.Password = hashedPassword
 	log.Println("Hashed Password: %w", rt.Password)
 
-	// uh.db.Insert(rt)
+	uh.db.Insert(rt)
 	w.WriteHeader(http.StatusCreated)
 }
 
@@ -140,7 +140,7 @@ func (uh *UserHandler) loginUser(w http.ResponseWriter, req *http.Request) {
 	}
 	username := rt.Username
 	password := rt.Password
-
+	log.Println("blabla")
 	user, err := uh.db.GetByUsername(username)
 
 	if err != nil {
