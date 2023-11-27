@@ -13,17 +13,17 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
+// UserRepo is a repository for MongoDB operations related to User.
 type UserRepo struct {
 	cli    *mongo.Client
 	logger *log.Logger
 }
 
+// New creates a new UserRepo instance.
 func New(ctx context.Context, logger *log.Logger) (*UserRepo, error) {
-	//dburi := "mongodb+srv://mongo:mongo@cluster0.gdaah26.mongodb.net/?retryWrites=true&w=majority"
+	dbURI := os.Getenv("MONGO_DB_URI")
 
-	dburi := os.Getenv("MONGO_DB_URI")
-
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(dburi))
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(dbURI))
 	if err != nil {
 		return nil, err
 	}
@@ -34,6 +34,7 @@ func New(ctx context.Context, logger *log.Logger) (*UserRepo, error) {
 	}, nil
 }
 
+// Disconnect disconnects from the MongoDB client.
 func (uh *UserRepo) Disconnect(ctx context.Context) error {
 	err := uh.cli.Disconnect(ctx)
 	if err != nil {
@@ -42,6 +43,7 @@ func (uh *UserRepo) Disconnect(ctx context.Context) error {
 	return nil
 }
 
+// Ping checks the MongoDB connection and prints available databases.
 func (uh *UserRepo) Ping() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -60,32 +62,32 @@ func (uh *UserRepo) Ping() {
 	fmt.Println(databases)
 }
 
+// Insert inserts a new user into the MongoDB collection.
 func (uh *UserRepo) Insert(user *User) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	usersCollection := uh.getCollection()
 
-	result, err := usersCollection.InsertOne(ctx, &user)
+	result, err := usersCollection.InsertOne(ctx, user)
 	if err != nil {
 		uh.logger.Println(err)
 		return err
 	}
-	uh.logger.Printf("Documents ID: %v\n", result.InsertedID)
+	uh.logger.Printf("Document ID: %v\n", result.InsertedID)
 	return nil
 }
 
+// GetAll retrieves all users from the MongoDB collection.
 func (uh *UserRepo) GetAll() (Users, error) {
-	// Initialise context (after 5 seconds timeout, abort operation)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	usersCollection := uh.getCollection()
-	uh.logger.Println("Collection: ", usersCollection)
 
 	var users Users
 	usersCursor, err := usersCollection.Find(ctx, bson.M{})
 	if err != nil {
-		uh.logger.Println("Cant find userCollection: ", err)
+		uh.logger.Println("Cannot find user collection: ", err)
 		return nil, err
 	}
 	if err = usersCursor.All(ctx, &users); err != nil {
@@ -95,6 +97,7 @@ func (uh *UserRepo) GetAll() (Users, error) {
 	return users, nil
 }
 
+// GetByUsername retrieves a user by username from the MongoDB collection.
 func (uh *UserRepo) GetByUsername(username string) (*User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -102,9 +105,8 @@ func (uh *UserRepo) GetByUsername(username string) (*User, error) {
 	usersCollection := uh.getCollection()
 
 	var user User
-	log.Println("UsersCollection: ", usersCollection)
-	log.Println("UserName: ", username)
-	// objUsername, _ := primitive.ObjectIDFromHex(username)
+	log.Println("Users Collection: ", usersCollection)
+	log.Println("Username: ", username)
 	err := usersCollection.FindOne(ctx, bson.M{"username": username}).Decode(&user)
 	if err != nil {
 		uh.logger.Println(err)
@@ -113,6 +115,7 @@ func (uh *UserRepo) GetByUsername(username string) (*User, error) {
 	return &user, nil
 }
 
+// getCollection returns the MongoDB collection.
 func (uh *UserRepo) getCollection() *mongo.Collection {
 	userDatabase := uh.cli.Database("mongoDemo")
 	usersCollection := userDatabase.Collection("users")
