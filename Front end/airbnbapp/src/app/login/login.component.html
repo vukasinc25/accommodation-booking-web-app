@@ -20,7 +20,7 @@
         placeholder="Password"
         formControlName="password"
       />
-
+      <ngx-recaptcha2 #captchaElem [siteKey]="siteKey"> </ngx-recaptcha2>
       <button
         type="submit"
         class="btn btn-primary mb-3"

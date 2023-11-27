@@ -12,6 +12,7 @@ import { RegisterComponent } from './register/register.component';
 import { AccommoAddComponent } from './accommo-add/accommo-add.component';
 import { ProfileComponent } from './profile/profile.component';
 import { TokenInterceptor } from './interceptor/token.interceptor';
+import { NgxCaptchaModule } from 'ngx-captcha';
 
 @NgModule({
   declarations: [
@@ -29,6 +30,7 @@ import { TokenInterceptor } from './interceptor/token.interceptor';
     FormsModule,
     ReactiveFormsModule,
     HttpClientModule,
+    NgxCaptchaModule,
   ],
   providers: [
     { provide: HTTP_INTERCEPTORS, useClass: TokenInterceptor, multi: true },
