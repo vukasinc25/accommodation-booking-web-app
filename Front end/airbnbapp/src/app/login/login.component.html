@@ -1,37 +1,45 @@
+<!-- Updated HTML -->
 <div class="container mt-5 d-flex justify-content-center">
-  <form class="w-25" [formGroup]="form" (ngSubmit)="submit()">
+  <form class="login-form" [formGroup]="form" (ngSubmit)="submit()">
     <fieldset>
       <legend>Login</legend>
 
-      <input
-        type="text"
-        class="form-control mb-2"
-        id="username"
-        name="username"
-        placeholder="Username"
-        formControlName="username"
-      />
+      <div class="form-group">
+        <input
+          type="text"
+          class="form-control"
+          id="username"
+          name="username"
+          placeholder="Username"
+          formControlName="username"
+        />
+      </div>
 
-      <input
-        type="password"
-        class="form-control mb-2"
-        id="password"
-        name="password"
-        placeholder="Password"
-        formControlName="password"
-      />
-      <ngx-recaptcha2 #captchaElem [siteKey]="siteKey"> </ngx-recaptcha2>
+      <div class="form-group">
+        <input
+          type="password"
+          class="form-control"
+          id="password"
+          name="password"
+          placeholder="Password"
+          formControlName="password"
+        />
+      </div>
+
+      <ngx-recaptcha2 #captchaElem [siteKey]="siteKey"></ngx-recaptcha2>
+
       <button
         type="submit"
-        class="btn btn-primary mb-3"
+        class="btn btn-primary mt-3"
         [disabled]="!form.valid"
       >
         Login
       </button>
 
-      <div class="d-flex justify-content-center">
-        <a class="me-3" routerLink="/register">Register</a>
-        <a routerLink="">Forgot password</a>
+      <div class="links">
+        <a class="link" routerLink="/register">Register</a>
+        <span class="divider">|</span>
+        <a class="link" routerLink="">Forgot password</a>
       </div>
     </fieldset>
   </form>
