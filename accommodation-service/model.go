@@ -2,8 +2,9 @@ package main
 
 import (
 	"encoding/json"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"io"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type Accommodation struct {
@@ -15,7 +16,7 @@ type Accommodation struct {
 	MaxGuests int                `bson:"maxGuests,omitempty" json:"maxGuests"`
 	// Availability bool   `json:"availability"`
 	// Details      string `json:"details"`
-	// Price        string `json:"price"`
+	Price     string 			`bson:"price,omitempty" json:"price"`
 }
 
 type Location struct {

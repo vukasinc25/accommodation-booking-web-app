@@ -18,8 +18,11 @@ export class AccommoAddComponent {
   ) {
     this.form = this.fb.group({
       name: [null, Validators.required],
+      location: [null, Validators.required],
+      amenities: [null, Validators.required],
       minGuests: [null, Validators.required],
       maxGuests: [null, Validators.required],
+      price: [null, Validators.required],
     });
   }
 

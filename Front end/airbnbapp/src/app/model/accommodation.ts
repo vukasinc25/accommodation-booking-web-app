@@ -3,4 +3,5 @@ export interface Accommodation {
   name: string;
   minGuests: number;
   maxGuests: number;
+  price: string;
 }

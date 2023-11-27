@@ -25,6 +25,7 @@ export class AccommodationService {
         name: accommodation.name,
         minGuests: accommodation.minGuests,
         maxGuests: accommodation.maxGuests,
+        price: accommodation.price,
       },
       { headers: this.headers, responseType: 'json' }
     );

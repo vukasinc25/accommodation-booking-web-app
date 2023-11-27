@@ -152,12 +152,6 @@ func (uh *UserHandler) loginUser(w http.ResponseWriter, req *http.Request) {
 	}
 	username := rt.Username
 	password := rt.Password
-<<<<<<< HEAD
-	log.Println("blabla")
-=======
-
-	// Retrieve user from the database based on the provided username
->>>>>>> 45369412824127bcf074a9fb5a48ec4e4f2b9a45
 	user, err := uh.db.GetByUsername(username)
 
 	if err != nil {
