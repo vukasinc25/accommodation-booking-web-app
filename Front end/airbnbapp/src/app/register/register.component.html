@@ -24,6 +24,9 @@
           formControlName="email"
         />
       </div>
+      <span style="color: red" *ngIf="email && email.invalid && email.touched"
+        >This is not a valid email format</span
+      >
 
       <div class="form-group">
         <input
@@ -101,6 +104,11 @@
           formControlName="password"
         />
       </div>
+      <span
+        style="color: red"
+        *ngIf="password && password.invalid && password.touched"
+        >Password needs to be longer</span
+      >
 
       <div class="form-check">
         <input
@@ -125,11 +133,11 @@
         />
         <label class="form-check-label" for="host"> Host </label>
       </div>
-      <br>
+      <br />
       <div>
         <ngx-recaptcha2 #captchaElem [siteKey]="siteKey"></ngx-recaptcha2>
       </div>
-      <br>
+      <br />
       <div class="d-flex justify-content-end">
         <button type="submit" class="btn btn-primary" [disabled]="!form.valid">
           Register
