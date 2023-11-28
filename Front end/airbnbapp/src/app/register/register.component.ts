@@ -10,6 +10,7 @@ import { AuthService } from '../service/auth.service';
 })
 export class RegisterComponent {
   form: FormGroup;
+  siteKey: string;
 
   constructor(
     private fb: FormBuilder,
@@ -28,6 +29,7 @@ export class RegisterComponent {
       password: [null, Validators.required],
       userRole: [null, Validators.required],
     });
+    this.siteKey = '6LddmB4pAAAAALdViM1b2M9OJZNgwKQ-HbFtGXK-';
   }
 
   submit() {

@@ -125,7 +125,11 @@
         />
         <label class="form-check-label" for="host"> Host </label>
       </div>
-      
+      <br>
+      <div>
+        <ngx-recaptcha2 #captchaElem [siteKey]="siteKey"></ngx-recaptcha2>
+      </div>
+      <br>
       <div class="d-flex justify-content-end">
         <button type="submit" class="btn btn-primary" [disabled]="!form.valid">
           Register
