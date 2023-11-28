@@ -5,13 +5,15 @@ services:
     image: auth-service
     hostname: auth-service
     build:
-      context: ./auth-service/
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./auth-service/Dockerfile
     restart: always
     environment:
       PORT: ${AUTH_SERVICE_PORT}
       MONGO_DB_URI: ${MONGO_DB_URI}
     depends_on:
+      nats:
+        condition: service_started
       mongo:
         condition: service_healthy
     networks:
@@ -39,14 +41,16 @@ services:
     image: accommodation-service
     hostname: ${ACCOMMODATIONS_SERVICE_HOST}
     build:
-      context: ./accommodation-service/
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./accommodation-service/Dockerfile
     restart: always
     environment:
       HOST: ${ACCOMMODATIONS_SERVICE_HOST}
       PORT: ${ACCOMMODATIONS_SERVICE_PORT}
       MONGO_DB_URI: ${MONGO_DB_URI}
     depends_on:
+      nats:
+        condition: service_started
       mongo:
         condition: service_healthy
     networks:
@@ -64,6 +68,15 @@ services:
       - auth-service
       - accommodation-service
       - prof-service
+    networks:
+      - network
+
+  nats:
+    image: nats
+    container_name: nats
+    ports:
+      - "4222:4222"
+    restart: on-failure
     networks:
       - network
 

@@ -3,6 +3,9 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"github.com/nats-io/nats.go"
+	utility "github.com/vukasinc25/fst-airbnb/utility/messaging"
+	nats2 "github.com/vukasinc25/fst-airbnb/utility/messaging/nats"
 	"io"
 	"log"
 	"mime"
@@ -25,24 +28,28 @@ func NewUserHandler(l *log.Logger, r *UserRepo, jwtMaker token.Maker) *UserHandl
 	return &UserHandler{l, r, jwtMaker}
 }
 
-// Auth handles authentication requests.
-func (uh *UserHandler) Auth(w http.ResponseWriter, req *http.Request) {
-	header := req.Header.Get("Authorization")
-	uh.logger.Println(header)
-
-	// Check if the request is for accommodations, and allow it without authentication
-	if req.Header.Get("X-Original-Uri") == "/api/accommodations/" {
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-
-	fields := strings.Fields(header)
-	_, err := uh.jwtMaker.VerifyToken(fields[1])
-
+func InitPubSub() utility.Subscriber {
+	subscriber, err := nats2.NewNATSSubscriber("auth.check")
 	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
+		log.Fatal(err)
 	}
+	return subscriber
+}
+func (uh *UserHandler) Auth(msg *nats.Msg) nats.Msg {
+
+	uh.logger.Println("Received publish")
+
+	uh.logger.Println(string(msg.Data))
+
+	//payload, _ := uh.jwtMaker.VerifyToken(string(msg.Data))
+	//uh.logger.Println(payload.Role)
+	//if err != nil || payload.Role != "HOST" {
+	//	msg2 := nats.Msg{Data: []byte("not ok")}
+	//	return msg2
+	//} //TODO fix
+
+	msg2 := nats.Msg{Data: []byte("ok")}
+	return msg2
 }
 
 // createUser handles user creation requests.

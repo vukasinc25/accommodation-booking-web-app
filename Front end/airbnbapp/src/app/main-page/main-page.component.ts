@@ -13,6 +13,7 @@ export class MainPageComponent implements OnInit {
   accommodations: Accommodation[] = [];
   isLoggedin: boolean = false;
   userRole: string = '';
+
   constructor(
     private router: Router,
     private accommodationService: AccommodationService,

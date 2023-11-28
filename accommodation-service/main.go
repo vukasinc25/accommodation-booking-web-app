@@ -23,7 +23,7 @@ func main() {
 
 	logger := log.New(os.Stdout, "[accommo-api] ", log.LstdFlags)
 	storeLogger := log.New(os.Stdout, "[accommo-store] ", log.LstdFlags)
-
+	pub := InitPubSub()
 	store, err := New(timeoutContext, storeLogger)
 	if err != nil {
 		logger.Fatal(err)
@@ -42,9 +42,9 @@ func main() {
 
 	postRouter := router.Methods(http.MethodPost).Subrouter()
 	postRouter.HandleFunc("/api/accommodations/create", service.createAccommodation)
+	postRouter.Use(service.MiddlewareRoleCheck(pub))
 	postRouter.Use(service.MiddlewareAccommodationDeserialization)
 
-	//router.HandleFunc("/api/accommodations/create", service.createAccommodation).Methods("POST")
 	router.HandleFunc("/api/accommodations/", service.getAllAccommodations).Methods("GET")
 
 	server := http.Server{

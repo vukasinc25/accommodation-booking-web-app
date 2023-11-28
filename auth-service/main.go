@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"github.com/nats-io/nats.go"
+	nats2 "github.com/vukasinc25/fst-airbnb/utility/messaging/nats"
 	"log"
 	"net/http"
 	"os"
@@ -40,7 +42,7 @@ func main() {
 		logger.Fatal(err)
 	}
 
-	// Initialize the data store
+	// NoSQL: Initialize auth Repository store
 	store, err := New(timeoutContext, storeLogger)
 	if err != nil {
 		logger.Fatal(err)
@@ -52,13 +54,25 @@ func main() {
 
 	// Create a user handler service
 	service := NewUserHandler(logger, store, tokenMaker)
+	sub := InitPubSub()
 
-	// Create subrouter for authenticated routes and apply middleware
+	err = sub.Subscribe(func(msg *nats.Msg) {
+		pub, _ := nats2.NewNATSPublisher(msg.Reply)
+
+		response := service.Auth(msg)
+
+		response.Reply = msg.Reply
+
+		pub.Publish(response)
+	})
+	if err != nil {
+		logger.Fatal(err)
+	}
+
 	authRoutes := router.PathPrefix("/").Subrouter()
 	authRoutes.Use(AuthMiddleware(tokenMaker))
 
-	// Define HTTP routes
-	router.HandleFunc("/api/users/auth", service.Auth)
+	//router.HandleFunc("/api/users/auth", service.Auth)
 	router.HandleFunc("/api/users/register", service.createUser).Methods("POST")
 	router.HandleFunc("/api/users/login", service.loginUser).Methods("POST")
 	authRoutes.HandleFunc("/api/users/users", service.getAllUsers).Methods("GET")

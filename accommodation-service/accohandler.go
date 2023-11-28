@@ -3,6 +3,10 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"github.com/gorilla/mux"
+	"github.com/nats-io/nats.go"
+	utility "github.com/vukasinc25/fst-airbnb/utility/messaging"
+	nats2 "github.com/vukasinc25/fst-airbnb/utility/messaging/nats"
 	"io"
 	"log"
 	"net/http"
@@ -16,13 +20,26 @@ type AccoHandler struct {
 }
 
 func NewAccoHandler(l *log.Logger, r *AccoRepo) *AccoHandler {
+
 	return &AccoHandler{l, r}
+}
+
+func InitPubSub() utility.Publisher {
+
+	publisher, err := nats2.NewNATSPublisher("auth.check")
+	if err != nil {
+		log.Fatal(err)
+	}
+	return publisher
 }
 
 func (ah *AccoHandler) createAccommodation(rw http.ResponseWriter, req *http.Request) {
 
 	accommodation := req.Context().Value(KeyProduct{}).(*Accommodation)
-	ah.db.Insert(accommodation)
+	err := ah.db.Insert(accommodation)
+	if err != nil {
+		rw.WriteHeader(http.StatusBadRequest)
+	}
 	rw.WriteHeader(http.StatusCreated)
 
 }
@@ -61,6 +78,28 @@ func (ah *AccoHandler) MiddlewareAccommodationDeserialization(next http.Handler)
 
 		next.ServeHTTP(rw, h)
 	})
+}
+
+func (ah *AccoHandler) MiddlewareRoleCheck(publisher utility.Publisher) mux.MiddlewareFunc {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+			ah.logger.Println("Published")
+
+			msg := nats.Msg{Data: []byte(r.Header.Get("Authorization"))}
+			response, err := publisher.Publish(msg)
+			if err != nil {
+				return
+			}
+
+			ah.logger.Println(string(response.Data))
+			if string(response.Data) != "ok" {
+				w.WriteHeader(http.StatusUnauthorized)
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
 }
 
 func (ah *AccoHandler) MiddlewareContentTypeSet(next http.Handler) http.Handler {

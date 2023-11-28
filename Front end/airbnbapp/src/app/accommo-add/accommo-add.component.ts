@@ -18,8 +18,8 @@ export class AccommoAddComponent {
   ) {
     this.form = this.fb.group({
       name: [null, Validators.required],
-      location: [null, Validators.required],
-      amenities: [null, Validators.required],
+      // location: [null, Validators.required],
+      // amenities: [null, Validators.required],
       minGuests: [null, Validators.required],
       maxGuests: [null, Validators.required],
       price: [null, Validators.required],
@@ -30,6 +30,7 @@ export class AccommoAddComponent {
     this.accommodationService.insert(this.form.value).subscribe({
       next: (data) => {
         console.log('create success');
+        this.router.navigate(['']);
       },
       error: (err) => {
         console.log(err);
