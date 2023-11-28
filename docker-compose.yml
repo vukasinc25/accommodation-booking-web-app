@@ -1,0 +1,130 @@
+version: "3.8"
+
+services:
+  auth-service:
+    image: auth-service
+    hostname: auth-service
+    build:
+      context: .
+      dockerfile: ./auth-service/Dockerfile
+    restart: always
+    environment:
+      PORT: ${AUTH_SERVICE_PORT}
+      MONGO_DB_URI: ${MONGO_DB_URI}
+    depends_on:
+      nats:
+        condition: service_started
+      mongo:
+        condition: service_healthy
+    networks:
+      - network
+
+  prof-service:
+    image: prof-service
+    hostname: prof-service
+    build:
+      context: ./prof-service/
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      PORT: ${PROF_SERVICE_PORT}
+      MONGO_DB_URI: ${MONGO_DB_URI}
+      ACCOMMODATIONS_SERVICE_HOST: ${ACCOMMODATIONS_SERVICE_HOST}
+      ACCOMMODATIONS_SERVICE_PORT: ${ACCOMMODATIONS_SERVICE_PORT}
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - network
+
+  accommodation-service:
+    image: accommodation-service
+    hostname: ${ACCOMMODATIONS_SERVICE_HOST}
+    build:
+      context: .
+      dockerfile: ./accommodation-service/Dockerfile
+    restart: always
+    environment:
+      HOST: ${ACCOMMODATIONS_SERVICE_HOST}
+      PORT: ${ACCOMMODATIONS_SERVICE_PORT}
+      MONGO_DB_URI: ${MONGO_DB_URI}
+    depends_on:
+      nats:
+        condition: service_started
+      mongo:
+        condition: service_healthy
+    networks:
+      - network
+
+  api_gateway:
+    build:
+      context: ./api-gateway/
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    restart: on-failure
+    ports:
+      - ${GATEWAY_PORT}:${GATEWAY_PORT}
+    depends_on:
+      - auth-service
+      - accommodation-service
+      - prof-service
+    networks:
+      - network
+
+  nats:
+    image: nats
+    container_name: nats
+    ports:
+      - "4222:4222"
+    restart: on-failure
+    networks:
+      - network
+
+  mongo:
+    image: mongo
+    hostname: mongo
+    restart: on-failure
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: pass
+      MONGO_INITDB_DATABASE: mongoDemo
+    # Docker healtcheck - checks if database is "alive"
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok'
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    volumes:
+      - mongo_store:/data/db
+    networks:
+      - network
+
+  # NoSQL: MognoExpress
+  mongo-express:
+    image: mongo-express
+    restart: always
+    environment:
+      # hostname of mongo databse
+      - ME_CONFIG_MONGODB_SERVER=mongo
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=root
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=pass
+      - ME_CONFIG_BASICAUTH_USERNAME=admin
+      - ME_CONFIG_BASICAUTH_PASSWORD=admin
+    depends_on:
+      - mongo
+    ports:
+      - "8081:8081"
+    volumes:
+      - mongo_express_data:/data/db
+    networks:
+      - network
+
+volumes:
+  mongo_store:
+  mongo_express_data:
+
+networks:
+  network:
+    driver: bridge

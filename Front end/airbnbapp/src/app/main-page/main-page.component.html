@@ -1,0 +1,21 @@
+<div class="container">
+  <button
+    *ngIf="isLoggedin && userRole === 'HOST'"
+    routerLink="/accommodations/create"
+    class="btn btn-primary mb-4"
+  >
+    Create Accommodation
+  </button>
+  <div class="row row-cols-3 g-4">
+    <div class="col" *ngFor="let accommodation of accommodations">
+      <div class="card h-100">
+        <div class="card-body">
+          <h3>{{ accommodation.name }}</h3>
+          <p>{{ "Min Guests:" + accommodation.minGuests }}</p>
+          <p>{{ "Max Guests:" + accommodation.maxGuests }}</p>
+          <p>{{ "Price:" + accommodation.price + "€" }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

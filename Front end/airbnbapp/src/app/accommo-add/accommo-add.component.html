@@ -1,0 +1,45 @@
+<div class="container d-flex justify-content-center mt-5">
+  <form class="w-50" [formGroup]="form" (ngSubmit)="submit()">
+    <fieldset>
+      <legend>Create Accommodation:</legend>
+
+      <input
+        type="text"
+        class="form-control mb-2"
+        id="name"
+        name="name"
+        placeholder="Name"
+        formControlName="name"
+      />
+
+      <input
+        type="number"
+        class="form-control mb-2"
+        name="minGuests"
+        placeholder="Minimum No. of guests"
+        formControlName="minGuests"
+      />
+
+      <input
+        type="number"
+        class="form-control mb-2"
+        name="maxGuests"
+        placeholder="Maximum No. of guests"
+        formControlName="maxGuests"
+      />
+      <input
+        type="price"
+        class="form-control mb-2"
+        name="price"
+        placeholder="Price"
+        formControlName="price"
+      />
+
+      <div class="d-flex justify-content-end">
+        <button type="submit" class="btn btn-primary" [disabled]="!form.valid">
+          Create
+        </button>
+      </div>
+    </fieldset>
+  </form>
+</div>
