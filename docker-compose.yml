@@ -1,6 +1,7 @@
 version: "3.8"
 
 services:
+
   auth-service:
     image: auth-service
     hostname: auth-service
@@ -80,6 +81,7 @@ services:
     networks:
       - network
 
+  # NOSQL: MongoDB
   mongo:
     image: mongo
     hostname: mongo
@@ -120,10 +122,26 @@ services:
       - mongo_express_data:/data/db
     networks:
       - network
+  
+  # NoSQL: CassandraDB
+  cassandra:
+    image: cassandra
+    restart: always
+    ports:
+      - "9042:9042"
+    # Docker healtcheck - checks if database is "alive"
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'describe cluster'"]
+      interval: 15s
+      timeout: 5s
+      retries: 15
+    volumes:
+      - cass_store:/var/lib/cassandra/data
 
 volumes:
   mongo_store:
   mongo_express_data:
+  cass_store:
 
 networks:
   network:
