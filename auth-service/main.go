@@ -3,14 +3,15 @@ package main
 import (
 	"context"
 	"crypto/tls"
-	"github.com/nats-io/nats.go"
-	nats2 "github.com/vukasinc25/fst-airbnb/utility/messaging/nats"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/nats-io/nats.go"
+	nats2 "github.com/vukasinc25/fst-airbnb/utility/messaging/nats"
 
 	gorillaHandlers "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -72,9 +73,10 @@ func main() {
 	authRoutes := router.PathPrefix("/").Subrouter()
 	authRoutes.Use(AuthMiddleware(tokenMaker))
 
-	//router.HandleFunc("/api/users/auth", service.Auth)
-	router.HandleFunc("/api/users/register", service.createUser).Methods("POST")
-	router.HandleFunc("/api/users/login", service.loginUser).Methods("POST")
+	// router.HandleFunc("/api/users/auth", service.Auth)
+	router.HandleFunc("/api/users/register", SetCSPHeader(service.createUser)).Methods("POST") // daniel je stavio bez SetCSPHeader
+	router.HandleFunc("/api/users/login", SetCSPHeader(service.loginUser)).Methods("POST")     // daniel je stavio bez SetCSPHeader
+	router.HandleFunc("/api/users/email/{code}", service.verifyEmail).Methods("POST")
 	authRoutes.HandleFunc("/api/users/users", service.getAllUsers).Methods("GET")
 
 	// Configure the HTTP server
@@ -82,8 +84,8 @@ func main() {
 		Addr:         ":" + port,
 		Handler:      cors(router),
 		IdleTimeout:  120 * time.Second,
-		ReadTimeout:  1 * time.Second,
-		WriteTimeout: 1 * time.Second,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
 		TLSConfig: &tls.Config{
 			MinVersion:   tls.VersionTLS12,
 			CipherSuites: []uint16{tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384},

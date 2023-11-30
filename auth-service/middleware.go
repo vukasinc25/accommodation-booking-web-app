@@ -63,6 +63,9 @@ func AuthMiddleware(tokenMaker token.Maker) mux.MiddlewareFunc {
 			// Store the payload in the request context
 			r = r.WithContext(context.WithValue(r.Context(), AuthorizationPayloadKey, payload))
 
+			//xss handling
+			w.Header().Set("Content-Security-Policy", "default-src 'self'")
+			w.Header().Set("X-XSS-Protection", "1; mode=block")
 			// Call the next handler in the chain
 			next.ServeHTTP(w, r)
 		})
@@ -74,4 +77,14 @@ func writeError(w http.ResponseWriter, statusCode int, err error) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 	json.NewEncoder(w).Encode(map[string]interface{}{"error": err.Error()})
+}
+
+func SetCSPHeader(next http.HandlerFunc) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// pomaze browseru da ucitava podatke istog porekla kao on
+		w.Header().Set("Content-Security-Policy", "default-src 'self'")
+		// pomaze browseru ako detektuje xss napad da ne dozvoli ucitavanje
+		w.Header().Set("X-XSS-Protection", "1; mode=block")
+		next.ServeHTTP(w, r)
+	})
 }

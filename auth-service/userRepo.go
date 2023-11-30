@@ -66,9 +66,12 @@ func (uh *UserRepo) Ping() {
 func (uh *UserRepo) Insert(user *User) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	usersCollection := uh.getCollection()
-
-	result, err := usersCollection.InsertOne(ctx, user)
+	usersCollection, err := uh.getCollection()
+	if err != nil {
+		log.Println("Duplicate key error: ", err)
+		return err
+	}
+	result, err := usersCollection.InsertOne(ctx, &user)
 	if err != nil {
 		uh.logger.Println(err)
 		return err
@@ -82,12 +85,18 @@ func (uh *UserRepo) GetAll() (Users, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	usersCollection := uh.getCollection()
+	usersCollection, err := uh.getCollection()
+	if err != nil {
+		log.Println("Duplicate key error: ", err)
+		return nil, err
+	}
+
+	uh.logger.Println("Collection: ", usersCollection)
 
 	var users Users
 	usersCursor, err := usersCollection.Find(ctx, bson.M{})
 	if err != nil {
-		uh.logger.Println("Cannot find user collection: ", err)
+		log.Println("Cant find userCollection: ", err)
 		return nil, err
 	}
 	if err = usersCursor.All(ctx, &users); err != nil {
@@ -102,22 +111,143 @@ func (uh *UserRepo) GetByUsername(username string) (*User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	usersCollection := uh.getCollection()
-
-	var user User
-	log.Println("Users Collection: ", usersCollection)
-	log.Println("Username: ", username)
-	err := usersCollection.FindOne(ctx, bson.M{"username": username}).Decode(&user)
+	usersCollection, err := uh.getCollection()
 	if err != nil {
-		uh.logger.Println(err)
+		log.Println("Error getting collection: ", err)
+		return nil, err
+	}
+	var user User
+	log.Println("Querying for user with username: ", username)
+	// objUsername, _ := primitive.ObjectIDFromHex(username)
+	err = usersCollection.FindOne(ctx, bson.M{"username": username}).Decode(&user)
+	if err != nil {
+		log.Println("Error decoding user document: ", err)
 		return nil, err
 	}
 	return &user, nil
 }
 
-// getCollection returns the MongoDB collection.
-func (uh *UserRepo) getCollection() *mongo.Collection {
+func (uh *UserRepo) CreateVerificationEmail(verificationEmil VerifyEmail) error { // MORA  DA PRIMA POINTER NA VERIFYEMAIL
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	verificationCopy := verificationEmil
+
+	verification := uh.getEmailCollection()
+	result, err := verification.InsertOne(ctx, &verificationCopy)
+	if err != nil {
+		uh.logger.Println(err)
+		return err
+	}
+	uh.logger.Printf("Documents ID: %v\n", result.InsertedID)
+	return nil
+}
+
+func (uh *UserRepo) GetVerificationEmailByCode(code string) (*VerifyEmail, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var verifycationEmail VerifyEmail
+	verifycationEmailCollection := uh.getEmailCollection()
+	err := verifycationEmailCollection.FindOne(ctx, bson.M{"secretCode": code}).Decode(&verifycationEmail)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	return &verifycationEmail, nil
+}
+
+func (uh *UserRepo) IsVerificationEmailActive(code string) (bool, error) {
+	verificationEmail, err := uh.GetVerificationEmailByCode(code)
+	if err != nil {
+		return false, err
+	}
+
+	currentTime := time.Now()
+	return currentTime.Before(verificationEmail.ExpiredAt), nil
+}
+
+func (uh *UserRepo) GetVerificationEmailByUsername(username string) (*VerifyEmail, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var verifycationEmail VerifyEmail
+	verifycationEmailCollection := uh.getEmailCollection()
+	err := verifycationEmailCollection.FindOne(ctx, bson.M{"username": username}).Decode(&verifycationEmail)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	return &verifycationEmail, nil
+}
+
+func (uh *UserRepo) UpdateUsersVerificationEmail(username string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	userCollection, err := uh.getCollection()
+	if err != nil {
+		log.Println("Cant get User collection in UpdateUserVerificationEmail method")
+		return err
+	}
+
+	// objID, _ := primitive.ObjectIDFromHex(id)
+	filter := bson.M{"username": username}
+	update := bson.M{"$set": bson.M{
+		"isEmailVerified": true,
+	}}
+	result, err := userCollection.UpdateOne(ctx, filter, update)
+	log.Printf("Documents matched: %v\n", result.MatchedCount)
+	log.Printf("Documents updated: %v\n", result.ModifiedCount)
+
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	return nil
+}
+
+func (uh *UserRepo) UpdateVerificationEmail(code string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	emailVerificationCollection := uh.getEmailCollection()
+
+	filter := bson.M{"secretCode": code}
+	update := bson.M{"$set": bson.M{
+		"isUsed": true,
+	}}
+
+	log.Printf("Updating verification email with code: %s\n", code)
+	result, err := emailVerificationCollection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		log.Printf("Error updating verification email: %v\n", err)
+		return err
+	}
+
+	log.Printf("Documents matched: %v\n", result.MatchedCount)
+	log.Printf("Documents updated: %v\n", result.ModifiedCount)
+
+	return nil
+}
+
+func (uh *UserRepo) getCollection() (*mongo.Collection, error) {
 	userDatabase := uh.cli.Database("mongoDemo")
 	usersCollection := userDatabase.Collection("users")
+
+	indexModel := mongo.IndexModel{
+		Keys:    bson.D{{Key: "username", Value: 1}},
+		Options: options.Index().SetUnique(true),
+	}
+
+	_, err := usersCollection.Indexes().CreateOne(context.TODO(), indexModel)
+	if err != nil {
+		log.Println("Error in creatingOne unique username index")
+		return nil, err
+	}
+	return usersCollection, nil
+}
+
+func (uh *UserRepo) getEmailCollection() *mongo.Collection {
+	userDatabase := uh.cli.Database("mongoDemo")
+	usersCollection := userDatabase.Collection("verificatonEmails")
 	return usersCollection
 }

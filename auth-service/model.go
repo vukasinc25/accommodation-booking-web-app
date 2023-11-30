@@ -1,29 +1,35 @@
 package main
 
 import (
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"regexp"
+	"strings"
 	"time"
+
+	"github.com/asaskevich/govalidator"
+	"github.com/go-playground/validator/v10"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+)
+
+type Role string
+
+const (
+	Host  Role = "HOST"
+	Guest Role = "GUEST"
 )
 
 type User struct {
-	ID       primitive.ObjectID `bson:"_id,omitempty" json:"_id,omitempty"`
-	Username string             `bson:"username,omitempty" json:"username"`
-	Password string             `bson:"password,omitempty" json:"password"`
-	Role     string             `bson:"role,omitempty" json:"role"`
-	// HashedPassword string `bson:"hashed_password,omitempty" json:"hashed_password"`
-	// FullName       string `bson:"fullname,omitempty" json:"fullname"`
-	// Email          string `bson:"email,omitempty" json:"email"`
-	// CreatedAt      string `bson:"created_at,omitempty" json:"created_at"`
+	ID              primitive.ObjectID `bson:"_id,omitempty" json:"_id,omitempty"`
+	Username        string             `bson:"username,omitempty" json:"username" validate:"required,min=6"`
+	Password        string             `bson:"password,omitempty" json:"password" validate:"required,password"`
+	Role            Role               `bson:"role,omitempty" json:"role" validate:"required,oneof=HOST GUEST"`
+	Email           string             `bson:"email,omitempty" json:"email" validate:"required,email"`
+	IsEmailVerified bool               `bson:"isEmailVerified" json:"isEmailVerified"`
 }
 
 type ResponseUser struct {
 	ID       primitive.ObjectID `bson:"_id,omitempty" json:"_id,omitempty"`
 	Username string             `bson:"username,omitempty" json:"username"`
 	Role     string             `bson:"role,omitempty" json:"role"`
-	// HashedPassword string `bson:"hashed_password,omitempty" json:"hashed_password"`
-	// FullName       string `bson:"fullname,omitempty" json:"fullname"`
-	// Email          string `bson:"email,omitempty" json:"email"`
-	// CreatedAt      string `bson:"created_at,omitempty" json:"created_at"`
 }
 
 type LoginUser struct {
@@ -37,3 +43,48 @@ type LoginUserResponse struct {
 }
 
 type Users []*ResponseUser
+
+type SiteVerifyResponse struct {
+	Success     bool      `json:"success"`
+	Score       float64   `json:"score"`
+	Action      string    `json:"action"`
+	ChallengeTS time.Time `json:"challenge_ts"`
+	Hostname    string    `json:"hostname"`
+	ErrorCodes  []string  `json:"error-codes"`
+}
+
+type SiteVerifyRequest struct {
+	RecaptchaResponse string `json:"g-recaptcha-response"`
+}
+
+type VerifyEmail struct {
+	ID         primitive.ObjectID `bson:"_id,omitempty" json:"_id,omitempty"`
+	Username   string             `bson:"username,omitempty" json:"username" validate:"required"`
+	Email      string             `bson:"email,omitempty" json:"email" validate:"required"`
+	SecretCode string             `bson:"secretCode,omitempty" json:"secretCode" validate:"required"`
+	IsUsed     bool               `bson:"isUsed" json:"isUsed" validate:"required"`
+	CreatedAt  time.Time          `bson:"createdAt,omitempty" json:"createdAt" validate:"required"`
+	ExpiredAt  time.Time          `bson:"expiredAt,omitempty" json:"expiredAt" validate:"required"`
+}
+
+func ValidateUser(user User) error {
+	validate := validator.New()
+
+	// Register custom validation tag for password complexity
+	validate.RegisterValidation("password", func(fl validator.FieldLevel) bool {
+		password := fl.Field().String()
+
+		return len(password) >= 8 &&
+			strings.ContainsAny(password, "ABCDEFGHIJKLMNOPQRSTUVWXYZ") &&
+			strings.ContainsAny(password, "abcdefghijklmnopqrstuvwxyz") &&
+			strings.ContainsAny(password, "0123456789") &&
+			regexp.MustCompile(`[^a-zA-Z0-9]`).MatchString(password)
+	})
+
+	validate.RegisterValidation("email", func(fl validator.FieldLevel) bool {
+		email := fl.Field().String()
+		return govalidator.IsEmail(email)
+	})
+
+	return validate.Struct(user)
+}
