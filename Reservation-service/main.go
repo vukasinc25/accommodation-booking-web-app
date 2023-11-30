@@ -1,6 +1,7 @@
 package main
 
 import (
+	"Rest/data"
 	"context"
 	"log"
 	"net/http"
@@ -25,7 +26,14 @@ func main() {
 	defer cancel()
 
 	logger := log.New(os.Stdout, "[reservation-api] ", log.LstdFlags)
-	//storeLogger := log.New(os.Stdout, "[patient-store] ", log.LstdFlags)
+	storeLogger := log.New(os.Stdout, "[patient-store] ", log.LstdFlags)
+
+	store, err := data.New(storeLogger)
+	if err != nil {
+		logger.Fatal(err)
+	}
+	defer store.CloseSession()
+	store.CreateTables()
 
 	router := mux.NewRouter()
 	cors := gorillaHandlers.CORS(gorillaHandlers.AllowedOrigins([]string{"*"}))
