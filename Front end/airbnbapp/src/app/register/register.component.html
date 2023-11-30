@@ -96,6 +96,8 @@
 
       <div class="form-group">
         <input
+          pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).*$"
+          minlength="8"
           type="password"
           class="form-control"
           id="password"
@@ -107,7 +109,7 @@
       <span
         style="color: red"
         *ngIf="password && password.invalid && password.touched"
-        >Password needs to be longer</span
+        >Password not put in correctly</span
       >
 
       <div class="form-check">
