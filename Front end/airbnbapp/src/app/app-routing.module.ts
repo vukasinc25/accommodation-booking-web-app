@@ -7,11 +7,16 @@ import { AccommoAddComponent } from './accommo-add/accommo-add.component';
 import { ProfileComponent } from './profile/profile.component';
 import { roleGuard } from './guard/role.guard';
 import { loginGuard } from './guard/login.guard';
+import { PasswordEmailRecoveryComponent } from './password-email-recovery/password-email-recovery.component';
 
 const routes: Routes = [
   {
     path: '',
     component: MainPageComponent,
+  },
+  {
+    path: 'sendEmail',
+    component: PasswordEmailRecoveryComponent,
   },
   {
     path: 'login',

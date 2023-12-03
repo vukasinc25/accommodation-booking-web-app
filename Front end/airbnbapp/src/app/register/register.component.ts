@@ -2,6 +2,8 @@ import { Component } from '@angular/core';
 import { FormGroup, FormBuilder, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../service/auth.service';
+import { MatDialog } from '@angular/material/dialog';
+import { EmailVerificationPopupComponent } from '../email-verification-popup/email-verification-popup.component';
 
 @Component({
   selector: 'app-register',
@@ -13,6 +15,7 @@ export class RegisterComponent {
   siteKey: string;
 
   constructor(
+    private dialogRef: MatDialog,
     private fb: FormBuilder,
     private router: Router,
     private authService: AuthService
@@ -29,6 +32,7 @@ export class RegisterComponent {
       password: [null, Validators.required],
       userRole: [null, Validators.required],
     });
+
     this.siteKey = '6LddmB4pAAAAALdViM1b2M9OJZNgwKQ-HbFtGXK-';
   }
 
@@ -50,5 +54,9 @@ export class RegisterComponent {
 
   get password() {
     return this.form.get('password');
+  }
+
+  openDialog() {
+    this.dialogRef.open(EmailVerificationPopupComponent);
   }
 }
