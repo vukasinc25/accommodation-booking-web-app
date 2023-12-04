@@ -38,7 +38,12 @@ export class AuthService {
   register(user: any): Observable<any> {
     return this.http.post(
       '/api/users/register',
-      { username: user.username, password: user.password, role: user.userRole },
+      {
+        username: user.username,
+        password: user.password,
+        role: user.userRole,
+        email: user.email,
+      },
       { headers: this.headers, responseType: 'json' }
     );
   }
@@ -77,5 +82,43 @@ export class AuthService {
     let token = localStorage.getItem('jwt');
     if (token != null) this.setRole(this.jwt.decodeToken(token).role);
     else this.setRole('');
+  }
+
+  changeForgottenPassword(
+    newPassword: string,
+    confirmPassword: string,
+    secretCode: string
+  ): Observable<any> {
+    return this.http.post(
+      '/api/users/changeForgottenPassword',
+      {
+        newPassword: newPassword,
+        confirmPassword: confirmPassword,
+        code: secretCode,
+      },
+      { headers: this.headers, responseType: 'json' }
+    );
+  }
+
+  sendForgottenPasswordEmail(email: string): Observable<any> {
+    return this.http.post(
+      `${'/api/users/sendforgottemail/'}${email}`,
+      {},
+      {
+        headers: this.headers,
+        responseType: 'json',
+      }
+    );
+  }
+
+  sendVerifyingEmail(code: string): Observable<any> {
+    return this.http.post(
+      `${'/api/users/email/'}${code}`,
+      {},
+      {
+        headers: this.headers,
+        responseType: 'json',
+      }
+    );
   }
 }

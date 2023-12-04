@@ -2,7 +2,7 @@ import { Component } from '@angular/core';
 import { FormGroup, FormBuilder, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../service/auth.service';
-import { MatDialog } from '@angular/material/dialog';
+// import { MatDialog } from '@angular/material/dialog';
 import { EmailVerificationPopupComponent } from '../email-verification-popup/email-verification-popup.component';
 
 @Component({
@@ -15,7 +15,7 @@ export class RegisterComponent {
   siteKey: string;
 
   constructor(
-    private dialogRef: MatDialog,
+    // private dialogRef: MatDialog,
     private fb: FormBuilder,
     private router: Router,
     private authService: AuthService
@@ -44,6 +44,7 @@ export class RegisterComponent {
       },
       error: (err) => {
         console.log(err);
+        alert(err.error.message);
       },
     });
   }
@@ -56,7 +57,7 @@ export class RegisterComponent {
     return this.form.get('password');
   }
 
-  openDialog() {
-    this.dialogRef.open(EmailVerificationPopupComponent);
-  }
+  // openDialog() {
+  //   this.dialogRef.open(EmailVerificationPopupComponent);
+  // }
 }

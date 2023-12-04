@@ -4,10 +4,12 @@ import { MainPageComponent } from './main-page/main-page.component';
 import { LoginComponent } from './login/login.component';
 import { RegisterComponent } from './register/register.component';
 import { AccommoAddComponent } from './accommo-add/accommo-add.component';
+import { ResetPasswordComponent } from './reset-password/reset-password.component';
 import { ProfileComponent } from './profile/profile.component';
 import { roleGuard } from './guard/role.guard';
 import { loginGuard } from './guard/login.guard';
 import { PasswordEmailRecoveryComponent } from './password-email-recovery/password-email-recovery.component';
+import { VerifyEmailComponent } from './verify-email/verify-email.component';
 
 const routes: Routes = [
   {
@@ -36,6 +38,11 @@ const routes: Routes = [
     component: AccommoAddComponent,
     canActivate: [loginGuard, roleGuard],
   },
+  {
+    path: 'verify-email',
+    component: VerifyEmailComponent,
+  },
+  { path: 'reset-password', component: ResetPasswordComponent },
   {
     path: '**',
     redirectTo: '',

@@ -65,13 +65,13 @@ func (uh *UserHandler) createUser(w http.ResponseWriter, req *http.Request) {
 	mediatype, _, err := mime.ParseMediaType(contentType)
 	if err != nil {
 		log.Println("Error cant mimi.ParseMediaType")
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		sendErrorWithMessage(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if mediatype != "application/json" {
 		err := errors.New("expect application/json Content-Type")
-		http.Error(w, err.Error(), http.StatusUnsupportedMediaType)
+		sendErrorWithMessage(w, err.Error(), http.StatusUnsupportedMediaType)
 		return
 	}
 
@@ -79,13 +79,13 @@ func (uh *UserHandler) createUser(w http.ResponseWriter, req *http.Request) {
 	rt, err := decodeBody(req.Body)
 	if err != nil {
 		if strings.Contains(err.Error(), "Key: 'User.Username' Error:Field validation for 'Username' failed on the 'min' tag") {
-			http.Error(w, "Username must have minimum 6 characters", http.StatusBadRequest)
+			sendErrorWithMessage(w, "Username must have minimum 6 characters", http.StatusBadRequest)
 		} else if strings.Contains(err.Error(), "Key: 'User.Password' Error:Field validation for 'Password' failed on the 'password' tag") {
-			http.Error(w, "Password must have minimum 8 characters,minimum one big letter, numbers and special characters", http.StatusBadRequest)
+			sendErrorWithMessage(w, "Password must have minimum 8 characters,minimum one big letter, numbers and special characters", http.StatusBadRequest)
 		} else if strings.Contains(err.Error(), "Key: 'User.Email' Error:Field validation for 'Email' failed on the 'email' tag") {
-			http.Error(w, "Email format is incorrect", http.StatusBadRequest)
+			sendErrorWithMessage(w, "Email format is incorrect", http.StatusBadRequest)
 		} else {
-			http.Error(w, "Ovde"+err.Error(), http.StatusBadRequest)
+			sendErrorWithMessage(w, "Ovde"+err.Error(), http.StatusBadRequest)
 		}
 		return
 	}
@@ -122,20 +122,27 @@ func (uh *UserHandler) createUser(w http.ResponseWriter, req *http.Request) {
 	// Hash the password before storing
 	hashedPassword, err := HashPassword(rt.Password)
 	if err != nil {
-		http.Error(w, "", http.StatusInternalServerError)
+		sendErrorWithMessage(w, "", http.StatusInternalServerError)
 	}
 	rt.Password = hashedPassword
 	log.Println("Hashed Password: %w", rt.Password)
 
-	uh.sendEmail(rt)
+	content := `
+    <h1>Verify your email</h1>
+    <h1>This is a verification message from AirBnb</h1>
+    <h4>Use the following code: %s</h4>
+    <h4><a href="https://localhost:4200/verify-email">Click here</a> to verify your email.</h4>`
+	subject := "Verification email"
+	uh.sendEmail(rt, content, subject, true)
 
 	err = uh.db.Insert(rt)
 	if err != nil {
 		if strings.Contains(err.Error(), "username") {
-			http.Error(w, "Provide different username", http.StatusConflict)
+			sendErrorWithMessage(w, "Provide different username", http.StatusConflict)
 		} else if strings.Contains(err.Error(), "email") {
-			http.Error(w, "Provide different email", http.StatusConflict)
+			sendErrorWithMessage(w, "Provide different email", http.StatusConflict)
 		}
+		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
@@ -158,20 +165,20 @@ func (uh *UserHandler) getAllUsers(w http.ResponseWriter, req *http.Request) {
 	// Retrieve the authorization payload from the request context
 	authPayload, ok := ctx.Value(AuthorizationPayloadKey).(*token.Payload)
 	if !ok || authPayload == nil {
-		http.Error(w, "Authorization payload not found", http.StatusInternalServerError)
+		sendErrorWithMessage(w, "Authorization payload not found", http.StatusInternalServerError)
 		return
 	}
 
 	// Check user role for authorization
 	if authPayload.Role == "guest" {
-		http.Error(w, "Unauthorized access", http.StatusUnauthorized)
+		sendErrorWithMessage(w, "Unauthorized access", http.StatusUnauthorized)
 		return
 	}
 
 	// Convert users to JSON and send the response
 	err = users.ToJSON(w)
 	if err != nil {
-		http.Error(w, "Unable to convert to JSON", http.StatusInternalServerError)
+		sendErrorWithMessage(w, "Unable to convert to JSON", http.StatusInternalServerError)
 		uh.logger.Fatal("Unable to convert to JSON:", err)
 		return
 	}
@@ -181,7 +188,7 @@ func (uh *UserHandler) getAllUsers(w http.ResponseWriter, req *http.Request) {
 func (uh *UserHandler) loginUser(w http.ResponseWriter, req *http.Request) {
 	rt, err := decodeLoginBody(req.Body)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		sendErrorWithMessage(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	username := rt.Username
@@ -189,14 +196,14 @@ func (uh *UserHandler) loginUser(w http.ResponseWriter, req *http.Request) {
 	user, err := uh.db.GetByUsername(username)
 	if err != nil {
 		log.Println("mongo: no documents in result: treba da se registuje neko")
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		sendErrorWithMessage(w, "No such user", http.StatusBadRequest)
 		return
 	}
 
 	// prooveravamo da li korisnik ima verifikovan mejl 169,170,171,172,173,174
 	log.Println(user.IsEmailVerified)
 	if !user.IsEmailVerified {
-		http.Error(w, "Morate da verifikujete email i treba da postoji dugme da se ponovo posalje email ili da mu se napise da proveri email ako nije", http.StatusBadRequest)
+		sendErrorWithMessage(w, "Email is not verifyed (treba da postoji dugme da se ponovo posalje email ili da mu se napise da proveri email ako nije)", http.StatusBadRequest)
 		return
 	}
 
@@ -206,14 +213,14 @@ func (uh *UserHandler) loginUser(w http.ResponseWriter, req *http.Request) {
 
 	// If user is not found, return an error
 	if user == nil {
-		http.Error(w, "Invalid username or password", http.StatusNotFound)
+		sendErrorWithMessage(w, "Invalid username or password", http.StatusNotFound)
 		return
 	}
 
 	// Check if the provided password matches the hashed password in the database
 	err = CheckHashedPassword(password, user.Password)
 	if err != nil {
-		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
+		sendErrorWithMessage(w, "Invalid username or password", http.StatusUnauthorized)
 		return
 	}
 
@@ -221,7 +228,7 @@ func (uh *UserHandler) loginUser(w http.ResponseWriter, req *http.Request) {
 	jwtToken(user, w, uh)
 }
 
-func (uh *UserHandler) sendEmail(newUser *User) error {
+func (uh *UserHandler) sendEmail(newUser *User, contentStr string, subjectStr string, isVerificationEmail bool) error { // ako isVerificationEmial is true than VrificationEmail is sending and if is false ForgottenPasswordEmial is sending
 	log.Println("SendEmail()")
 
 	randomCode := randstr.String(20)
@@ -230,27 +237,16 @@ func (uh *UserHandler) sendEmail(newUser *User) error {
 		InsecureSkipVerify: true,
 	}
 
-	verificationEmail := VerifyEmail{
-		Username:   newUser.Username,
-		Email:      newUser.Email,
-		SecretCode: randomCode,
-		IsUsed:     false,
-		CreatedAt:  time.Now(),
-		ExpiredAt:  time.Now().Add(15 * time.Minute), // moras da promenis da je trajanje 15 min
-	}
+	log.Println(tlsConfig)
 
-	err := uh.db.CreateVerificationEmail(verificationEmail)
+	err := uh.isVerificationEmail(newUser, randomCode, isVerificationEmail)
 	if err != nil {
-		log.Println("Cant save verification email in SendEmail()method")
 		return err
 	}
 
 	sender := mail.NewGmailSender("Air Bnb", "mobilneaplikcijesit@gmail.com", "esrqtcomedzeapdr", tlsConfig) //postavi recoveri password
-	subject := "A test email"
-	content := fmt.Sprintf(`
-    <h1>Hello world</h1>
-    <h1>This is a test message from AirBnb</h1>
-    <h4>Authorization code for password change: %s</h4>`, randomCode)
+	subject := subjectStr
+	content := fmt.Sprintf(contentStr, randomCode)
 	to := []string{"mobilneaplikcijesit@gmail.com"}
 	attachFiles := []string{}
 	log.Println("Pre SendEmail(subject, content, to, nil, nil, attachFiles)")
@@ -262,13 +258,190 @@ func (uh *UserHandler) sendEmail(newUser *User) error {
 	}
 
 	return nil
+
 	// w.WriteHeader(http.StatusCreated)
 	// message := "Poslat je mail na moblineaplikacijesit@gmail.com"
 	// renderJSON(w, message)
 }
 
-func (uh *UserHandler) ChangePassword(w http.ResponseWriter, req *http.Request) {
+func (uh *UserHandler) sendForgottenPasswordEmail(w http.ResponseWriter, req *http.Request) {
+	log.Println("Usli u sendForgottenPasswordEmail")
+	vars := mux.Vars(req)
+	email := vars["email"]
 
+	allValidEmails, err := uh.db.GetAllVerificationEmailsByEmail(email) // provera ako neko probad a posalje mejl a nije registrovan
+	if err != nil {
+		sendErrorWithMessage(w, "Error in geting AllVerificationEmails"+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	log.Println(email)
+	log.Println(allValidEmails)
+	if len(allValidEmails) == 0 {
+		sendErrorWithMessage(w, "No valid verification emails found for the given email 1", http.StatusBadRequest)
+		return
+	}
+
+	succes := false
+	for _, ve := range allValidEmails { // prolazimo kroz sve emejlove koje smo dobili sa emejlom koji smo poslali da bi videli da li je mejl verifikovan ako jeste onda moze da se posalje mejl korisniku da za zaboravljenu sifru na mejl koji je poslao
+		if ve.IsUsed {
+			succes = true
+			break
+		}
+	}
+
+	if succes {
+		log.Println("Usli u succes")
+		content := `
+				<h1>Reset Your Password</h1>
+				<h1>This is a password reset message from AirBnb</h1>
+				<h4>Code for password reset: %s</h4>`
+		subject := "Password Reset"
+		user := &User{
+			Email: email,
+		}
+		err := uh.sendEmail(user, content, subject, false)
+		if err != nil {
+			sendErrorWithMessage(w, "Cant send email "+err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		sendErrorWithMessage(w, "Please check emial for verification code", http.StatusOK)
+	} else {
+		sendErrorWithMessage(w, "No valid verification emails found for the given email 2", http.StatusBadRequest)
+		return
+	}
+}
+func (uh *UserHandler) isVerificationEmail(newUser *User, randomCode string, isVerificationEmail bool) error {
+	log.Println("Usli u isVerificationEmail")
+	if isVerificationEmail {
+		verificationEmail := VerifyEmail{
+			Username:   newUser.Username,
+			Email:      newUser.Email,
+			SecretCode: randomCode,
+			IsUsed:     false,
+			CreatedAt:  time.Now(),
+			ExpiredAt:  time.Now().Add(15 * time.Minute), // moras da promenis da je trajanje 15 min
+		}
+
+		log.Println("Verifikacioni mejl: ", verificationEmail)
+
+		err := uh.db.CreateVerificationEmail(verificationEmail)
+		if err != nil {
+			log.Println("Cant save verification email in SendEmail()method")
+			return err
+		}
+	} else {
+		forgottenPasswordEmail := ForgottenPasswordEmail{
+			Email:      newUser.Email,
+			SecretCode: randomCode,
+			IsUsed:     false,
+			CreatedAt:  time.Now(),
+			ExpiredAt:  time.Now().Add(15 * time.Minute), // moras da promenis da je trajanje 15 min
+		}
+
+		log.Println("ForgottenPassword mejl: ", forgottenPasswordEmail)
+		err := uh.db.CreateForgottenPasswordEmail(forgottenPasswordEmail)
+		if err != nil {
+			log.Println("Cant save forgotten password email in SendEmail()method")
+			return err
+		}
+	}
+	return nil
+}
+
+func (uh *UserHandler) changeForgottenPassword(w http.ResponseWriter, req *http.Request) {
+	log.Println("Usli u changeForgottenPassword metodu")
+	rt, err := decodeForgottenPasswordBody(req.Body)
+	if err != nil {
+		if strings.Contains(err.Error(), "Key: 'ForgottenPassword.NewPassword' Error:Field validation for 'NewPassword' failed on the 'newPassword' tag") {
+			sendErrorWithMessage(w, "NewPassword must have minimum 8 characters,minimum one big letter, one number and special characters", http.StatusBadRequest)
+		} else if strings.Contains(err.Error(), "required") {
+			sendErrorWithMessage(w, "All fealds are required", http.StatusBadRequest)
+		} else {
+			sendErrorWithMessage(w, "Ovde "+err.Error(), http.StatusBadRequest)
+		}
+		return
+	}
+
+	if rt.NewPassword != rt.ConfirmPassword {
+		sendErrorWithMessage(w, "Confirm password must be same as New password", http.StatusBadRequest)
+		return
+	}
+
+	forgottenPasswordEmail, err := uh.db.GetForgottenPasswordEmailByCode(rt.Code)
+	if err != nil {
+		log.Println("Error in getting Email by code:", err)
+		sendErrorWithMessage(w, "Code is not valid", http.StatusBadRequest)
+		return
+	}
+
+	if forgottenPasswordEmail != nil {
+		if !forgottenPasswordEmail.IsUsed {
+			isActive, err := uh.db.IsForgottenPasswordEmailActive(rt.Code)
+			if err != nil {
+				log.Println("Error Code is not active")
+				sendErrorWithMessage(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			if isActive {
+
+				// verifikacija passworda treba da se radi odmah u decodBodiu
+
+				sanitizedPassword := sanitizeInput(rt.NewPassword)
+
+				blacklist, err := NewBlacklistFromURL()
+				if err != nil {
+					log.Println("Error fetching blacklist: %v\n", err)
+					return
+				}
+
+				if blacklist.IsBlacklisted(rt.NewPassword) {
+					log.Println("Password is too weak, blacklist")
+					sendErrorWithMessage(w, "Password is too weak", http.StatusBadRequest)
+					return
+				}
+
+				user := &User{
+					Username:        "",
+					Password:        sanitizedPassword,
+					Role:            "",
+					Email:           forgottenPasswordEmail.Email,
+					IsEmailVerified: true,
+				}
+
+				hashedPassword, err := HashPassword(sanitizedPassword)
+				if err != nil {
+					sendErrorWithMessage(w, "", http.StatusInternalServerError)
+				}
+
+				user.Password = hashedPassword
+
+				err = uh.db.UpdateUsersPassword(user)
+				if err != nil {
+					log.Println("Error when updating password")
+					sendErrorWithMessage(w, "Error when updating password "+err.Error(), http.StatusBadRequest)
+					return
+				}
+
+				err = uh.db.UpdateForgottenPasswordEmail(rt.Code)
+				if err != nil {
+					log.Println("Error in trying to update VerificationEmail")
+					sendErrorWithMessage(w, "Error in trying to update VerificationEmail", http.StatusInternalServerError)
+					return
+				}
+
+				sendErrorWithMessage(w, "Password succesfuly changed", http.StatusOK)
+
+			} else {
+				sendErrorWithMessage(w, "Code is not active", http.StatusBadRequest)
+				return
+			}
+		} else {
+			sendErrorWithMessage(w, "Code that has been forwarded has been used", http.StatusBadRequest)
+			return
+		}
+	}
 }
 
 func (uh *UserHandler) verifyEmail(w http.ResponseWriter, req *http.Request) {
@@ -278,7 +451,7 @@ func (uh *UserHandler) verifyEmail(w http.ResponseWriter, req *http.Request) {
 	verificationEmail, err := uh.db.GetVerificationEmailByCode(code)
 	if err != nil {
 		log.Println("Error in getting verificationEmail:", err)
-		http.Error(w, "Error in getting verificationEmail", http.StatusInternalServerError)
+		sendErrorWithMessage(w, "Error in getting verificationEmail", http.StatusInternalServerError)
 		return
 	}
 
@@ -287,31 +460,31 @@ func (uh *UserHandler) verifyEmail(w http.ResponseWriter, req *http.Request) {
 			isActive, err := uh.db.IsVerificationEmailActive(code)
 			if err != nil {
 				log.Println("Error Verification code is not active")
-				http.Error(w, err.Error(), http.StatusBadRequest)
+				sendErrorWithMessage(w, err.Error(), http.StatusBadRequest)
 				return
 			}
 			if isActive {
 				err = uh.db.UpdateUsersVerificationEmail(verificationEmail.Username)
 				if err != nil {
 					log.Println("Error in trying to update UsersVerificationEmail")
-					fmt.Println("Error in trying to update UsersVerificationEmail")
+					sendErrorWithMessage(w, "Error in trying to update UsersVerificationEmail", http.StatusInternalServerError)
 					return
 				}
 
 				err = uh.db.UpdateVerificationEmail(code)
 				if err != nil {
 					log.Println("Error in trying to update VerificationEmail")
-					fmt.Println("Error in trying to update VerificationEmail")
+					sendErrorWithMessage(w, "Error in trying to update VerificationEmail", http.StatusInternalServerError)
 					return
 				}
-				w.WriteHeader(http.StatusAccepted)
-				w.Write([]byte("Your mail have been verified"))
+
+				sendErrorWithMessage(w, "Your mail have been verified", http.StatusAccepted)
 			} else {
-				http.Error(w, "Code is not active", http.StatusBadRequest)
+				sendErrorWithMessage(w, "Code is not active", http.StatusBadRequest)
 				return
 			}
 		} else {
-			http.Error(w, "Code that has been forwarded has been used", http.StatusBadRequest)
+			sendErrorWithMessage(w, "Code that has been forwarded has been used", http.StatusBadRequest)
 			return
 		}
 	}
@@ -333,7 +506,7 @@ func jwtToken(user *User, w http.ResponseWriter, uh *UserHandler) {
 	)
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		sendErrorWithMessage(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -378,6 +551,23 @@ func decodeLoginBody(r io.Reader) (*LoginUser, error) {
 	return &rt, nil
 }
 
+func decodeForgottenPasswordBody(r io.Reader) (*ForgottenPassword, error) {
+	dec := json.NewDecoder(r)
+	dec.DisallowUnknownFields()
+
+	var rt ForgottenPassword
+	if err := dec.Decode(&rt); err != nil {
+		return nil, err
+	}
+
+	if err := ValidateForgottenPassword(rt); err != nil {
+		log.Println("ForgottenPasswordCredentials are not succesfuly validated in ValidateForgottenPassword func")
+		return nil, err
+	}
+
+	return &rt, nil
+}
+
 // sanitizeInput replaces "<" with "&lt;" to prevent potential HTML/script injection.
 func sanitizeInput(input string) string {
 	sanitizedInput := strings.ReplaceAll(input, "<", "&lt;")
@@ -388,7 +578,7 @@ func sanitizeInput(input string) string {
 func renderJSON(w http.ResponseWriter, v interface{}) {
 	js, err := json.Marshal(v)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		sendErrorWithMessage(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -406,4 +596,11 @@ func (u *Users) ToJSON(w io.Writer) error {
 func (u *User) ToJSON(w io.Writer) error {
 	e := json.NewEncoder(w)
 	return e.Encode(u)
+}
+
+func sendErrorWithMessage(w http.ResponseWriter, message string, statusCode int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	errorResponse := map[string]string{"message": message}
+	json.NewEncoder(w).Encode(errorResponse)
 }
