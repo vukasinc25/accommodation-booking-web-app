@@ -35,25 +35,26 @@ func NewUserHandler(l *log.Logger, r *UserRepo, jwtMaker token.Maker) *UserHandl
 	return &UserHandler{l, r, jwtMaker}
 }
 
-func InitPubSub() utility.Subscriber {
+func InitPubSubAuth() utility.Subscriber {
 	subscriber, err := nats2.NewNATSSubscriber("auth.check")
 	if err != nil {
 		log.Fatal(err)
 	}
 	return subscriber
 }
+
 func (uh *UserHandler) Auth(msg *nats.Msg) nats.Msg {
 
 	uh.logger.Println("Received publish")
 
 	uh.logger.Println(string(msg.Data))
 
-	//payload, _ := uh.jwtMaker.VerifyToken(string(msg.Data))
-	//uh.logger.Println(payload.Role)
-	//if err != nil || payload.Role != "HOST" {
-	//	msg2 := nats.Msg{Data: []byte("not ok")}
-	//	return msg2
-	//} //TODO fix
+	payload, err := uh.jwtMaker.VerifyToken(string(msg.Data))
+	uh.logger.Println(payload.Role)
+	if err != nil || payload.Role != "HOST" {
+		msg2 := nats.Msg{Data: []byte("not ok")}
+		return msg2
+	}
 
 	msg2 := nats.Msg{Data: []byte("ok")}
 	return msg2
@@ -127,23 +128,33 @@ func (uh *UserHandler) createUser(w http.ResponseWriter, req *http.Request) {
 	rt.Password = hashedPassword
 	log.Println("Hashed Password: %w", rt.Password)
 
-	content := `
-    <h1>Verify your email</h1>
-    <h1>This is a verification message from AirBnb</h1>
-    <h4>Use the following code: %s</h4>
-    <h4><a href="https://localhost:4200/verify-email">Click here</a> to verify your email.</h4>`
-	subject := "Verification email"
-	uh.sendEmail(rt, content, subject, true)
-
 	err = uh.db.Insert(rt)
 	if err != nil {
-		if strings.Contains(err.Error(), "username") {
-			sendErrorWithMessage(w, "Provide different username", http.StatusConflict)
+		if strings.Contains(err.Error(), "not ok") {
+			sendErrorWithMessage(w, err.Error(), http.StatusBadRequest)
 		} else if strings.Contains(err.Error(), "email") {
-			sendErrorWithMessage(w, "Provide different email", http.StatusConflict)
+			sendErrorWithMessage(w, err.Error(), http.StatusBadRequest)
+		} else {
+			sendErrorWithMessage(w, err.Error(), http.StatusBadRequest)
 		}
 		return
 	}
+	// if err != nil {
+	// 	if strings.Contains(err.Error(), "username") {
+	// 		sendErrorWithMessage(w, "Provide different username", http.StatusConflict)
+	// 	} else if strings.Contains(err.Error(), "email") {
+	// 		sendErrorWithMessage(w, "Provide different email", http.StatusConflict)
+	// 	}
+	// 	return
+	// }
+
+	// content := `
+	// <h1>Verify your email</h1>
+	// <h1>This is a verification message from AirBnb</h1>
+	// <h4>Use the following code: %s</h4>
+	// <h4><a href="https://localhost:4200/verify-email">Click here</a> to verify your email.</h4>`
+	// subject := "Verification email"
+	// uh.sendEmail(rt, content, subject, true, rt.Email)
 
 	w.WriteHeader(http.StatusCreated)
 }
@@ -228,7 +239,7 @@ func (uh *UserHandler) loginUser(w http.ResponseWriter, req *http.Request) {
 	jwtToken(user, w, uh)
 }
 
-func (uh *UserHandler) sendEmail(newUser *User, contentStr string, subjectStr string, isVerificationEmail bool) error { // ako isVerificationEmial is true than VrificationEmail is sending and if is false ForgottenPasswordEmial is sending
+func (uh *UserHandler) sendEmail(newUser *User, contentStr string, subjectStr string, isVerificationEmail bool, email string) error { // ako isVerificationEmial is true than VrificationEmail is sending and if is false ForgottenPasswordEmial is sending
 	log.Println("SendEmail()")
 
 	randomCode := randstr.String(20)
@@ -247,7 +258,7 @@ func (uh *UserHandler) sendEmail(newUser *User, contentStr string, subjectStr st
 	sender := mail.NewGmailSender("Air Bnb", "mobilneaplikcijesit@gmail.com", "esrqtcomedzeapdr", tlsConfig) //postavi recoveri password
 	subject := subjectStr
 	content := fmt.Sprintf(contentStr, randomCode)
-	to := []string{"mobilneaplikcijesit@gmail.com"}
+	to := []string{email}
 	attachFiles := []string{}
 	log.Println("Pre SendEmail(subject, content, to, nil, nil, attachFiles)")
 	err = sender.SendEmail(subject, content, to, nil, nil, attachFiles)
@@ -300,7 +311,7 @@ func (uh *UserHandler) sendForgottenPasswordEmail(w http.ResponseWriter, req *ht
 		user := &User{
 			Email: email,
 		}
-		err := uh.sendEmail(user, content, subject, false)
+		err := uh.sendEmail(user, content, subject, false, email)
 		if err != nil {
 			sendErrorWithMessage(w, "Cant send email "+err.Error(), http.StatusBadRequest)
 			return

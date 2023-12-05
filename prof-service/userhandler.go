@@ -2,11 +2,13 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"io"
 	"log"
-	"mime"
 	"net/http"
+
+	"github.com/nats-io/nats.go"
+	utility "github.com/vukasinc25/fst-airbnb/utility/messaging"
+	nats2 "github.com/vukasinc25/fst-airbnb/utility/messaging/nats"
 )
 
 type userHandler struct {
@@ -19,29 +21,59 @@ func NewUserHandler(l *log.Logger, r *UserRepo, accomodations_adrress string) *u
 	return &userHandler{l, r, accomodations_adrress}
 }
 
-func (uh *userHandler) createUser(w http.ResponseWriter, req *http.Request) {
-	contentType := req.Header.Get("Content-Type")
-	mediatype, _, err := mime.ParseMediaType(contentType)
+func InitPubSubUser() utility.Subscriber {
+	subscriber, err := nats2.NewNATSSubscriber("auth.publish.user")
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		log.Fatal(err)
 	}
-
-	if mediatype != "application/json" {
-		err := errors.New("Expect application/json Content-Type")
-		http.Error(w, err.Error(), http.StatusUnsupportedMediaType)
-		return
-	}
-
-	rt, err := decodeBody(req.Body)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	uh.db.Insert(rt)
-	w.WriteHeader(http.StatusCreated)
+	return subscriber
 }
+
+func (uh *userHandler) SubscribeUser(msg *nats.Msg) nats.Msg {
+
+	log.Println("Received publish")
+
+	log.Println(string(msg.Data))
+
+	// var rt &User
+	// err := json.Unmarshal(msg.Data, rt)
+	// if err != nil {
+	// 	uh.logger.Println("Error decoding JSON:", err)
+	// 	return nats.Msg{Data: []byte("not ok")}
+	// }
+
+	// err = uh.db.Insert(rt)
+	// if err != nil {
+	// 	return nats.Msg{Data: []byte("user not created")}
+	// }
+
+	msg2 := nats.Msg{Data: []byte("ok")}
+	return msg2
+}
+
+// func (uh *userHandler) createUser(w http.ResponseWriter, req *http.Request) {
+// 	contentType := req.Header.Get("Content-Type")
+// 	mediatype, _, err := mime.ParseMediaType(contentType)
+// 	if err != nil {
+// 		http.Error(w, err.Error(), http.StatusBadRequest)
+// 		return
+// 	}
+
+// 	if mediatype != "application/json" {
+// 		err := errors.New("Expect application/json Content-Type")
+// 		http.Error(w, err.Error(), http.StatusUnsupportedMediaType)
+// 		return
+// 	}
+
+// 	rt, err := decodeBody(req.Body)
+// 	if err != nil {
+// 		http.Error(w, err.Error(), http.StatusBadRequest)
+// 		return
+// 	}
+
+// 	uh.db.Insert(rt)
+// 	w.WriteHeader(http.StatusCreated)
+// }
 
 // type Accomodation struct {
 // 	ID   int    `json:"ID"`

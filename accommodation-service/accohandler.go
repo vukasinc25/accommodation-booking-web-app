@@ -3,13 +3,14 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"io"
+	"log"
+	"net/http"
+
 	"github.com/gorilla/mux"
 	"github.com/nats-io/nats.go"
 	utility "github.com/vukasinc25/fst-airbnb/utility/messaging"
 	nats2 "github.com/vukasinc25/fst-airbnb/utility/messaging/nats"
-	"io"
-	"log"
-	"net/http"
 )
 
 type KeyProduct struct{}

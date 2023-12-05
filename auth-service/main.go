@@ -55,7 +55,7 @@ func main() {
 
 	// Create a user handler service
 	service := NewUserHandler(logger, store, tokenMaker)
-	sub := InitPubSub()
+	sub := InitPubSubAuth()
 
 	err = sub.Subscribe(func(msg *nats.Msg) {
 		pub, _ := nats2.NewNATSPublisher(msg.Reply)

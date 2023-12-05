@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"time"
 
+	"github.com/nats-io/nats.go"
+	nats2 "github.com/vukasinc25/fst-airbnb/utility/messaging/nats"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -64,19 +67,38 @@ func (uh *UserRepo) Ping() {
 
 // Insert inserts a new user into the MongoDB collection.
 func (uh *UserRepo) Insert(user *User) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	usersCollection, err := uh.getCollection()
+	publisher, err := nats2.NewNATSPublisher("auth.publish.user")
 	if err != nil {
-		log.Println("Duplicate key error: ", err)
 		return err
 	}
-	result, err := usersCollection.InsertOne(ctx, &user)
+
+	jsonData, err := json.Marshal(user)
 	if err != nil {
-		uh.logger.Println(err)
 		return err
 	}
-	uh.logger.Printf("Document ID: %v\n", result.InsertedID)
+	msg := nats.Msg{Data: jsonData}
+	response, err := publisher.Publish(msg)
+	if err != nil {
+		return err
+	}
+
+	log.Println(string(response.Data))
+	if string(response.Data) != "ok" {
+		log.Println("ok")
+	}
+	// ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	// defer cancel()
+	// usersCollection, err := uh.getCollection()
+	// if err != nil {
+	// 	log.Println("Duplicate key error: ", err)
+	// 	return err
+	// }
+	// result, err := usersCollection.InsertOne(ctx, &user)
+	// if err != nil {
+	// 	uh.logger.Println(err)
+	// 	return err
+	// }
+	// uh.logger.Printf("Document ID: %v\n", result.InsertedID)
 	return nil
 }
 

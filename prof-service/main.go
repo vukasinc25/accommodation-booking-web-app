@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/nats-io/nats.go"
+	nats2 "github.com/vukasinc25/fst-airbnb/utility/messaging/nats"
 )
 
 func main() {
@@ -41,7 +43,21 @@ func main() {
 	store.Ping()
 
 	service := NewUserHandler(logger, store, config["accomodation_service_address"])
-	router.HandleFunc("/user/", service.createUser).Methods("POST")
+	sub := InitPubSubUser()
+
+	err = sub.Subscribe(func(msg *nats.Msg) {
+		pub, _ := nats2.NewNATSPublisher(msg.Reply)
+
+		response := service.SubscribeUser(msg)
+
+		response.Reply = msg.Reply
+
+		pub.Publish(response)
+	})
+	if err != nil {
+		logger.Fatal(err)
+	}
+	// router.HandleFunc("/user/", service.createUser).Methods("POST")
 	router.HandleFunc("/users/", service.getAllUsers).Methods("GET")
 
 	// start servergo get -u github.com/gorilla/mux

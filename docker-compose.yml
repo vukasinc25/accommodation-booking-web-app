@@ -23,8 +23,8 @@ services:
     image: prof-service
     hostname: prof-service
     build:
-      context: ./prof-service/
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./prof-service/Dockerfile
     restart: always
     environment:
       PORT: ${PROF_SERVICE_PORT}
@@ -32,6 +32,8 @@ services:
       ACCOMMODATIONS_SERVICE_HOST: ${ACCOMMODATIONS_SERVICE_HOST}
       ACCOMMODATIONS_SERVICE_PORT: ${ACCOMMODATIONS_SERVICE_PORT}
     depends_on:
+      nats:
+        condition: service_started
       mongo:
         condition: service_healthy
     networks:
