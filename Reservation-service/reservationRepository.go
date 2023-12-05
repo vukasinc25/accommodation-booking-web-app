@@ -77,7 +77,7 @@ func (rs *ReservationRepo) CreateTables() {
 					(acco_id UUID, reservation_id UUID, price int, date date, isDeleted bool
 					PRIMARY KEY ((acco_id, reservation_id), price)) 
 					WITH CLUSTERING ORDER BY (price ASC, date DESC)`,
-			"reservation_by_acco")).Exec()
+			"reservations_by_acco")).Exec()
 	if err != nil {
 		rs.logger.Println(err)
 	}
@@ -87,7 +87,7 @@ func (rs *ReservationRepo) CreateTables() {
 					(user_id UUID, reservation_id UUID, price int, date date, isDeleted bool
 					PRIMARY KEY ((user_id, reservation_id), price)) 
 					WITH CLUSTERING ORDER BY (price ASC, date DESC)`,
-			"reservation_by_user")).Exec()
+			"reservations_by_user")).Exec()
 	if err != nil {
 		rs.logger.Println(err)
 	}
@@ -170,11 +170,11 @@ func (rs *ReservationRepo) InsertReservationByUser(resUser *ReservationByUser) e
 
 //--------------//
 
-func (rs *ReservationRepo) UpdateReservationByAcco(accoId string, reservationId string, price string, date string) error {
+func (rs *ReservationRepo) UpdateReservationByAcco(accoId string, reservationId string, price string) error {
 	// za Update je neophodno da pronadjemo vrednost po PRIMARNOM KLJUCU = PK + CK (ukljucuje sve kljuceve particije i klastera)
 	// u ovom slucaju: PK = smerId, CK = student_id, indeks
 	err := rs.session.Query(
-		`UPDATE reservation_by_acco SET isDeleted = 1 where acoo_id = ? and reservation_id = ?`,
+		`UPDATE reservations_by_acco SET isDeleted = 1 where acoo_id = ? and reservation_id = ?`,
 		accoId, reservationId).Exec()
 	if err != nil {
 		rs.logger.Println(err)

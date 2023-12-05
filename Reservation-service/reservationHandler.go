@@ -1,24 +1,50 @@
 package main
 
 import (
+	"Rest/data"
 	"encoding/json"
 	"errors"
 	"io"
 	"log"
 	"mime"
 	"net/http"
+
+	"github.com/gorilla/mux"
 )
 
-type userHandler struct {
+type KeyProduct struct{}
+
+type reservationHandler struct {
 	logger *log.Logger
-	db     *ReservationRepository
+	repo   *data.ReservationRepository
 }
 
-func NewReservationHandler(l *log.Logger, r *ReservationRepository) *userHandler {
-	return &userHandler{l, r}
+func NewReservationHandler(l *log.Logger, r *data.ReservationRepository) *reservationHandler {
+	return &reservationHandler{l, r}
 }
 
-func (uh *userHandler) createReservation(w http.ResponseWriter, req *http.Request) {
+func (rh *reservationHandler) GetAllReservationIds(res http.ResponseWriter, req *http.Request) {
+	reservationIds, err := rh.repo.GetDistinctIds("reservation_id", "reservations_by_user")
+	if err != nil {
+		rh.logger.Print("Database exception: ", err)
+	}
+
+	if reservationIds == nil {
+		return
+	}
+
+	rh.logger.Println(reservationIds)
+
+	e := json.NewEncoder(res)
+	err = e.Encode(reservationIds)
+	if err != nil {
+		http.Error(res, "Unable to convert to json", http.StatusInternalServerError)
+		rh.logger.Fatal("Unable to convert to json :", err)
+		return
+	}
+}
+
+func (rh *reservationHandler) createReservation(w http.ResponseWriter, req *http.Request) {
 	contentType := req.Header.Get("Content-Type")
 	mediatype, _, err := mime.ParseMediaType(contentType)
 	if err != nil {
@@ -38,27 +64,91 @@ func (uh *userHandler) createReservation(w http.ResponseWriter, req *http.Reques
 		return
 	}
 
-	uh.db.Insert(rt)
+	rh.repo.Insert(rt)
 	w.WriteHeader(http.StatusCreated)
 }
 
-func (uh *userHandler) getAllReservations(w http.ResponseWriter, req *http.Request) {
-	users, err := uh.db.GetAll()
+func (rh *reservationHandler) getAllReservationsByAcco(res http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	accoId := vars["id"]
 
+	reservationsByAcco, err := rh.repo.GetReservationsByAcco(accoId)
 	if err != nil {
-		uh.logger.Print("Database exception: ", err)
+		rh.logger.Print("Database exception: ", err)
 	}
 
-	if users == nil {
+	if reservationsByAcco == nil {
 		return
 	}
 
-	err = users.ToJSON(w)
+	err = reservationsByAcco.ToJSON(res)
 	if err != nil {
-		http.Error(w, "Unable to convert to json", http.StatusInternalServerError)
-		uh.logger.Fatal("Unable to convert to json :", err)
+		http.Error(res, "Unable to convert to json", http.StatusInternalServerError)
+		rh.logger.Fatal("Unable to convert to json :", err)
 		return
 	}
+}
+
+func (rh *reservationHandler) getAllReservationsByUser(res http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	userId := vars["id"]
+
+	reservationsByUser, err := rh.repo.GetReservationsByUser(userId)
+	if err != nil {
+		rh.logger.Print("Database exception: ", err)
+	}
+
+	if reservationsByUser == nil {
+		return
+	}
+
+	err = reservationsByUser.ToJSON(res)
+	if err != nil {
+		http.Error(res, "Unable to convert to json", http.StatusInternalServerError)
+		rh.logger.Fatal("Unable to convert to json :", err)
+		return
+	}
+}
+
+func (rh *reservationHandler) CreateReservationForAcco(res http.ResponseWriter, req *http.Request) {
+	reservationAcco := req.Context().Value(KeyProduct{}).(*data.ReservationByAcco)
+	err := rh.repo.InsertReservationByAcco(reservationAcco)
+	if err != nil {
+		rh.logger.Print("Database exception: ", err)
+		res.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	res.WriteHeader(http.StatusCreated)
+}
+
+func (rh *reservationHandler) CreateReservationForUser(res http.ResponseWriter, req *http.Request) {
+	reservationUser := req.Context().Value(KeyProduct{}).(*data.ReservationByUser)
+	err := rh.repo.InsertReservationByUser(reservationUser)
+	if err != nil {
+		rh.logger.Print("Database exception: ", err)
+		res.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	res.WriteHeader(http.StatusCreated)
+}
+
+func (rh *reservationHandler) UpdateReservationByAcco(res http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	accoId := vars["accoId"]
+	reservationId := vars["reservationId"]
+	price := vars["price"]
+
+	var stepenStudija string
+	d := json.NewDecoder(req.Body)
+	d.Decode(&stepenStudija)
+
+	err := rh.repo.UpdateReservationByAcco(accoId, reservationId, price)
+	if err != nil {
+		rh.logger.Print("Database exception: ", err)
+		res.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	res.WriteHeader(http.StatusCreated)
 }
 
 func decodeBody(r io.Reader) (*Reservation, error) {
