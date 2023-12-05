@@ -172,6 +172,7 @@ func (uh *UserRepo) UpdateUsersPassword(user *User) error {
 	return nil
 }
 func (uh *UserRepo) CreateVerificationEmail(verificationEmil VerifyEmail) error { // MORA  DA PRIMA POINTER NA VERIFYEMAIL
+	log.Println("Usli u CreateVerificationEmail")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -180,7 +181,7 @@ func (uh *UserRepo) CreateVerificationEmail(verificationEmil VerifyEmail) error 
 	verification := uh.getEmailCollection()
 	result, err := verification.InsertOne(ctx, &verificationCopy)
 	if err != nil {
-		uh.logger.Println(err)
+		log.Println("Error u kreiranju verifikacionog mejla")
 		return err
 	}
 	uh.logger.Printf("Documents ID: %v\n", result.InsertedID)
