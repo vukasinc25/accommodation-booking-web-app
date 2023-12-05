@@ -13,6 +13,12 @@ import { AccommoAddComponent } from './accommo-add/accommo-add.component';
 import { ProfileComponent } from './profile/profile.component';
 import { TokenInterceptor } from './interceptor/token.interceptor';
 import { NgxCaptchaModule } from 'ngx-captcha';
+import { EmailVerificationPopupComponent } from './email-verification-popup/email-verification-popup.component';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+// import { MatDialogModule } from '@angular/material/dialog';
+import { PasswordEmailRecoveryComponent } from './password-email-recovery/password-email-recovery.component';
+import { ResetPasswordComponent } from './reset-password/reset-password.component';
+import { VerifyEmailComponent } from './verify-email/verify-email.component';
 
 @NgModule({
   declarations: [
@@ -23,6 +29,10 @@ import { NgxCaptchaModule } from 'ngx-captcha';
     RegisterComponent,
     AccommoAddComponent,
     ProfileComponent,
+    EmailVerificationPopupComponent,
+    PasswordEmailRecoveryComponent,
+    ResetPasswordComponent,
+    VerifyEmailComponent,
   ],
   imports: [
     BrowserModule,
@@ -31,6 +41,8 @@ import { NgxCaptchaModule } from 'ngx-captcha';
     ReactiveFormsModule,
     HttpClientModule,
     NgxCaptchaModule,
+    BrowserAnimationsModule,
+    // MatDialogModule,
   ],
   providers: [
     { provide: HTTP_INTERCEPTORS, useClass: TokenInterceptor, multi: true },

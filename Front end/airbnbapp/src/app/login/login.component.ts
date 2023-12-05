@@ -35,7 +35,8 @@ export class LoginComponent {
         this.authService.checkRole();
       },
       error: (err) => {
-        console.log(err);
+        console.log(err.error.message);
+        alert(err.error.message);
       },
     });
   }

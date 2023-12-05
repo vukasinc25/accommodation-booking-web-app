@@ -57,9 +57,24 @@ type SiteVerifyRequest struct {
 	RecaptchaResponse string `json:"g-recaptcha-response"`
 }
 
+type ForgottenPassword struct {
+	NewPassword     string `bson:"newPassword,omitempty" json:"newPassword" validate:"required,newPassword"`
+	ConfirmPassword string `bson:"confirmPassword,omitempty" json:"confirmPassword" validate:"required"`
+	Code            string `bson:"code,omitempty" json:"code" validate:"required"`
+}
+
 type VerifyEmail struct {
 	ID         primitive.ObjectID `bson:"_id,omitempty" json:"_id,omitempty"`
 	Username   string             `bson:"username,omitempty" json:"username" validate:"required"`
+	Email      string             `bson:"email,omitempty" json:"email" validate:"required"`
+	SecretCode string             `bson:"secretCode,omitempty" json:"secretCode" validate:"required"`
+	IsUsed     bool               `bson:"isUsed" json:"isUsed" validate:"required"`
+	CreatedAt  time.Time          `bson:"createdAt,omitempty" json:"createdAt" validate:"required"`
+	ExpiredAt  time.Time          `bson:"expiredAt,omitempty" json:"expiredAt" validate:"required"`
+}
+
+type ForgottenPasswordEmail struct {
+	ID         primitive.ObjectID `bson:"_id,omitempty" json:"_id,omitempty"`
 	Email      string             `bson:"email,omitempty" json:"email" validate:"required"`
 	SecretCode string             `bson:"secretCode,omitempty" json:"secretCode" validate:"required"`
 	IsUsed     bool               `bson:"isUsed" json:"isUsed" validate:"required"`
@@ -87,4 +102,21 @@ func ValidateUser(user User) error {
 	})
 
 	return validate.Struct(user)
+}
+
+func ValidateForgottenPassword(forgottenPassword ForgottenPassword) error {
+	validate := validator.New()
+
+	// Register custom validation tag for password complexity
+	validate.RegisterValidation("newPassword", func(fl validator.FieldLevel) bool {
+		password := fl.Field().String()
+
+		return len(password) >= 8 &&
+			strings.ContainsAny(password, "ABCDEFGHIJKLMNOPQRSTUVWXYZ") &&
+			strings.ContainsAny(password, "abcdefghijklmnopqrstuvwxyz") &&
+			strings.ContainsAny(password, "0123456789") &&
+			regexp.MustCompile(`[^a-zA-Z0-9]`).MatchString(password)
+	})
+
+	return validate.Struct(forgottenPassword)
 }

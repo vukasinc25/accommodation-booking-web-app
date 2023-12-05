@@ -127,6 +127,28 @@ func (uh *UserRepo) GetByUsername(username string) (*User, error) {
 	return &user, nil
 }
 
+func (uh *UserRepo) UpdateUsersPassword(user *User) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	userCollection, err := uh.getCollection()
+	if err != nil {
+		log.Println("Error getting collection: ", err)
+		return err
+	}
+	filter := bson.M{"email": user.Email}
+	update := bson.M{"$set": bson.M{
+		"password": user.Password,
+	}}
+	result, err := userCollection.UpdateOne(ctx, filter, update)
+	log.Printf("Documents matched: %v\n", result.MatchedCount)
+	log.Printf("Documents updated: %v\n", result.ModifiedCount)
+
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	return nil
+}
 func (uh *UserRepo) CreateVerificationEmail(verificationEmil VerifyEmail) error { // MORA  DA PRIMA POINTER NA VERIFYEMAIL
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -134,6 +156,22 @@ func (uh *UserRepo) CreateVerificationEmail(verificationEmil VerifyEmail) error 
 	verificationCopy := verificationEmil
 
 	verification := uh.getEmailCollection()
+	result, err := verification.InsertOne(ctx, &verificationCopy)
+	if err != nil {
+		uh.logger.Println(err)
+		return err
+	}
+	uh.logger.Printf("Documents ID: %v\n", result.InsertedID)
+	return nil
+}
+
+func (uh *UserRepo) CreateForgottenPasswordEmail(forgottenPasswordEmail ForgottenPasswordEmail) error { // MORA  DA PRIMA POINTER NA VERIFYEMAIL
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	verificationCopy := forgottenPasswordEmail
+
+	verification := uh.getFogottenPasswordEmailCollection()
 	result, err := verification.InsertOne(ctx, &verificationCopy)
 	if err != nil {
 		uh.logger.Println(err)
@@ -157,8 +195,32 @@ func (uh *UserRepo) GetVerificationEmailByCode(code string) (*VerifyEmail, error
 	return &verifycationEmail, nil
 }
 
+func (uh *UserRepo) GetForgottenPasswordEmailByCode(code string) (*ForgottenPasswordEmail, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var forgottenPasswordEmail ForgottenPasswordEmail
+	forgottenPasswordEmailCollection := uh.getFogottenPasswordEmailCollection() //
+	err := forgottenPasswordEmailCollection.FindOne(ctx, bson.M{"secretCode": code}).Decode(&forgottenPasswordEmail)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	return &forgottenPasswordEmail, nil
+}
+
 func (uh *UserRepo) IsVerificationEmailActive(code string) (bool, error) {
 	verificationEmail, err := uh.GetVerificationEmailByCode(code)
+	if err != nil {
+		return false, err
+	}
+
+	currentTime := time.Now()
+	return currentTime.Before(verificationEmail.ExpiredAt), nil
+}
+
+func (uh *UserRepo) IsForgottenPasswordEmailActive(code string) (bool, error) {
+	verificationEmail, err := uh.GetForgottenPasswordEmailByCode(code)
 	if err != nil {
 		return false, err
 	}
@@ -179,6 +241,38 @@ func (uh *UserRepo) GetVerificationEmailByUsername(username string) (*VerifyEmai
 		return nil, err
 	}
 	return &verifycationEmail, nil
+}
+
+func (uh *UserRepo) GetAllVerificationEmailsByEmail(email string) ([]VerifyEmail, error) { // needs to check if email is validate if is not than returns [] and message to user that this is not valida email
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var verificationEmails []VerifyEmail
+	verificationEmailCollection := uh.getEmailCollection()
+
+	// Use Find instead of FindOne to get multiple documents
+	cursor, err := verificationEmailCollection.Find(ctx, bson.M{"email": email})
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	for cursor.Next(ctx) {
+		var verificationEmail VerifyEmail
+		if err := cursor.Decode(&verificationEmail); err != nil {
+			log.Println(err)
+			return nil, err
+		}
+		verificationEmails = append(verificationEmails, verificationEmail)
+	}
+
+	if err := cursor.Err(); err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	return verificationEmails, nil
 }
 
 func (uh *UserRepo) UpdateUsersVerificationEmail(username string) error {
@@ -229,6 +323,29 @@ func (uh *UserRepo) UpdateVerificationEmail(code string) error {
 	return nil
 }
 
+func (uh *UserRepo) UpdateForgottenPasswordEmail(code string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	emailVerificationCollection := uh.getFogottenPasswordEmailCollection()
+
+	filter := bson.M{"secretCode": code}
+	update := bson.M{"$set": bson.M{
+		"isUsed": true,
+	}}
+
+	log.Printf("Updating forgotten password email with code: %s\n", code)
+	result, err := emailVerificationCollection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		log.Printf("Error updating forgotten password email: %v\n", err)
+		return err
+	}
+
+	log.Printf("Documents matched: %v\n", result.MatchedCount)
+	log.Printf("Documents updated: %v\n", result.ModifiedCount)
+
+	return nil
+}
+
 func (uh *UserRepo) getCollection() (*mongo.Collection, error) {
 	userDatabase := uh.cli.Database("mongoDemo")
 	usersCollection := userDatabase.Collection("users")
@@ -248,6 +365,12 @@ func (uh *UserRepo) getCollection() (*mongo.Collection, error) {
 
 func (uh *UserRepo) getEmailCollection() *mongo.Collection {
 	userDatabase := uh.cli.Database("mongoDemo")
-	usersCollection := userDatabase.Collection("verificatonEmails")
-	return usersCollection
+	verificationEmailCollection := userDatabase.Collection("verificatonEmails")
+	return verificationEmailCollection
+}
+
+func (uh *UserRepo) getFogottenPasswordEmailCollection() *mongo.Collection {
+	userDatabase := uh.cli.Database("mongoDemo")
+	forgottenPasswordEmailCollection := userDatabase.Collection("forgottenPasswordEmails")
+	return forgottenPasswordEmailCollection
 }
