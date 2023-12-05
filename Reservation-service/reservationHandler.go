@@ -1,12 +1,9 @@
 package main
 
 import (
-	"Rest/data"
+	"context"
 	"encoding/json"
-	"errors"
-	"io"
 	"log"
-	"mime"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -16,10 +13,10 @@ type KeyProduct struct{}
 
 type reservationHandler struct {
 	logger *log.Logger
-	repo   *data.ReservationRepository
+	repo   *ReservationRepo
 }
 
-func NewReservationHandler(l *log.Logger, r *data.ReservationRepository) *reservationHandler {
+func NewReservationHandler(l *log.Logger, r *ReservationRepo) *reservationHandler {
 	return &reservationHandler{l, r}
 }
 
@@ -44,29 +41,29 @@ func (rh *reservationHandler) GetAllReservationIds(res http.ResponseWriter, req 
 	}
 }
 
-func (rh *reservationHandler) createReservation(w http.ResponseWriter, req *http.Request) {
-	contentType := req.Header.Get("Content-Type")
-	mediatype, _, err := mime.ParseMediaType(contentType)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+// func (rh *reservationHandler) createReservation(w http.ResponseWriter, req *http.Request) {
+// 	contentType := req.Header.Get("Content-Type")
+// 	mediatype, _, err := mime.ParseMediaType(contentType)
+// 	if err != nil {
+// 		http.Error(w, err.Error(), http.StatusBadRequest)
+// 		return
+// 	}
 
-	if mediatype != "application/json" {
-		err := errors.New("Expect application/json Content-Type")
-		http.Error(w, err.Error(), http.StatusUnsupportedMediaType)
-		return
-	}
+// 	if mediatype != "application/json" {
+// 		err := errors.New("Expect application/json Content-Type")
+// 		http.Error(w, err.Error(), http.StatusUnsupportedMediaType)
+// 		return
+// 	}
 
-	rt, err := decodeBody(req.Body)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+// 	rt, err := decodeBody(req.Body)
+// 	if err != nil {
+// 		http.Error(w, err.Error(), http.StatusBadRequest)
+// 		return
+// 	}
 
-	rh.repo.Insert(rt)
-	w.WriteHeader(http.StatusCreated)
-}
+// 	rh.repo.Insert(rt)
+// 	w.WriteHeader(http.StatusCreated)
+// }
 
 func (rh *reservationHandler) getAllReservationsByAcco(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
@@ -111,7 +108,7 @@ func (rh *reservationHandler) getAllReservationsByUser(res http.ResponseWriter, 
 }
 
 func (rh *reservationHandler) CreateReservationForAcco(res http.ResponseWriter, req *http.Request) {
-	reservationAcco := req.Context().Value(KeyProduct{}).(*data.ReservationByAcco)
+	reservationAcco := req.Context().Value(KeyProduct{}).(*ReservationByAccommodation)
 	err := rh.repo.InsertReservationByAcco(reservationAcco)
 	if err != nil {
 		rh.logger.Print("Database exception: ", err)
@@ -122,7 +119,7 @@ func (rh *reservationHandler) CreateReservationForAcco(res http.ResponseWriter, 
 }
 
 func (rh *reservationHandler) CreateReservationForUser(res http.ResponseWriter, req *http.Request) {
-	reservationUser := req.Context().Value(KeyProduct{}).(*data.ReservationByUser)
+	reservationUser := req.Context().Value(KeyProduct{}).(*ReservationByUser)
 	err := rh.repo.InsertReservationByUser(reservationUser)
 	if err != nil {
 		rh.logger.Print("Database exception: ", err)
@@ -151,29 +148,69 @@ func (rh *reservationHandler) UpdateReservationByAcco(res http.ResponseWriter, r
 	res.WriteHeader(http.StatusCreated)
 }
 
-func decodeBody(r io.Reader) (*Reservation, error) {
-	dec := json.NewDecoder(r)
-	dec.DisallowUnknownFields()
-
-	var rt Reservation
-	if err := dec.Decode(&rt); err != nil {
-		return nil, err
-	}
-	return &rt, nil
+func (rh *reservationHandler) MiddlewareReservationForAccoDeserialization(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(rw http.ResponseWriter, h *http.Request) {
+		reservationByAcco := &ReservationByAccommodation{}
+		err := reservationByAcco.FromJSON(h.Body)
+		if err != nil {
+			http.Error(rw, "Unable to decode json", http.StatusBadRequest)
+			rh.logger.Fatal(err)
+			return
+		}
+		ctx := context.WithValue(h.Context(), KeyProduct{}, reservationByAcco)
+		h = h.WithContext(ctx)
+		next.ServeHTTP(rw, h)
+	})
 }
 
-func renderJSON(w http.ResponseWriter, v interface{}) {
-	js, err := json.Marshal(v)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(js)
+func (rh *reservationHandler) MiddlewareReservationForUserDeserialization(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(rw http.ResponseWriter, h *http.Request) {
+		reservationByUser := &ReservationByUser{}
+		err := reservationByUser.FromJSON(h.Body)
+		if err != nil {
+			http.Error(rw, "Unable to decode json", http.StatusBadRequest)
+			rh.logger.Fatal(err)
+			return
+		}
+		ctx := context.WithValue(h.Context(), KeyProduct{}, reservationByUser)
+		h = h.WithContext(ctx)
+		next.ServeHTTP(rw, h)
+	})
 }
 
-func (u *Reservations) ToJSON(w io.Writer) error {
-	e := json.NewEncoder(w)
-	return e.Encode(u)
+func (rh *reservationHandler) MiddlewareContentTypeSet(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(rw http.ResponseWriter, h *http.Request) {
+		rh.logger.Println("Method [", h.Method, "] - Hit path :", h.URL.Path)
+
+		rw.Header().Add("Content-Type", "application/json")
+
+		next.ServeHTTP(rw, h)
+	})
 }
+
+// func decodeBody(r io.Reader) (*Reservation, error) {
+// 	dec := json.NewDecoder(r)
+// 	dec.DisallowUnknownFields()
+
+// 	var rt Reservation
+// 	if err := dec.Decode(&rt); err != nil {
+// 		return nil, err
+// 	}
+// 	return &rt, nil
+// }
+
+// func renderJSON(w http.ResponseWriter, v interface{}) {
+// 	js, err := json.Marshal(v)
+// 	if err != nil {
+// 		http.Error(w, err.Error(), http.StatusInternalServerError)
+// 		return
+// 	}
+
+// 	w.Header().Set("Content-Type", "application/json")
+// 	w.Write(js)
+// }
+
+// func (u *Reservations) ToJSON(w io.Writer) error {
+// 	e := json.NewEncoder(w)
+// 	return e.Encode(u)
+// }

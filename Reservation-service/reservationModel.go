@@ -9,10 +9,11 @@ import (
 )
 
 type ReservationByAccommodation struct {
-	AccommodationId gocql.UUID
-	ReservationId   gocql.UUID
-	Price           int
-	Date            time.Time
+	AccoId        gocql.UUID
+	ReservationId gocql.UUID
+	Price         int
+	Date          time.Time
+	IsDeleted     bool
 }
 
 type ReservationByUser struct {
@@ -20,12 +21,21 @@ type ReservationByUser struct {
 	ReservationId gocql.UUID
 	Price         int
 	Date          time.Time
+	IsDeleted     bool
 }
 
 type ReservationsByAccommodation []*ReservationByAccommodation
 type ReservationsByUser []*ReservationByUser
 
 func (o *ReservationByAccommodation) ToJSON(w io.Writer) error {
+	e := json.NewEncoder(w)
+	return e.Encode(o)
+}
+func (o *ReservationsByAccommodation) ToJSON(w io.Writer) error {
+	e := json.NewEncoder(w)
+	return e.Encode(o)
+}
+func (o *ReservationsByUser) ToJSON(w io.Writer) error {
 	e := json.NewEncoder(w)
 	return e.Encode(o)
 }
