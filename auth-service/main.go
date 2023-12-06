@@ -73,9 +73,8 @@ func main() {
 	authRoutes := router.PathPrefix("/").Subrouter()
 	authRoutes.Use(AuthMiddleware(tokenMaker))
 
-	// router.HandleFunc("/api/users/auth", service.Auth)
-	router.HandleFunc("/api/users/register", SetCSPHeader(service.createUser)).Methods("POST")                   // daniel je stavio bez SetCSPHeader
-	router.HandleFunc("/api/users/login", SetCSPHeader(service.loginUser)).Methods("POST")                       // daniel je stavio bez SetCSPHeader
+	router.HandleFunc("/api/users/register", SetCSPHeader(service.createUser)).Methods("POST")
+	router.HandleFunc("/api/users/login", SetCSPHeader(service.loginUser)).Methods("POST")
 	router.HandleFunc("/api/users/email/{code}", service.verifyEmail).Methods("POST")                            // for sending verification mail
 	router.HandleFunc("/api/users/sendforgottemail/{email}", service.sendForgottenPasswordEmail).Methods("POST") // for sending forgotten password email
 	router.HandleFunc("/api/users/changeForgottenPassword", service.changeForgottenPassword).Methods("POST")     // treba da se prosledi body sa newPassword, confirmPassword, code

@@ -1,4 +1,4 @@
-.container {
+/* .container {
     display: flex;
     justify-content: center;
     margin-top: 5%;
@@ -6,15 +6,19 @@
   
   form {
     width: 50%;
-  }
-  
-  fieldset {
-    border: 1px solid #ccc;
-    padding: 20px;
-    border-radius: 5px;
-    background-color: #f8f9fa;
-  }
-  
+  }*/
+
+fieldset {
+  border: 1px solid #ccc;
+  padding: 20px;
+  border-radius: 5px;
+  background-color: #f8f9fa;
+}
+
+input {
+  margin-bottom: 15px;
+}
+/*
   legend {
     font-size: 1.5rem;
     font-weight: bold;
@@ -33,7 +37,7 @@
     width: 100%;
   }
   
-  /* Additional styles for better consistency */
+  /* Additional styles for better consistency 
   input[type="text"],
   input[type="email"],
   input[type="password"],
@@ -56,5 +60,4 @@
     width: 200px;
     height: 100px;
     border: 1px solid #000;
-}
-  
+} */

@@ -16,8 +16,12 @@ type Subscriber struct {
 	subject string
 }
 
+type AuthMessage struct {
+	JToken string
+}
+
 func Connect() (*nats.Conn, error) {
-	conn, err := nats.Connect("nats://pera:peric@nats:4222") //TODO change url
+	conn, err := nats.Connect("nats://pera:peric@nats:4222")
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +63,7 @@ func (p Publisher) Publish(message interface{}) (response *nats.Msg, err error) 
 	if err != nil {
 		return nil, err
 	}
-	return response, nil //TODO change response
+	return response, nil
 }
 
 func (s Subscriber) Subscribe(function interface{}) error {

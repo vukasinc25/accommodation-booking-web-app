@@ -9,6 +9,7 @@ import { ProfileComponent } from './profile/profile.component';
 import { roleGuard } from './guard/role.guard';
 import { loginGuard } from './guard/login.guard';
 import { PasswordEmailRecoveryComponent } from './password-email-recovery/password-email-recovery.component';
+import { AccommoInfoComponent } from './accommo-info/accommo-info.component';
 import { VerifyEmailComponent } from './verify-email/verify-email.component';
 
 const routes: Routes = [
@@ -32,6 +33,10 @@ const routes: Routes = [
     path: 'profile',
     component: ProfileComponent,
     canActivate: [loginGuard],
+  },
+  {
+    path: 'accommodations/info/:id',
+    component: AccommoInfoComponent,
   },
   {
     path: 'accommodations/create',

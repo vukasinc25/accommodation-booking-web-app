@@ -48,8 +48,11 @@ func (uh *UserHandler) Auth(msg *nats.Msg) nats.Msg {
 	uh.logger.Println("Received publish")
 
 	uh.logger.Println(string(msg.Data))
+	uh.logger.Println(strings.Split(string(msg.Data), "\"")[3])
+	jToken := strings.Split(string(msg.Data), "\"")[3]
 
-	payload, err := uh.jwtMaker.VerifyToken(string(msg.Data))
+	payload, err := uh.jwtMaker.VerifyToken(jToken)
+
 	uh.logger.Println(payload.Role)
 	if err != nil || payload.Role != "HOST" {
 		msg2 := nats.Msg{Data: []byte("not ok")}
@@ -91,7 +94,7 @@ func (uh *UserHandler) createUser(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	rt.IsEmailVerified = false
+	rt.IsEmailVerified = true
 
 	sanitizedUsername := sanitizeInput(rt.Username)
 	sanitizedPassword := sanitizeInput(rt.Password)
