@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 
 	"github.com/gocql/gocql"
@@ -74,7 +75,7 @@ func (rs *ReservationRepo) CloseSession() {
 func (rs *ReservationRepo) CreateTables() {
 	err := rs.session.Query(
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s 
-					(acco_id UUID, reservation_id UUID, price int, date date, isDeleted bool
+					(acco_id UUID, reservation_id UUID, price int, date date, isDeleted boolean,
 					PRIMARY KEY ((acco_id, reservation_id), price)) 
 					WITH CLUSTERING ORDER BY (price ASC, date DESC)`,
 			"reservations_by_acco")).Exec()
@@ -84,7 +85,7 @@ func (rs *ReservationRepo) CreateTables() {
 
 	err = rs.session.Query(
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s 
-					(user_id UUID, reservation_id UUID, price int, date date, isDeleted bool
+					(user_id UUID, reservation_id UUID, price int, date date, isDeleted boolean,
 					PRIMARY KEY ((user_id, reservation_id), price)) 
 					WITH CLUSTERING ORDER BY (price ASC, date DESC)`,
 			"reservations_by_user")).Exec()
@@ -98,7 +99,7 @@ func (rs *ReservationRepo) CreateTables() {
 
 // -------Reservation By Accommodation-------//
 func (rs *ReservationRepo) GetReservationsByAcco(acco_id string) (ReservationsByAccommodation, error) {
-	scanner := rs.session.Query(`SELECT acco_id, reservation_id, price int, date date, isDeleted
+	scanner := rs.session.Query(`SELECT acco_id, reservation_id, price, date, isDeleted,
 								FROM reservations_by_acco WHERE acco_id = ? AND isDeleted = 0`,
 		acco_id).Iter().Scanner()
 
@@ -117,6 +118,10 @@ func (rs *ReservationRepo) GetReservationsByAcco(acco_id string) (ReservationsBy
 		return nil, err
 	}
 	return reservations, nil
+}
+
+func (rs *ReservationRepo) Aaa(v http.ResponseWriter, req *http.Request) {
+	log.Println("aezakmi")
 }
 
 func (rs *ReservationRepo) InsertReservationByAcco(resAcco *ReservationByAccommodation) error {

@@ -13,7 +13,7 @@ type ReservationByAccommodation struct {
 	ReservationId gocql.UUID
 	Price         int
 	Date          time.Time
-	IsDeleted     bool
+	IsDeleted     boolean
 }
 
 type ReservationByUser struct {
@@ -21,7 +21,7 @@ type ReservationByUser struct {
 	ReservationId gocql.UUID
 	Price         int
 	Date          time.Time
-	IsDeleted     bool
+	IsDeleted     boolean
 }
 
 type ReservationsByAccommodation []*ReservationByAccommodation

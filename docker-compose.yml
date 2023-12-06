@@ -62,13 +62,13 @@ services:
       context: ./reservation-service/
       dockerfile: Dockerfile
     restart: always
-    container_name: "reservation-server"
+    container_name: "reservation-service"
     image: reservation-service
     hostname: reservation-service
     ports:
-      - 8080:8080
+      - 8000:8000
     environment:
-      - PORT=8080
+      - PORT=8000
       - CASS_DB=cassandra:9042
     depends_on:
       cassandra:
@@ -86,6 +86,7 @@ services:
       - auth-service
       - accommodation-service
       - prof-service
+      - reservation-service
     networks:
       - network
 

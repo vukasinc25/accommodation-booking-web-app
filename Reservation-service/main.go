@@ -24,7 +24,7 @@ func main() {
 	defer cancel()
 
 	logger := log.New(os.Stdout, "[reservation-api] ", log.LstdFlags)
-	storeLogger := log.New(os.Stdout, "[patient-store] ", log.LstdFlags)
+	storeLogger := log.New(os.Stdout, "[reservation-store] ", log.LstdFlags)
 
 	store, err := New(storeLogger)
 	if err != nil {
@@ -35,10 +35,14 @@ func main() {
 
 	reservationHandler := NewReservationHandler(logger, store)
 	router := mux.NewRouter()
+	router.HandleFunc("/api/r", reservationHandler.Aaa).Methods("GET")
 	router.Use(reservationHandler.MiddlewareContentTypeSet)
 
 	getReservationIds := router.Methods(http.MethodGet).Subrouter()
 	getReservationIds.HandleFunc("/api/reservations/all", reservationHandler.GetAllReservationIds)
+
+	getReservationIds2 := router.Methods(http.MethodGet).Subrouter()
+	getReservationIds2.HandleFunc("/api/r", reservationHandler.GetAllReservationIds)
 
 	getReservationsByAcco := router.Methods(http.MethodGet).Subrouter()
 	getReservationsByAcco.HandleFunc("/api/reservations/by_user", reservationHandler.getAllReservationsByAcco)
