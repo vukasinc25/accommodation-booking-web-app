@@ -16,7 +16,7 @@ type Accommodation struct {
 	MaxGuests int                `bson:"maxGuests,omitempty" json:"maxGuests"`
 	// Availability bool   `json:"availability"`
 	// Details      string `json:"details"`
-	Price     string 			`bson:"price,omitempty" json:"price"`
+	//Price     string 			`bson:"price,omitempty" json:"price"`
 }
 
 type Location struct {
@@ -30,11 +30,11 @@ type Amenity string
 
 const (
 	WIFI             Amenity = "WIFI"
-	HEATING          Amenity = "HEATING"
-	AIR_CONDITIONING Amenity = "AIR_CONDITIONING"
-	KITCHEN          Amenity = "KITCHEN"
+	Heating          Amenity = "Heating"
+	Air_conditioning Amenity = "Air conditioning"
+	Kitchen          Amenity = "Kitchen"
 	TV               Amenity = "TV"
-	WASHER           Amenity = "WASHER"
+	Washer           Amenity = "Washer"
 )
 
 type Accommodations []*Accommodation

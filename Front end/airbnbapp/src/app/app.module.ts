@@ -13,6 +13,7 @@ import { AccommoAddComponent } from './accommo-add/accommo-add.component';
 import { ProfileComponent } from './profile/profile.component';
 import { TokenInterceptor } from './interceptor/token.interceptor';
 import { NgxCaptchaModule } from 'ngx-captcha';
+import { AccommoInfoComponent } from './accommo-info/accommo-info.component';
 import { EmailVerificationPopupComponent } from './email-verification-popup/email-verification-popup.component';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 // import { MatDialogModule } from '@angular/material/dialog';
@@ -29,6 +30,7 @@ import { VerifyEmailComponent } from './verify-email/verify-email.component';
     RegisterComponent,
     AccommoAddComponent,
     ProfileComponent,
+    AccommoInfoComponent,
     EmailVerificationPopupComponent,
     PasswordEmailRecoveryComponent,
     ResetPasswordComponent,
