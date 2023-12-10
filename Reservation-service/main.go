@@ -35,14 +35,14 @@ func main() {
 
 	reservationHandler := NewReservationHandler(logger, store)
 	router := mux.NewRouter()
-	router.HandleFunc("/api/r", reservationHandler.Aaa).Methods("GET")
-	router.Use(reservationHandler.MiddlewareContentTypeSet)
+	router.HandleFunc("/api/reservations/r", reservationHandler.Test).Methods("GET")
+	// router.Use(reservationHandler.MiddlewareContentTypeSet)
 
 	getReservationIds := router.Methods(http.MethodGet).Subrouter()
-	getReservationIds.HandleFunc("/api/reservations/all", reservationHandler.GetAllReservationIds)
+	getReservationIds.HandleFunc("/api/reservations/", reservationHandler.GetAllReservationIds)
 
-	getReservationIds2 := router.Methods(http.MethodGet).Subrouter()
-	getReservationIds2.HandleFunc("/api/r", reservationHandler.GetAllReservationIds)
+	// getReservationIds2 := router.Methods(http.MethodGet).Subrouter()
+	// getReservationIds2.HandleFunc("/api/r", reservationHandler.GetAllReservationIds)
 
 	getReservationsByAcco := router.Methods(http.MethodGet).Subrouter()
 	getReservationsByAcco.HandleFunc("/api/reservations/by_user", reservationHandler.getAllReservationsByAcco)

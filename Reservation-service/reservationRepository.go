@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/gocql/gocql"
 )
@@ -16,9 +17,12 @@ type ReservationRepo struct {
 
 func New(logger *log.Logger) (*ReservationRepo, error) {
 	db := os.Getenv("CASS_DB")
+	log.Println(db)
+	log.Println("A sto ne radi")
 
 	cluster := gocql.NewCluster(db)
 	cluster.Keyspace = "system"
+	cluster.Timeout = time.Second * 55
 	session, err := cluster.CreateSession()
 	if err != nil {
 		logger.Println(err)
@@ -76,8 +80,8 @@ func (rs *ReservationRepo) CreateTables() {
 	err := rs.session.Query(
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s 
 					(acco_id UUID, reservation_id UUID, price int, date date, isDeleted boolean,
-					PRIMARY KEY ((acco_id, reservation_id), price)) 
-					WITH CLUSTERING ORDER BY (price ASC, date DESC)`,
+					PRIMARY KEY ((acco_id, reservation_id), date, price))
+					WITH CLUSTERING ORDER BY (date DESC, price ASC)`,
 			"reservations_by_acco")).Exec()
 	if err != nil {
 		rs.logger.Println(err)
@@ -86,12 +90,9 @@ func (rs *ReservationRepo) CreateTables() {
 	err = rs.session.Query(
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s 
 					(user_id UUID, reservation_id UUID, price int, date date, isDeleted boolean,
-					PRIMARY KEY ((user_id, reservation_id), price)) 
-					WITH CLUSTERING ORDER BY (price ASC, date DESC)`,
+					PRIMARY KEY ((user_id, reservation_id), date, price))
+					WITH CLUSTERING ORDER BY (date DESC, price ASC)`,
 			"reservations_by_user")).Exec()
-	if err != nil {
-		rs.logger.Println(err)
-	}
 	if err != nil {
 		rs.logger.Println(err)
 	}

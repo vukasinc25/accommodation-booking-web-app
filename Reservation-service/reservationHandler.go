@@ -20,6 +20,9 @@ func NewReservationHandler(l *log.Logger, r *ReservationRepo) *reservationHandle
 	return &reservationHandler{l, r}
 }
 
+func (rh *reservationHandler) Test(res http.ResponseWriter, req *http.Request) {
+	log.Println("AAA")
+}
 func (rh *reservationHandler) GetAllReservationIds(res http.ResponseWriter, req *http.Request) {
 	reservationIds, err := rh.repo.GetDistinctIds("reservation_id", "reservations_by_user")
 	if err != nil {

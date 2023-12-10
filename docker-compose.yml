@@ -1,7 +1,6 @@
 version: "3.8"
 
 services:
-
   auth-service:
     image: auth-service
     hostname: auth-service
@@ -59,20 +58,22 @@ services:
   
   reservation-service:
     build:
-      context: ./reservation-service/
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./reservation-service/Dockerfile
     restart: always
-    container_name: "reservation-service"
+    # container_name: "reservation-service"
     image: reservation-service
     hostname: reservation-service
     ports:
       - 8000:8000
     environment:
-      - PORT=8000
+      # - PORT=8000
       - CASS_DB=cassandra:9042
     depends_on:
       cassandra:
         condition: service_healthy
+    networks:
+      - network
 
   api_gateway:
     build:
@@ -147,7 +148,6 @@ services:
     restart: always
     ports:
       - "9042:9042"
-    # Docker healtcheck - checks if database is "alive"
     healthcheck:
       test: ["CMD-SHELL", "cqlsh -e 'describe cluster'"]
       interval: 15s
@@ -155,6 +155,12 @@ services:
       retries: 15
     volumes:
       - cass_store:/var/lib/cassandra/data
+    # environment:
+    #    - CASSANDRA_RPC_ADDRESS=cassandra
+    #    - CASSANDRA_BROADCAST_ADDRESS=cassandra
+    #    - CASSANDRA_LISTEN_ADDRESS=cassandra
+    networks:
+      - network
 
 volumes:
   mongo_store:

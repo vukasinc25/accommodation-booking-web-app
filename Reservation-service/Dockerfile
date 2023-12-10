@@ -1,9 +1,9 @@
 FROM golang:alpine as build_container
 WORKDIR /app
-COPY go.mod .
-COPY go.sum .
+COPY ./reservation-service/go.mod ./reservation-service/go.sum ./
+COPY /utility ../utlity
 RUN go mod download
-COPY . .
+COPY ./reservation-service/ .
 RUN go build -o server
 
 FROM alpine
