@@ -100,8 +100,8 @@ func (rs *ReservationRepo) CreateTables() {
 
 // -------Reservation By Accommodation-------//
 func (rs *ReservationRepo) GetReservationsByAcco(acco_id string) (ReservationsByAccommodation, error) {
-	scanner := rs.session.Query(`SELECT acco_id, reservation_id, price, date, isDeleted,
-								FROM reservations_by_acco WHERE acco_id = ? AND isDeleted = 0`,
+	scanner := rs.session.Query(`SELECT acco_id, reservation_id, price, date, isDeleted
+	 FROM reservations_by_acco WHERE acco_id = ? AND isDeleted = false ALLOW FILTERING;`,
 		acco_id).Iter().Scanner()
 
 	var reservations ReservationsByAccommodation
@@ -128,8 +128,8 @@ func (rs *ReservationRepo) Aaa(v http.ResponseWriter, req *http.Request) {
 func (rs *ReservationRepo) InsertReservationByAcco(resAcco *ReservationByAccommodation) error {
 	reservationId, _ := gocql.RandomUUID()
 	err := rs.session.Query(
-		`INSERT INTO reservations_by_acco (acco_id, reservation_id, price, date) 
-		VALUES (?, ?, ?, ?)`,
+		`INSERT INTO reservations_by_acco (acco_id, reservation_id, price, date) VALUES 
+		(?, ?, ?, ?);`,
 		resAcco.AccoId, reservationId, resAcco.Price, resAcco.Date).Exec()
 	if err != nil {
 		rs.logger.Println(err)
@@ -140,8 +140,8 @@ func (rs *ReservationRepo) InsertReservationByAcco(resAcco *ReservationByAccommo
 
 // -------Reservation By User-------//
 func (rs *ReservationRepo) GetReservationsByUser(user_id string) (ReservationsByUser, error) {
-	scanner := rs.session.Query(`SELECT user_id, reservation_id, price int, date date, isDeleted
-								FROM reservations_by_user WHERE user_id = ? AND isDeleted = 0`,
+	scanner := rs.session.Query(`SELECT user_id, reservation_id, price, date, isDeleted
+	FROM reservations_by_acco WHERE user_id = ? AND isDeleted = false ALLOW FILTERING;`,
 		user_id).Iter().Scanner()
 
 	var reservations ReservationsByUser
