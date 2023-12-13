@@ -16,6 +16,7 @@ import (
 func main() {
 
 	port := os.Getenv("PORT")
+
 	if len(port) == 0 {
 		port = "8000"
 	}
@@ -24,36 +25,9 @@ func main() {
 	defer cancel()
 
 	logger := log.New(os.Stdout, "[reservation-api] ", log.LstdFlags)
-	storeLogger := log.New(os.Stdout, "[patient-store] ", log.LstdFlags)
+	//storeLogger := log.New(os.Stdout, "[patient-store] ", log.LstdFlags)
 
-	store, err := New(storeLogger)
-	if err != nil {
-		logger.Fatal(err)
-	}
-	defer store.CloseSession()
-	store.CreateTables()
-
-	reservationHandler := NewReservationHandler(logger, store)
 	router := mux.NewRouter()
-	router.Use(reservationHandler.MiddlewareContentTypeSet)
-
-	getReservationIds := router.Methods(http.MethodGet).Subrouter()
-	getReservationIds.HandleFunc("/api/reservations/all", reservationHandler.GetAllReservationIds)
-
-	getReservationsByAcco := router.Methods(http.MethodGet).Subrouter()
-	getReservationsByAcco.HandleFunc("/api/reservations/by_user", reservationHandler.getAllReservationsByAcco)
-
-	getReservationsByUser := router.Methods(http.MethodGet).Subrouter()
-	getReservationsByUser.HandleFunc("/api/reservations/by_acco", reservationHandler.getAllReservationsByUser)
-
-	postReservationForAcco := router.Methods(http.MethodPost).Subrouter()
-	postReservationForAcco.HandleFunc("/api/reservations/for_user", reservationHandler.CreateReservationForAcco)
-	postReservationForAcco.Use(reservationHandler.MiddlewareReservationForAccoDeserialization)
-
-	postReservationForUser := router.Methods(http.MethodPost).Subrouter()
-	postReservationForUser.HandleFunc("/api/reservations/for_acco", reservationHandler.CreateReservationForUser)
-	postReservationForUser.Use(reservationHandler.MiddlewareReservationForUserDeserialization)
-
 	cors := gorillaHandlers.CORS(gorillaHandlers.AllowedOrigins([]string{"*"}))
 
 	server := http.Server{

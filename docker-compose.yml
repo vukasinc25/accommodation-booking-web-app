@@ -1,7 +1,6 @@
 version: "3.8"
 
 services:
-
   auth-service:
     image: auth-service
     hostname: auth-service
@@ -29,13 +28,12 @@ services:
     restart: always
     environment:
       PORT: ${PROF_SERVICE_PORT}
-      MONGO_DB_URI: ${MONGO_DB_URI}
-      ACCOMMODATIONS_SERVICE_HOST: ${ACCOMMODATIONS_SERVICE_HOST}
-      ACCOMMODATIONS_SERVICE_PORT: ${ACCOMMODATIONS_SERVICE_PORT}
+      PROF_DB: ${PROF_DB}
+      PROF_DB_PORT: ${PROF_DB_PORT}
     depends_on:
       nats:
         condition: service_started
-      mongo:
+      consul:
         condition: service_healthy
     networks:
       - network
@@ -58,23 +56,6 @@ services:
         condition: service_healthy
     networks:
       - network
-  
-  reservation-service:
-    build:
-      context: ./reservation-service/
-      dockerfile: Dockerfile
-    restart: always
-    container_name: "reservation-server"
-    image: reservation-service
-    hostname: reservation-service
-    ports:
-      - 8080:8080
-    environment:
-      - PORT=8080
-      - CASS_DB=cassandra:9042
-    depends_on:
-      cassandra:
-        condition: service_healthy
 
   api_gateway:
     build:
@@ -141,26 +122,32 @@ services:
       - mongo_express_data:/data/db
     networks:
       - network
-  
-  # NoSQL: CassandraDB
-  cassandra:
-    image: cassandra
-    restart: always
+
+  # NoSQL: Consul
+  consul:
+    image: hashicorp/consul:latest
     ports:
-      - "9042:9042"
-    # Docker healtcheck - checks if database is "alive"
+      - "8500:8500"
+      - "8600:8600/tcp"
+      - "8600:8600/udp"
     healthcheck:
-      test: ["CMD-SHELL", "cqlsh -e 'describe cluster'"]
-      interval: 15s
-      timeout: 5s
-      retries: 15
+      test: ["CMD", "consul", "members"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    command: "agent -server -ui -node=server-1 -bootstrap-expect=1 -client=0.0.0.0"
     volumes:
-      - cass_store:/var/lib/cassandra/data
+      # NoSQL
+      # <path_to_where_to_store_data_on_host_machine>:<database_specific_data_location>
+      - ./cosnul_store:/consul/data
+    networks:
+      - network
 
 volumes:
   mongo_store:
   mongo_express_data:
-  cass_store:
+  # cass_store:
+  cosnul_store:
 
 networks:
   network:

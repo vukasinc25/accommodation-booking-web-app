@@ -11,8 +11,6 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/nats-io/nats.go"
-	nats2 "github.com/vukasinc25/fst-airbnb/utility/messaging/nats"
 )
 
 func main() {
@@ -20,52 +18,37 @@ func main() {
 	quit := make(chan os.Signal)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 
-	config := loadConfig()
-
 	router := mux.NewRouter()
 	router.StrictSlash(true)
 
-	timeoutContext, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
 	//Initialize the logger we are going to use, with prefix and datetime for every log
 	logger := log.New(os.Stdout, "[product-api] ", log.LstdFlags)
-	storeLogger := log.New(os.Stdout, "[patient-store] ", log.LstdFlags)
 
 	// NoSQL: Initialize Product Repository store
-	store, err := New(timeoutContext, storeLogger, config["mondo_db_uri"])
+	store, err := New(logger)
 	if err != nil {
 		logger.Fatal(err)
 	}
-	defer store.Disconnect(timeoutContext)
 
-	// NoSQL: Checking if the connection was established
-	store.Ping()
+	service := NewUserHandler(logger, store)
 
-	service := NewUserHandler(logger, store, config["accomodation_service_address"])
-	sub := InitPubSubUser()
-
-	err = sub.Subscribe(func(msg *nats.Msg) {
-		pub, _ := nats2.NewNATSPublisher(msg.Reply)
-
-		response := service.SubscribeUser(msg)
-
-		response.Reply = msg.Reply
-
-		pub.Publish(response)
-	})
-	if err != nil {
-		logger.Fatal(err)
-	}
-	// router.HandleFunc("/user/", service.createUser).Methods("POST")
-	router.HandleFunc("/users/", service.getAllUsers).Methods("GET")
+	// router.HandleFunc("/api/prof/email/{code}", service.verifyEmail).Methods("POST") // for sending verification mail
+	router.HandleFunc("/api/prof/create", service.createUser).Methods("POST")
+	router.HandleFunc("/api/prof/users/", service.getAllUsers).Methods("GET")
 
 	// start servergo get -u github.com/gorilla/mux
 
-	srv := &http.Server{Addr: config["address"], Handler: router}
+	// srv := &http.Server{Addr: config["address"], Handler: router}
+	server := http.Server{
+		Addr:         ":" + "8000",
+		Handler:      router,
+		IdleTimeout:  120 * time.Second,
+		ReadTimeout:  120 * time.Second,
+		WriteTimeout: 120 * time.Second,
+	}
 	go func() {
 		log.Println("server starting")
-		if err := srv.ListenAndServe(); err != nil {
+		if err := server.ListenAndServe(); err != nil {
 			if err != http.ErrServerClosed {
 				log.Fatal(err)
 			}
@@ -80,7 +63,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	if err := srv.Shutdown(ctx); err != nil {
+	if err := server.Shutdown(ctx); err != nil {
 		log.Fatal(err)
 	}
 	log.Println("server stopped")
@@ -99,6 +82,6 @@ func loadConfig() map[string]string {
 	config["port"] = os.Getenv("PORT")
 	config["address"] = fmt.Sprintf(":%s", os.Getenv("PORT"))
 	config["mondo_db_uri"] = os.Getenv("MONGO_DB_URI")
-	config["accomodation_service_address"] = fmt.Sprintf("http://%s:%s", os.Getenv("ACCOMMODATIONS_SERVICE_HOST"), os.Getenv("ACCOMMODATIONS_SERVICE_PORT"))
+	// config["accomodation_service_address"] = fmt.Sprintf("http://%s:%s", os.Getenv("ACCOMMODATIONS_SERVICE_HOST"), os.Getenv("ACCOMMODATIONS_SERVICE_PORT"))
 	return config
 }
