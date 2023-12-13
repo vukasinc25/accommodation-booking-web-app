@@ -1,26 +1,33 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { Accommodation } from '../model/accommodation';
 import { AccommodationService } from '../service/accommodation.service';
 import { Router } from '@angular/router';
 import { AuthService } from '../service/auth.service';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-main-page',
   templateUrl: './main-page.component.html',
   styleUrls: ['./main-page.component.css'],
 })
-export class MainPageComponent implements OnInit {
+export class MainPageComponent implements OnInit, OnDestroy {
   accommodations: Accommodation[] = [];
   isLoggedin: boolean = false;
   userRole: string = '';
+  logSub: Subscription;
+  rolesub: Subscription;
 
   constructor(
     private router: Router,
     private accommodationService: AccommodationService,
     private authService: AuthService
   ) {
-    this.authService.isLoggedin.subscribe((data) => (this.isLoggedin = data));
-    this.authService.role.subscribe((data) => (this.userRole = data));
+    this.logSub = this.authService.isLoggedin.subscribe(
+      (data) => (this.isLoggedin = data)
+    );
+    this.rolesub = this.authService.role.subscribe(
+      (data) => (this.userRole = data)
+    );
   }
 
   ngOnInit(): void {
@@ -36,5 +43,10 @@ export class MainPageComponent implements OnInit {
         console.log(err);
       },
     });
+  }
+
+  ngOnDestroy(): void {
+    this.logSub.unsubscribe();
+    this.rolesub.unsubscribe();
   }
 }

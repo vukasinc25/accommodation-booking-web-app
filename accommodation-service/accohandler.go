@@ -3,13 +3,14 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"github.com/gorilla/mux"
-	"github.com/nats-io/nats.go"
-	utility "github.com/vukasinc25/fst-airbnb/utility/messaging"
-	nats2 "github.com/vukasinc25/fst-airbnb/utility/messaging/nats"
 	"io"
 	"log"
 	"net/http"
+
+	"github.com/gorilla/mux"
+	utility "github.com/vukasinc25/fst-airbnb/utility/messaging"
+	nats2 "github.com/vukasinc25/fst-airbnb/utility/messaging/nats"
+	"strings"
 )
 
 type KeyProduct struct{}
@@ -36,12 +37,36 @@ func InitPubSub() utility.Publisher {
 func (ah *AccoHandler) createAccommodation(rw http.ResponseWriter, req *http.Request) {
 
 	accommodation := req.Context().Value(KeyProduct{}).(*Accommodation)
+	ah.logger.Println(accommodation)
 	err := ah.db.Insert(accommodation)
 	if err != nil {
 		rw.WriteHeader(http.StatusBadRequest)
 	}
 	rw.WriteHeader(http.StatusCreated)
 
+}
+
+func (ah *AccoHandler) GetAccommodationById(w http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	id := vars["id"]
+
+	accommodation, err := ah.db.GetById(id)
+	if err != nil {
+		ah.logger.Println(err)
+	}
+
+	if accommodation == nil {
+		http.Error(w, "Patient with given id not found", http.StatusNotFound)
+		ah.logger.Printf("Patient with id: '%s' not found", id)
+		return
+	}
+
+	err = accommodation.ToJSON(w)
+	if err != nil {
+		http.Error(w, "Unable to convert to json", http.StatusInternalServerError)
+		ah.logger.Fatal("Unable to convert to json :", err)
+		return
+	}
 }
 
 func (ah *AccoHandler) getAllAccommodations(rw http.ResponseWriter, req *http.Request) {
@@ -85,16 +110,20 @@ func (ah *AccoHandler) MiddlewareRoleCheck(publisher utility.Publisher) mux.Midd
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 			ah.logger.Println("Published")
-
-			msg := nats.Msg{Data: []byte(r.Header.Get("Authorization"))}
+			fields := strings.Fields(r.Header.Get("Authorization"))
+			msg := nats2.AuthMessage{JToken: fields[1]}
+			//msg := nats.Msg{Data: []byte(fields[1])}
+			ah.logger.Println(msg.JToken)
 			response, err := publisher.Publish(msg)
 			if err != nil {
+				ah.logger.Println(err)
+				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-
 			ah.logger.Println(string(response.Data))
 			if string(response.Data) != "ok" {
 				w.WriteHeader(http.StatusUnauthorized)
+				return
 			}
 
 			next.ServeHTTP(w, r)

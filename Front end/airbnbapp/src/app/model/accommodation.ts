@@ -1,7 +1,12 @@
+import { AmenityType } from './amenityType';
+import { Location } from './location';
+
 export interface Accommodation {
-  id: number;
-  name: string;
-  minGuests: number;
-  maxGuests: number;
-  price: string;
+  _id?: number;
+  name?: string;
+  location?: Location;
+  minGuests?: number;
+  maxGuests?: number;
+  amenities?: AmenityType[];
+  // price?: string;
 }

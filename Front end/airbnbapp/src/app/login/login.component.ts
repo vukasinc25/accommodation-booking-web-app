@@ -28,7 +28,6 @@ export class LoginComponent {
     this.authService.login(this.form.value).subscribe({
       next: (data) => {
         console.log('login success');
-        console.log(data);
         localStorage.setItem('jwt', data.access_token);
         this.router.navigate(['']);
         this.authService.checkLoggin();

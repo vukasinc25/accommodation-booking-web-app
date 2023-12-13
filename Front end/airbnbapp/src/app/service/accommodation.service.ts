@@ -2,6 +2,8 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable } from 'rxjs';
+import { Location } from '../model/location';
+import { Accommodation } from '../model/accommodation';
 
 @Injectable({
   providedIn: 'root',
@@ -11,6 +13,13 @@ export class AccommodationService {
 
   private headers = new HttpHeaders({ 'Content-Type': 'application/json' });
 
+  getById(id: number): Observable<any> {
+    return this.http.get('/api/accommodations/' + id, {
+      headers: this.headers,
+      responseType: 'json',
+    });
+  }
+
   getAll(): Observable<any> {
     return this.http.get('/api/accommodations/', {
       headers: this.headers,
@@ -18,14 +27,21 @@ export class AccommodationService {
     });
   }
 
-  insert(accommodation: any): Observable<any> {
+  insert(accommodation: Accommodation): Observable<any> {
     return this.http.post(
       '/api/accommodations/create',
       {
         name: accommodation.name,
+        location: {
+          country: accommodation.location!.country,
+          city: accommodation.location!.city,
+          streetName: accommodation.location!.streetName,
+          streetNumber: accommodation.location!.streetNumber,
+        },
+        amenities: accommodation.amenities,
         minGuests: accommodation.minGuests,
         maxGuests: accommodation.maxGuests,
-        price: accommodation.price,
+        // price: accommodation.price,
       },
       { headers: this.headers, responseType: 'json' }
     );

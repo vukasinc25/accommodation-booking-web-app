@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"mime"
 	"net/http"
@@ -35,25 +36,70 @@ func NewUserHandler(l *log.Logger, r *UserRepo, jwtMaker token.Maker) *UserHandl
 	return &UserHandler{l, r, jwtMaker}
 }
 
-func InitPubSub() utility.Subscriber {
+func InitPubSubAuth() utility.Subscriber {
 	subscriber, err := nats2.NewNATSSubscriber("auth.check")
 	if err != nil {
 		log.Fatal(err)
 	}
 	return subscriber
 }
+
+// func InitPubSubUsername() utility.Subscriber {
+// 	subscriber, err := nats2.NewNATSSubscriber("prof.publish.username")
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+// 	return subscriber
+// }
+
+// func (uh *UserHandler) Create(username string, password string, email string) error {
+// 	log.Println("Usli u Create")
+// 	user := Use{
+// 		Username:        username,
+// 		Password:        password,
+// 		Email:           email,
+// 		IsEmailVerified: false,
+// 	}
+// 	err := uh.db.InsertUser(&user)
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	return nil
+// }
+
+// func (uh *UserHandler) SubscribeUsername(msg *nats.Msg) nats.Msg {
+// 	log.Println("Received publish")
+
+// 	// Decode the Base64 encoded username
+// 	decodedUsername := msg.Data
+
+// 	log.Println("Received username: ", string(decodedUsername))
+
+// 	err := uh.db.UpdateUsersVerificationEmail("perapera")
+// 	if err != nil {
+// 		return nats.Msg{Data: []byte("Eror u izmeni usera")}
+// 	}
+
+// 	responseMsg := nats.Msg{Data: []byte("ok")}
+// 	return responseMsg
+// }
+
 func (uh *UserHandler) Auth(msg *nats.Msg) nats.Msg {
 
 	uh.logger.Println("Received publish")
 
 	uh.logger.Println(string(msg.Data))
+	uh.logger.Println(strings.Split(string(msg.Data), "\"")[3])
+	jToken := strings.Split(string(msg.Data), "\"")[3]
 
-	//payload, _ := uh.jwtMaker.VerifyToken(string(msg.Data))
-	//uh.logger.Println(payload.Role)
-	//if err != nil || payload.Role != "HOST" {
-	//	msg2 := nats.Msg{Data: []byte("not ok")}
-	//	return msg2
-	//} //TODO fix
+	payload, err := uh.jwtMaker.VerifyToken(jToken)
+
+	uh.logger.Println(payload.Role)
+	if err != nil || payload.Role != "HOST" {
+		msg2 := nats.Msg{Data: []byte("not ok")}
+		return msg2
+	}
 
 	msg2 := nats.Msg{Data: []byte("ok")}
 	return msg2
@@ -127,25 +173,66 @@ func (uh *UserHandler) createUser(w http.ResponseWriter, req *http.Request) {
 	rt.Password = hashedPassword
 	log.Println("Hashed Password: %w", rt.Password)
 
-	content := `
-    <h1>Verify your email</h1>
-    <h1>This is a verification message from AirBnb</h1>
-    <h4>Use the following code: %s</h4>
-    <h4><a href="https://localhost:4200/verify-email">Click here</a> to verify your email.</h4>`
-	subject := "Verification email"
-	uh.sendEmail(rt, content, subject, true)
-
-	err = uh.db.Insert(rt)
+	response, err := uh.db.Insert(rt)
 	if err != nil {
+		log.Println("Nije uspesno poslan user")
 		if strings.Contains(err.Error(), "username") {
-			sendErrorWithMessage(w, "Provide different username", http.StatusConflict)
+			sendErrorWithMessage(w, "Provide different username", http.StatusBadRequest)
 		} else if strings.Contains(err.Error(), "email") {
-			sendErrorWithMessage(w, "Provide different email", http.StatusConflict)
+			sendErrorWithMessage(w, "Provide differen email", http.StatusBadRequest)
+		} else {
+			sendErrorWithMessage(w, err.Error(), http.StatusBadRequest)
 		}
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
+	responseBody, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		log.Println("Error reading response body:", err)
+		sendErrorWithMessage(w, "Error reading response body", http.StatusInternalServerError)
+		return
+	}
+
+	defer response.Body.Close()
+	if string(responseBody) == "User created" {
+		content := `
+		// 		<h1>Verify your email</h1>
+		// 		<h1>This is a verification message from AirBnb</h1>
+		// 		<h4>Use the following code: %s</h4>
+		// 		<h4><a href="https://localhost:4200/verify-email">Click here</a> to verify your email.</h4>`
+		subject := "Verification email"
+		uh.sendEmail(rt, content, subject, true, rt.Email)
+		sendErrorWithMessage(w, "User cretated. Check the email for verification code", http.StatusCreated)
+	} else {
+		sendErrorWithMessage(w, string(responseBody), response.StatusCode)
+	}
+
+	// w.WriteHeader(http.StatusCreated)
+	// if response != "" {
+	// 	if strings.Contains(response, "username") {
+	// 		sendErrorWithMessage(w, response, http.StatusBadRequest)
+	// 	} else if strings.Contains(response, "Provide different email") {
+	// 		sendErrorWithMessage(w, response, http.StatusBadRequest)
+	// 	} else if strings.Contains(response, "User not created") {
+	// 		sendErrorWithMessage(w, response, http.StatusBadRequest)
+	// 	} else if response == "ok" {
+	// 		err := uh.Create(rt.Username, rt.Password, rt.Email)
+	// 		if err != nil {
+	// 			sendErrorWithMessage(w, "User not succesfully created", http.StatusBadRequest)
+	// 			return
+	// 		}
+	// 		content := `
+	// 		<h1>Verify your email</h1>
+	// 		<h1>This is a verification message from AirBnb</h1>
+	// 		<h4>Use the following code: %s</h4>
+	// 		<h4><a href="https://localhost:4200/verify-email">Click here</a> to verify your email.</h4>`
+	// 		subject := "Verification email"
+	// 		uh.sendEmail(rt, content, subject, true, rt.Email)
+
+	// 		w.WriteHeader(http.StatusCreated)
+	// 	}
+	// 	return
+	// }
 }
 
 // getAllUsers handles requests to retrieve all users.
@@ -228,7 +315,7 @@ func (uh *UserHandler) loginUser(w http.ResponseWriter, req *http.Request) {
 	jwtToken(user, w, uh)
 }
 
-func (uh *UserHandler) sendEmail(newUser *User, contentStr string, subjectStr string, isVerificationEmail bool) error { // ako isVerificationEmial is true than VrificationEmail is sending and if is false ForgottenPasswordEmial is sending
+func (uh *UserHandler) sendEmail(newUser *User, contentStr string, subjectStr string, isVerificationEmail bool, email string) error { // ako isVerificationEmial is true than VrificationEmail is sending and if is false ForgottenPasswordEmial is sending
 	log.Println("SendEmail()")
 
 	randomCode := randstr.String(20)
@@ -247,7 +334,7 @@ func (uh *UserHandler) sendEmail(newUser *User, contentStr string, subjectStr st
 	sender := mail.NewGmailSender("Air Bnb", "mobilneaplikcijesit@gmail.com", "esrqtcomedzeapdr", tlsConfig) //postavi recoveri password
 	subject := subjectStr
 	content := fmt.Sprintf(contentStr, randomCode)
-	to := []string{"mobilneaplikcijesit@gmail.com"}
+	to := []string{email}
 	attachFiles := []string{}
 	log.Println("Pre SendEmail(subject, content, to, nil, nil, attachFiles)")
 	err = sender.SendEmail(subject, content, to, nil, nil, attachFiles)
@@ -300,7 +387,7 @@ func (uh *UserHandler) sendForgottenPasswordEmail(w http.ResponseWriter, req *ht
 		user := &User{
 			Email: email,
 		}
-		err := uh.sendEmail(user, content, subject, false)
+		err := uh.sendEmail(user, content, subject, false, email)
 		if err != nil {
 			sendErrorWithMessage(w, "Cant send email "+err.Error(), http.StatusBadRequest)
 			return
@@ -351,7 +438,6 @@ func (uh *UserHandler) isVerificationEmail(newUser *User, randomCode string, isV
 }
 
 func (uh *UserHandler) changeForgottenPassword(w http.ResponseWriter, req *http.Request) {
-	log.Println("Usli u changeForgottenPassword metodu")
 	rt, err := decodeForgottenPasswordBody(req.Body)
 	if err != nil {
 		if strings.Contains(err.Error(), "Key: 'ForgottenPassword.NewPassword' Error:Field validation for 'NewPassword' failed on the 'newPassword' tag") {
@@ -402,10 +488,9 @@ func (uh *UserHandler) changeForgottenPassword(w http.ResponseWriter, req *http.
 					return
 				}
 
-				user := &User{
+				user := &UserA{
 					Username:        "",
 					Password:        sanitizedPassword,
-					Role:            "",
 					Email:           forgottenPasswordEmail.Email,
 					IsEmailVerified: true,
 				}
@@ -578,6 +663,7 @@ func sanitizeInput(input string) string {
 func renderJSON(w http.ResponseWriter, v interface{}) {
 	js, err := json.Marshal(v)
 	if err != nil {
+		log.Println("Ovde")
 		sendErrorWithMessage(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

@@ -17,6 +17,18 @@ const (
 	Guest Role = "GUEST"
 )
 
+type UserA struct {
+	ID              primitive.ObjectID `bson:"_id,omitempty" json:"_id,omitempty"`
+	Username        string             `bson:"username,omitempty" json:"username"`
+	Password        string             `bson:"password,omitempty" json:"password"`
+	Email           string             `bson:"email,omitempty" json:"email"`
+	IsEmailVerified bool               `bson:"isEmailVerified" json:"isEmailVerified"`
+}
+type UserB struct {
+	ID       primitive.ObjectID `bson:"_id,omitempty" json:"_id,omitempty"`
+	Username string             `bson:"username,omitempty" json:"username"`
+	Role     Role               `bson:"role,omitempty" json:"role"`
+}
 type User struct {
 	ID              primitive.ObjectID `bson:"_id,omitempty" json:"_id,omitempty"`
 	Username        string             `bson:"username,omitempty" json:"username" validate:"required,min=6"`

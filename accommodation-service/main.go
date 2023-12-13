@@ -46,7 +46,7 @@ func main() {
 	postRouter.Use(service.MiddlewareAccommodationDeserialization)
 
 	router.HandleFunc("/api/accommodations/", service.getAllAccommodations).Methods("GET")
-
+	router.HandleFunc("/api/accommodations/{id}", service.GetAccommodationById).Methods("GET")
 	server := http.Server{
 		Addr:         ":" + config["port"],
 		Handler:      cors(router),

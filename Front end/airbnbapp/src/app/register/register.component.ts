@@ -40,6 +40,7 @@ export class RegisterComponent {
     this.authService.register(this.form.value).subscribe({
       next: (data) => {
         console.log('Register success');
+        alert('Uspesno ste se registrovali, proverite mejl radi verifikacije');
         this.router.navigate(['login']);
       },
       error: (err) => {

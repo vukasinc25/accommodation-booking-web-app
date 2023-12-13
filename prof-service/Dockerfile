@@ -1,9 +1,9 @@
 FROM golang:alpine as build_container
 WORKDIR /app
-COPY go.mod .
-COPY go.sum .
+COPY ./prof-service/go.mod ./prof-service/go.sum ./
+COPY /utility ../utility
 RUN go mod download
-COPY . .
+COPY ./prof-service/ .
 RUN go build -o server
 
 FROM alpine

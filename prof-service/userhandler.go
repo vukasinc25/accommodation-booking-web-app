@@ -10,73 +10,47 @@ import (
 )
 
 type userHandler struct {
-	logger               *log.Logger
-	db                   *UserRepo
-	accomodation_address string
+	logger *log.Logger
+	db     *UserRepo
 }
 
-func NewUserHandler(l *log.Logger, r *UserRepo, accomodations_adrress string) *userHandler {
-	return &userHandler{l, r, accomodations_adrress}
+func NewUserHandler(l *log.Logger, r *UserRepo) *userHandler {
+	return &userHandler{l, r}
 }
 
 func (uh *userHandler) createUser(w http.ResponseWriter, req *http.Request) {
+	log.Println("Usli u CreateUser")
 	contentType := req.Header.Get("Content-Type")
 	mediatype, _, err := mime.ParseMediaType(contentType)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Println("Error cant mimi.ParseMediaType")
+		sendErrorWithMessage(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if mediatype != "application/json" {
-		err := errors.New("Expect application/json Content-Type")
-		http.Error(w, err.Error(), http.StatusUnsupportedMediaType)
+		err := errors.New("expect application/json Content-Type")
+		sendErrorWithMessage(w, err.Error(), http.StatusUnsupportedMediaType)
 		return
 	}
 
 	rt, err := decodeBody(req.Body)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Println("Cant decode user")
+		sendErrorWithMessage(w, "Cant decode user", http.StatusNotAcceptable)
 		return
 	}
 
-	uh.db.Insert(rt)
-	w.WriteHeader(http.StatusCreated)
+	err = uh.db.Insert(rt)
+	if err != nil {
+		log.Println("User not saved")
+		sendErrorWithMessage(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	sendErrorWithMessage(w, "User created", http.StatusCreated)
 }
 
-// type Accomodation struct {
-// 	ID   int    `json:"ID"`
-// 	Name string `json:"Name"`
-// }
-
-// func (uh *userHandler) getAccomodations(w http.ResponseWriter) (*Accomodation, error) {
-// 	log.Println("Enterd in GetAccomodations")
-// 	url := uh.accomodation_address + "/accommodations"
-// 	log.Println("Accomodation address:", uh.accomodation_address)
-// 	log.Println("Url:", url)
-// 	req, err := http.NewRequest(http.MethodGet, url, nil)
-// 	if err != nil {
-// 		log.Println("Error in creating request")
-// 		return nil, err
-// 	}
-
-// 	httpResp, err := http.DefaultClient.Do(req)
-// 	if err != nil {
-// 		log.Println("Error in sendding or receving Resoponse from Accommodation service", req)
-// 		return nil, err
-// 	}
-// 	log.Println("HttpRespons: ", httpResp)
-
-// 	var resp *Accomodation
-
-// 	err = json.NewDecoder(httpResp.Body).Decode(&resp)
-// 	if err != nil {
-// 		log.Println("Error decoding response")
-// 		return nil, err
-// 	}
-
-//		renderJSON(w, resp)
-//		return resp, nil
-//	}
 func (uh *userHandler) getAllUsers(w http.ResponseWriter, req *http.Request) {
 
 	// log.Println("Get All Users method enterd geting Accomodation")
@@ -105,6 +79,7 @@ func decodeBody(r io.Reader) (*User, error) {
 
 	var rt User
 	if err := dec.Decode(&rt); err != nil {
+		log.Println("Lavor", r)
 		return nil, err
 	}
 	return &rt, nil
@@ -124,4 +99,10 @@ func renderJSON(w http.ResponseWriter, v interface{}) {
 func (u *Users) ToJSON(w io.Writer) error {
 	e := json.NewEncoder(w)
 	return e.Encode(u)
+}
+
+func sendErrorWithMessage(w http.ResponseWriter, message string, statusCode int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(message))
+	w.WriteHeader(statusCode)
 }

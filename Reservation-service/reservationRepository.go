@@ -1,20 +1,28 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
+<<<<<<< HEAD
 	"net/http"
 	"os"
+=======
+>>>>>>> 695427e4ea224977fd574165d928dfd42ba0902c
 	"time"
 
-	"github.com/gocql/gocql"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
 type ReservationRepo struct {
-	session *gocql.Session
-	logger  *log.Logger
+	cli    *mongo.Client
+	logger *log.Logger
 }
 
+<<<<<<< HEAD
 func New(logger *log.Logger) (*ReservationRepo, error) {
 	db := os.Getenv("CASS_DB")
 	log.Println(db)
@@ -24,44 +32,40 @@ func New(logger *log.Logger) (*ReservationRepo, error) {
 	cluster.Keyspace = "system"
 	cluster.Timeout = time.Second * 55
 	session, err := cluster.CreateSession()
+=======
+func New(ctx context.Context, logger *log.Logger) (*ReservationRepo, error) {
+	// dburi := "mongodb+srv://mongo:mongo@cluster0.gdaah26.mongodb.net/?retryWrites=true&w=majority"
+
+	client, err := mongo.NewClient(options.Client().ApplyURI(dburi))
+>>>>>>> 695427e4ea224977fd574165d928dfd42ba0902c
 	if err != nil {
-		logger.Println(err)
 		return nil, err
 	}
 
-	err = session.Query(
-		fmt.Sprintf(`CREATE KEYSPACE IF NOT EXISTS %s
-					WITH replication = {
-						'class' : 'SimpleStrategy',
-						'replication_factor' : %d
-					}`, "reservation", 1)).Exec()
+	err = client.Connect(ctx)
 	if err != nil {
-		logger.Println(err)
-	}
-	session.Close()
-
-	cluster.Keyspace = "reservation"
-	cluster.Consistency = gocql.One
-	session, err = cluster.CreateSession()
-	if err != nil {
-		logger.Println(err)
 		return nil, err
 	}
 
 	return &ReservationRepo{
-		session: session,
-		logger:  logger,
+		cli:    client,
+		logger: logger,
 	}, nil
 }
 
-func (rs *ReservationRepo) CloseSession() {
-	rs.session.Close()
+func (uh *ReservationRepo) Disconnect(ctx context.Context) error {
+	err := uh.cli.Disconnect(ctx)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-// func (pr *ReservationRepo) Ping() {
-// 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-// 	defer cancel()
+func (pr *ReservationRepo) Ping() {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
+<<<<<<< HEAD
 // 	// Check connection -> if no error, connection is established
 // 	err := pr.cli.Ping(ctx, readpref.Primary())
 // 	if err != nil {
@@ -83,10 +87,15 @@ func (rs *ReservationRepo) CreateTables() {
 					PRIMARY KEY ((acco_id, reservation_id), date, price))
 					WITH CLUSTERING ORDER BY (date DESC, price ASC)`,
 			"reservations_by_acco")).Exec()
+=======
+	// Check connection -> if no error, connection is established
+	err := pr.cli.Ping(ctx, readpref.Primary())
+>>>>>>> 695427e4ea224977fd574165d928dfd42ba0902c
 	if err != nil {
-		rs.logger.Println(err)
+		pr.logger.Println(err)
 	}
 
+<<<<<<< HEAD
 	err = rs.session.Query(
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s 
 					(user_id UUID, reservation_id UUID, price int, date date, isDeleted boolean,
@@ -103,24 +112,52 @@ func (rs *ReservationRepo) GetReservationsByAcco(acco_id string) (ReservationsBy
 	scanner := rs.session.Query(`SELECT acco_id, reservation_id, price, date, isDeleted
 	 FROM reservations_by_acco WHERE acco_id = ? AND isDeleted = false ALLOW FILTERING;`,
 		acco_id).Iter().Scanner()
-
-	var reservations ReservationsByAccommodation
-	for scanner.Next() {
-		var res ReservationByAccommodation
-		err := scanner.Scan(&res.AccoId, &res.ReservationId, &res.Price, &res.Date)
-		if err != nil {
-			rs.logger.Println(err)
-			return nil, err
-		}
-		reservations = append(reservations, &res)
+=======
+	// Print available databases
+	databases, err := pr.cli.ListDatabaseNames(ctx, bson.M{})
+	if err != nil {
+		pr.logger.Println(err)
 	}
-	if err := scanner.Err(); err != nil {
-		rs.logger.Println(err)
+	fmt.Println(databases)
+}
+
+func (ur *ReservationRepo) Insert(patient *Reservation) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	patientsCollection := ur.getCollection()
+>>>>>>> 695427e4ea224977fd574165d928dfd42ba0902c
+
+	result, err := patientsCollection.InsertOne(ctx, &patient)
+	if err != nil {
+		ur.logger.Println(err)
+		return err
+	}
+	ur.logger.Printf("Documents ID: %v\n", result.InsertedID)
+	return nil
+}
+
+func (pr *ReservationRepo) GetAll() (Reservations, error) {
+	// Initialise context (after 5 seconds timeout, abort operation)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	reservationsCollection := pr.getCollection()
+	pr.logger.Println("Collection: ", reservationsCollection)
+
+	var reservations Reservations
+	reservationsCursor, err := reservationsCollection.Find(ctx, bson.M{})
+	if err != nil {
+		pr.logger.Println("Cant find reservationCollection: ", err)
+		return nil, err
+	}
+	if err = reservationsCursor.All(ctx, &reservations); err != nil {
+		pr.logger.Println("Reservation Cursor.All: ", err)
 		return nil, err
 	}
 	return reservations, nil
 }
 
+<<<<<<< HEAD
 func (rs *ReservationRepo) Aaa(v http.ResponseWriter, req *http.Request) {
 	log.Println("aezakmi")
 }
@@ -208,4 +245,10 @@ func (rs *ReservationRepo) GetDistinctIds(idColumnName string, tableName string)
 		return nil, err
 	}
 	return ids, nil
+=======
+func (pr *ReservationRepo) getCollection() *mongo.Collection {
+	patientDatabase := pr.cli.Database("mongoDemo")
+	patientsCollection := patientDatabase.Collection("reservations")
+	return patientsCollection
+>>>>>>> 695427e4ea224977fd574165d928dfd42ba0902c
 }

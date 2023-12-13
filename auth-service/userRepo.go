@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"time"
 
@@ -63,21 +66,46 @@ func (uh *UserRepo) Ping() {
 }
 
 // Insert inserts a new user into the MongoDB collection.
-func (uh *UserRepo) Insert(user *User) error {
+func (uh *UserRepo) Insert(newUser *User) (*http.Response, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	usersCollection, err := uh.getCollection()
 	if err != nil {
 		log.Println("Duplicate key error: ", err)
-		return err
+		return nil, err
 	}
-	result, err := usersCollection.InsertOne(ctx, &user)
+
+	userA := uh.decodeUserA(newUser)
+
+	result, err := usersCollection.InsertOne(ctx, userA)
 	if err != nil {
-		uh.logger.Println(err)
-		return err
+		log.Println(err)
+		return nil, err
 	}
 	uh.logger.Printf("Document ID: %v\n", result.InsertedID)
-	return nil
+
+	url := "http://prof-service:8000" + "/api/prof/create"
+
+	userB := uh.decodeUserB(newUser)
+
+	reqBody, err := json.Marshal(userB)
+	if err != nil {
+		fmt.Println("Error marshaling JSON:", err)
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(reqBody))
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	httpResp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	return httpResp, nil
 }
 
 // GetAll retrieves all users from the MongoDB collection.
@@ -127,7 +155,7 @@ func (uh *UserRepo) GetByUsername(username string) (*User, error) {
 	return &user, nil
 }
 
-func (uh *UserRepo) UpdateUsersPassword(user *User) error {
+func (uh *UserRepo) UpdateUsersPassword(user *UserA) error { //
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	userCollection, err := uh.getCollection()
@@ -150,6 +178,7 @@ func (uh *UserRepo) UpdateUsersPassword(user *User) error {
 	return nil
 }
 func (uh *UserRepo) CreateVerificationEmail(verificationEmil VerifyEmail) error { // MORA  DA PRIMA POINTER NA VERIFYEMAIL
+	log.Println("Usli u CreateVerificationEmail")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -158,7 +187,7 @@ func (uh *UserRepo) CreateVerificationEmail(verificationEmil VerifyEmail) error 
 	verification := uh.getEmailCollection()
 	result, err := verification.InsertOne(ctx, &verificationCopy)
 	if err != nil {
-		uh.logger.Println(err)
+		log.Println("Error u kreiranju verifikacionog mejla")
 		return err
 	}
 	uh.logger.Printf("Documents ID: %v\n", result.InsertedID)
@@ -276,6 +305,7 @@ func (uh *UserRepo) GetAllVerificationEmailsByEmail(email string) ([]VerifyEmail
 }
 
 func (uh *UserRepo) UpdateUsersVerificationEmail(username string) error {
+	log.Println("Usli u UpdateUsersVerificationEmail", "Username:", username)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	userCollection, err := uh.getCollection()
@@ -345,19 +375,47 @@ func (uh *UserRepo) UpdateForgottenPasswordEmail(code string) error {
 
 	return nil
 }
+func (uh *UserRepo) decodeUserA(user *User) *UserA {
+	userA := UserA{
+		Username:        user.Username,
+		Password:        user.Password,
+		Email:           user.Email,
+		IsEmailVerified: false,
+	}
+	return &userA
+}
+
+func (uh *UserRepo) decodeUserB(user *User) *UserB {
+	userB := UserB{
+		Username: user.Username,
+		Role:     user.Role,
+	}
+	return &userB
+}
 
 func (uh *UserRepo) getCollection() (*mongo.Collection, error) {
 	userDatabase := uh.cli.Database("mongoDemo")
 	usersCollection := userDatabase.Collection("users")
 
-	indexModel := mongo.IndexModel{
+	username := mongo.IndexModel{
 		Keys:    bson.D{{Key: "username", Value: 1}},
 		Options: options.Index().SetUnique(true),
 	}
 
-	_, err := usersCollection.Indexes().CreateOne(context.TODO(), indexModel)
+	_, err := usersCollection.Indexes().CreateOne(context.TODO(), username)
 	if err != nil {
 		log.Println("Error in creatingOne unique username index")
+		return nil, err
+	}
+
+	email := mongo.IndexModel{
+		Keys:    bson.D{{Key: "email", Value: 1}},
+		Options: options.Index().SetUnique(true),
+	}
+
+	_, err = usersCollection.Indexes().CreateOne(context.TODO(), email)
+	if err != nil {
+		log.Println("Error in creatingOne unique email index")
 		return nil, err
 	}
 	return usersCollection, nil
