@@ -23,3 +23,5 @@ go.work
 #Moje
 .idea
 .DS_Store
+.consul_store
+consul_store
