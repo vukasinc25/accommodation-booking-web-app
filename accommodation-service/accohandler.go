@@ -1,16 +1,20 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/sony/gobreaker"
 	"io"
 	"log"
 	"net/http"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/gorilla/mux"
 	utility "github.com/vukasinc25/fst-airbnb/utility/messaging"
 	nats2 "github.com/vukasinc25/fst-airbnb/utility/messaging/nats"
-	"strings"
 )
 
 type KeyProduct struct{}
@@ -105,26 +109,60 @@ func (ah *AccoHandler) MiddlewareAccommodationDeserialization(next http.Handler)
 	})
 }
 
-func (ah *AccoHandler) MiddlewareRoleCheck(publisher utility.Publisher) mux.MiddlewareFunc {
+func (ah *AccoHandler) MiddlewareRoleCheck(client *http.Client, breaker *gobreaker.CircuitBreaker) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-			ah.logger.Println("Published")
-			fields := strings.Fields(r.Header.Get("Authorization"))
-			msg := nats2.AuthMessage{JToken: fields[1]}
-			//msg := nats.Msg{Data: []byte(fields[1])}
-			ah.logger.Println(msg.JToken)
-			response, err := publisher.Publish(msg)
+			ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+			defer cancel()
+			reqURL := "http://auth-service:8000/api/users/auth"
+
+			authorizationHeader := r.Header.Get("authorization")
+			fields := strings.Fields(authorizationHeader)
+			accessToken := fields[1]
+
+			var token ReqToken
+			token.Token = accessToken
+
+			cbResp, err := breaker.Execute(func() (interface{}, error) {
+				req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, bytes.NewBuffer([]byte(accessToken)))
+				if err != nil {
+					return nil, err
+				}
+				return client.Do(req)
+			})
 			if err != nil {
 				ah.logger.Println(err)
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-			ah.logger.Println(string(response.Data))
-			if string(response.Data) != "ok" {
-				w.WriteHeader(http.StatusUnauthorized)
+
+			resp := cbResp.(*http.Response)
+			resBody, err := io.ReadAll(resp.Body)
+			ah.logger.Println(string(resBody))
+			if resp.StatusCode != http.StatusOK {
+				ah.logger.Println("Error in auth response " + strconv.Itoa(resp.StatusCode))
+				ah.logger.Println("status " + resp.Status)
+				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
+			ah.logger.Println(resp)
+			//ah.logger.Println("Published")
+			//fields := strings.Fields(r.Header.Get("Authorization"))
+			//msg := nats2.AuthMessage{JToken: fields[1]}
+			////msg := nats.Msg{Data: []byte(fields[1])}
+			//ah.logger.Println(msg.JToken)
+			//response, err := publisher.Publish(msg)
+			//if err != nil {
+			//	ah.logger.Println(err)
+			//	w.WriteHeader(http.StatusInternalServerError)
+			//	return
+			//}
+			//ah.logger.Println(string(response.Data))
+			//if string(response.Data) != "ok" {
+			//	w.WriteHeader(http.StatusUnauthorized)
+			//	return
+			//}
 
 			next.ServeHTTP(w, r)
 		})

@@ -39,6 +39,10 @@ const (
 
 type Accommodations []*Accommodation
 
+type ReqToken struct {
+	Token string `json:"token"`
+}
+
 func (as *Accommodations) ToJSON(w io.Writer) error {
 	e := json.NewEncoder(w)
 	return e.Encode(as)

@@ -7,7 +7,7 @@ replace github.com/vukasinc25/fst-airbnb/utility => ../utility
 require (
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
-	github.com/nats-io/nats.go v1.31.0
+	github.com/sony/gobreaker v0.5.0
 	github.com/vukasinc25/fst-airbnb/utility v1.0.0
 	go.mongodb.org/mongo-driver v1.13.0
 )
@@ -17,6 +17,7 @@ require (
 	github.com/golang/snappy v0.0.1 // indirect
 	github.com/klauspost/compress v1.17.0 // indirect
 	github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe // indirect
+	github.com/nats-io/nats.go v1.31.0 // indirect
 	github.com/nats-io/nkeys v0.4.5 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect

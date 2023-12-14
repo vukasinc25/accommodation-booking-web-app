@@ -20,6 +20,7 @@ import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { PasswordEmailRecoveryComponent } from './password-email-recovery/password-email-recovery.component';
 import { ResetPasswordComponent } from './reset-password/reset-password.component';
 import { VerifyEmailComponent } from './verify-email/verify-email.component';
+import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 
 @NgModule({
   declarations: [
@@ -44,6 +45,7 @@ import { VerifyEmailComponent } from './verify-email/verify-email.component';
     HttpClientModule,
     NgxCaptchaModule,
     BrowserAnimationsModule,
+    NgbModule,
     // MatDialogModule,
   ],
   providers: [

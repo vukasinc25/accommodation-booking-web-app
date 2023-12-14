@@ -95,6 +95,10 @@ type ForgottenPasswordEmail struct {
 	ExpiredAt  time.Time          `bson:"expiredAt,omitempty" json:"expiredAt" validate:"required"`
 }
 
+type ReqToken struct {
+	Token string `json:"token"`
+}
+
 func ValidateUser(user User) error {
 	validate := validator.New()
 

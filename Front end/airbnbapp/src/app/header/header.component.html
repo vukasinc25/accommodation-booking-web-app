@@ -19,6 +19,12 @@
           <a *ngIf="isLoggedin" class="nav-link" routerLink="/profile"
             >Profile</a
           >
+          <a
+            *ngIf="isLoggedin && userRole == 'HOST'"
+            class="nav-link"
+            routerLink="/"
+            >My Accommodations</a
+          >
           <a *ngIf="!isLoggedin" class="nav-link" routerLink="/register"
             >Register</a
           >

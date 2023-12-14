@@ -1,7 +1,6 @@
 FROM golang:alpine as build_container
 WORKDIR /app
 COPY ./auth-service/go.mod ./auth-service/go.sum ./
-COPY /utility ../utility
 RUN go mod download
 COPY ./auth-service/ .
 RUN go build -o server

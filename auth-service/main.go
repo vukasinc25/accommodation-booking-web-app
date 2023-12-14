@@ -10,9 +10,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/nats-io/nats.go"
-	nats2 "github.com/vukasinc25/fst-airbnb/utility/messaging/nats"
-
 	gorillaHandlers "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/vukasinc25/fst-airbnb/token"
@@ -55,17 +52,7 @@ func main() {
 
 	// Create a user handler service
 	service := NewUserHandler(logger, store, tokenMaker)
-	sub := InitPubSubAuth()
 	// subu := InitPubSubUsername()
-	err = sub.Subscribe(func(msg *nats.Msg) {
-		pub, _ := nats2.NewNATSPublisher(msg.Reply)
-
-		response := service.Auth(msg)
-
-		response.Reply = msg.Reply
-
-		pub.Publish(response)
-	})
 	if err != nil {
 		logger.Fatal(err)
 	}
@@ -85,12 +72,13 @@ func main() {
 	authRoutes := router.PathPrefix("/").Subrouter()
 	authRoutes.Use(AuthMiddleware(tokenMaker))
 
+	router.HandleFunc("/api/users/auth", service.Auth).Methods("GET")
 	router.HandleFunc("/api/users/register", SetCSPHeader(service.createUser)).Methods("POST") // uradjeno
 	router.HandleFunc("/api/users/login", SetCSPHeader(service.loginUser)).Methods("POST")
 	router.HandleFunc("/api/users/email/{code}", service.verifyEmail).Methods("POST")                            //uradjeno                         // for sending verification mail
 	router.HandleFunc("/api/users/sendforgottemail/{email}", service.sendForgottenPasswordEmail).Methods("POST") // nije  // for sending forgotten password email
 	router.HandleFunc("/api/users/changeForgottenPassword", service.changeForgottenPassword).Methods("POST")     // nije      // treba da se prosledi body sa newPassword, confirmPassword, code
-	authRoutes.HandleFunc("/api/users/users", service.getAllUsers).Methods("GET")
+	//authRoutes.HandleFunc("/api/users/users", service.getAllUsers).Methods("GET")
 
 	// Configure the HTTP server
 	server := http.Server{

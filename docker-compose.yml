@@ -12,8 +12,6 @@ services:
       PORT: ${AUTH_SERVICE_PORT}
       MONGO_DB_URI: ${MONGO_DB_URI}
     depends_on:
-      nats:
-        condition: service_started
       mongo:
         condition: service_healthy
     networks:
@@ -31,8 +29,6 @@ services:
       PROF_DB: ${PROF_DB}
       PROF_DB_PORT: ${PROF_DB_PORT}
     depends_on:
-      nats:
-        condition: service_started
       consul:
         condition: service_healthy
     networks:
@@ -50,8 +46,6 @@ services:
       PORT: ${ACCOMMODATIONS_SERVICE_PORT}
       MONGO_DB_URI: ${MONGO_DB_URI}
     depends_on:
-      nats:
-        condition: service_started
       mongo:
         condition: service_healthy
     networks:
@@ -60,7 +54,7 @@ services:
   reservation-service:
     build:
       context: .
-      dockerfile: ./reservation-service/Dockerfile
+      dockerfile: ./Reservation-service/Dockerfile
     restart: always
     # container_name: "reservation-service"
     image: reservation-service
@@ -92,14 +86,14 @@ services:
     networks:
       - network
 
-  nats:
-    image: nats
-    container_name: nats
-    ports:
-      - "4222:4222"
-    restart: on-failure
-    networks:
-      - network
+#  nats:
+#    image: nats
+#    container_name: nats
+#    ports:
+#      - "4222:4222"
+#    restart: on-failure
+#    networks:
+#      - network
 
   # NOSQL: MongoDB
   mongo:

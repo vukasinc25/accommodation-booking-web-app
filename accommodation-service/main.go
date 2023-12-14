@@ -12,18 +12,35 @@ import (
 
 	gorillaHandlers "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/sony/gobreaker"
 )
 
 func main() {
 
 	config := loadConfig()
 
+	authClient := &http.Client{
+		Transport: &http.Transport{
+			MaxIdleConns:        10,
+			MaxIdleConnsPerHost: 10,
+			MaxConnsPerHost:     10,
+		},
+	}
+
+	authBreaker := gobreaker.NewCircuitBreaker(
+		gobreaker.Settings{
+			Name:        "auth",
+			MaxRequests: 1,
+			Timeout:     10 * time.Second,
+			Interval:    0,
+		})
+
 	timeoutContext, cancel := context.WithTimeout(context.Background(), 50*time.Second)
 	defer cancel()
 
 	logger := log.New(os.Stdout, "[accommo-api] ", log.LstdFlags)
 	storeLogger := log.New(os.Stdout, "[accommo-store] ", log.LstdFlags)
-	pub := InitPubSub()
+	//pub := InitPubSub()
 	store, err := New(timeoutContext, storeLogger)
 	if err != nil {
 		logger.Fatal(err)
@@ -42,7 +59,7 @@ func main() {
 
 	postRouter := router.Methods(http.MethodPost).Subrouter()
 	postRouter.HandleFunc("/api/accommodations/create", service.createAccommodation)
-	postRouter.Use(service.MiddlewareRoleCheck(pub))
+	postRouter.Use(service.MiddlewareRoleCheck(authClient, authBreaker))
 	postRouter.Use(service.MiddlewareAccommodationDeserialization)
 
 	router.HandleFunc("/api/accommodations/", service.getAllAccommodations).Methods("GET")
