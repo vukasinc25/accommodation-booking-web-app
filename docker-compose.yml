@@ -143,6 +143,26 @@ services:
     networks:
       - network
 
+    # NoSQL: CassandraDB
+  cassandra:
+    image: cassandra
+    restart: always
+    ports:
+      - "9042:9042"
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'describe cluster'"]
+      interval: 15s
+      timeout: 5s
+      retries: 15
+    volumes:
+      - cass_store:/var/lib/cassandra/data
+    # environment:
+    #    - CASSANDRA_RPC_ADDRESS=cassandra
+    #    - CASSANDRA_BROADCAST_ADDRESS=cassandra
+    #    - CASSANDRA_LISTEN_ADDRESS=cassandra
+    networks:
+      - network
+
   # NoSQL: Consul
   consul:
     image: hashicorp/consul:latest

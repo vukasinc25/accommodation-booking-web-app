@@ -9,3 +9,5 @@ alive: server-1.dc1 172.18.0.4:8302
 alive: server-1.dc1 172.18.0.4:8302
 alive: server-1.dc1 172.18.0.4:8302
 alive: server-1.dc1 172.18.0.4:8302
+alive: server-1.dc1 172.18.0.2:8302
+alive: server-1.dc1 172.18.0.9:8302

@@ -1,12 +1,54 @@
 package main
 
 import (
+	"encoding/json"
+	"io"
 	"time"
+
+	"github.com/gocql/gocql"
 )
 
-type Location struct {
-	ID     int       `json:"ID"`
-	Date   time.Time `json:"date"`
-	accoId int       `json:"accoId"`
-	userId int       `json:"userId"`
+type ReservationByAccommodation struct {
+	AccoId        gocql.UUID
+	ReservationId gocql.UUID
+	Price         int
+	Date          time.Time
+	IsDeleted     bool
+}
+
+type ReservationByUser struct {
+	UserId        gocql.UUID
+	ReservationId gocql.UUID
+	Price         int
+	Date          time.Time
+	IsDeleted     bool
+}
+
+type ReservationsByAccommodation []*ReservationByAccommodation
+type ReservationsByUser []*ReservationByUser
+
+func (o *ReservationByAccommodation) ToJSON(w io.Writer) error {
+	e := json.NewEncoder(w)
+	return e.Encode(o)
+}
+func (o *ReservationsByAccommodation) ToJSON(w io.Writer) error {
+	e := json.NewEncoder(w)
+	return e.Encode(o)
+}
+func (o *ReservationsByUser) ToJSON(w io.Writer) error {
+	e := json.NewEncoder(w)
+	return e.Encode(o)
+}
+func (o *ReservationByUser) ToJSON(w io.Writer) error {
+	e := json.NewEncoder(w)
+	return e.Encode(o)
+}
+
+func (o *ReservationByAccommodation) FromJSON(r io.Reader) error {
+	d := json.NewDecoder(r)
+	return d.Decode(o)
+}
+func (o *ReservationByUser) FromJSON(r io.Reader) error {
+	d := json.NewDecoder(r)
+	return d.Decode(o)
 }
