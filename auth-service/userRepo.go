@@ -381,6 +381,7 @@ func (uh *UserRepo) decodeUserA(user *User) *UserA {
 		Password:        user.Password,
 		Email:           user.Email,
 		IsEmailVerified: false,
+		Role:            user.Role,
 	}
 	return &userA
 }

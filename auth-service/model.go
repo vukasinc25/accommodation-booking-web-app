@@ -23,6 +23,7 @@ type UserA struct {
 	Password        string             `bson:"password,omitempty" json:"password"`
 	Email           string             `bson:"email,omitempty" json:"email"`
 	IsEmailVerified bool               `bson:"isEmailVerified" json:"isEmailVerified"`
+	Role            Role               `bson:"role,omitempty" json:"role"`
 }
 type UserB struct {
 	ID       primitive.ObjectID `bson:"_id,omitempty" json:"_id,omitempty"`
