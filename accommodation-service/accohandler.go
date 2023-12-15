@@ -124,8 +124,10 @@ func (ah *AccoHandler) MiddlewareRoleCheck(client *http.Client, breaker *gobreak
 			var token ReqToken
 			token.Token = accessToken
 
+			jsonToken, _ := json.Marshal(token)
+
 			cbResp, err := breaker.Execute(func() (interface{}, error) {
-				req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, bytes.NewBuffer([]byte(accessToken)))
+				req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, bytes.NewBuffer(jsonToken))
 				if err != nil {
 					return nil, err
 				}

@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
 	"log"
 	"net/http"
 	"os"
@@ -87,10 +86,10 @@ func main() {
 		IdleTimeout:  120 * time.Second,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
-		TLSConfig: &tls.Config{
-			MinVersion:   tls.VersionTLS12,
-			CipherSuites: []uint16{tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384},
-		},
+		//TLSConfig: &tls.Config{
+		//	MinVersion:   tls.VersionTLS12,
+		//	CipherSuites: []uint16{tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384},
+		//},
 	}
 
 	// Print a message indicating the server is listening
@@ -98,7 +97,8 @@ func main() {
 
 	// Start the HTTP server in a goroutine
 	go func() {
-		err := server.ListenAndServeTLS("cert/auth-server.crt", "cert/auth-server.key")
+		err := server.ListenAndServe()
+		//err := server.ListenAndServeTLS("cert/auth-server.crt", "cert/auth-server.key")
 		if err != nil {
 			logger.Fatal(err)
 		}

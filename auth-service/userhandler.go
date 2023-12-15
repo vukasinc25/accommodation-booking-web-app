@@ -41,6 +41,7 @@ func (uh *UserHandler) Auth(w http.ResponseWriter, r *http.Request) {
 	var rt ReqToken
 	err := dec.Decode(&rt)
 	if err != nil {
+		uh.logger.Println(err)
 		uh.logger.Println("Request decode error")
 	}
 
