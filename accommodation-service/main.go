@@ -64,6 +64,7 @@ func main() {
 
 	router.HandleFunc("/api/accommodations/", service.getAllAccommodations).Methods("GET")
 	router.HandleFunc("/api/accommodations/{id}", service.GetAccommodationById).Methods("GET")
+	router.HandleFunc("/api/accommodations/myAccommodations/{id}", service.GetAllAccommodationsById).Methods("GET")
 	server := http.Server{
 		Addr:         ":" + config["port"],
 		Handler:      cors(router),
