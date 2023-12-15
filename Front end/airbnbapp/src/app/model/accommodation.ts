@@ -8,5 +8,6 @@ export interface Accommodation {
   minGuests?: number;
   maxGuests?: number;
   amenities?: AmenityType[];
+  username?: string;
   // price?: string;
 }

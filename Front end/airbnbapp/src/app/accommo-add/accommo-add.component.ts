@@ -11,6 +11,7 @@ import { Router } from '@angular/router';
 import { AccommodationService } from 'src/app/service/accommodation.service';
 import { Accommodation } from '../model/accommodation';
 import { AmenityType } from '../model/amenityType';
+import { AuthService } from '../service/auth.service';
 
 @Component({
   selector: 'app-accommo-add',
@@ -24,7 +25,8 @@ export class AccommoAddComponent {
   constructor(
     private fb: FormBuilder,
     private router: Router,
-    private accommodationService: AccommodationService
+    private accommodationService: AccommodationService,
+    private authService: AuthService
   ) {
     this.form = this.fb.group({
       name: [null, Validators.required],
@@ -43,7 +45,8 @@ export class AccommoAddComponent {
 
   submit() {
     // const accommodation = <Accommodation>{ ...this.form.value };
-    let accommodation = this.form.value;
+    let accommodation: Accommodation = this.form.value;
+    accommodation.username = this.authService.getUsername();
     // console.log(accommodation);
     this.accommodationService.insert(accommodation).subscribe({
       next: (data) => {

@@ -27,6 +27,13 @@ export class AccommodationService {
     });
   }
 
+  getAllByUsername(id: string): Observable<any> {
+    return this.http.get('/api/accommodations/myAccommodations/' + id, {
+      headers: this.headers,
+      responseType: 'json',
+    });
+  }
+
   insert(accommodation: Accommodation): Observable<any> {
     return this.http.post(
       '/api/accommodations/create',
@@ -41,6 +48,7 @@ export class AccommodationService {
         amenities: accommodation.amenities,
         minGuests: accommodation.minGuests,
         maxGuests: accommodation.maxGuests,
+        username: accommodation.username,
         // price: accommodation.price,
       },
       { headers: this.headers, responseType: 'json' }

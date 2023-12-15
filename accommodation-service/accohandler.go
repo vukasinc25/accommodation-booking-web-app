@@ -13,8 +13,6 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	utility "github.com/vukasinc25/fst-airbnb/utility/messaging"
-	nats2 "github.com/vukasinc25/fst-airbnb/utility/messaging/nats"
 )
 
 type KeyProduct struct{}
@@ -27,15 +25,6 @@ type AccoHandler struct {
 func NewAccoHandler(l *log.Logger, r *AccoRepo) *AccoHandler {
 
 	return &AccoHandler{l, r}
-}
-
-func InitPubSub() utility.Publisher {
-
-	publisher, err := nats2.NewNATSPublisher("auth.check")
-	if err != nil {
-		log.Fatal(err)
-	}
-	return publisher
 }
 
 func (ah *AccoHandler) createAccommodation(rw http.ResponseWriter, req *http.Request) {
@@ -60,12 +49,35 @@ func (ah *AccoHandler) GetAccommodationById(w http.ResponseWriter, req *http.Req
 	}
 
 	if accommodation == nil {
-		http.Error(w, "Patient with given id not found", http.StatusNotFound)
-		ah.logger.Printf("Patient with id: '%s' not found", id)
+		http.Error(w, "Accommodation with given id not found", http.StatusNotFound)
+		ah.logger.Printf("Accommodation with id: '%s' not found", id)
 		return
 	}
 
 	err = accommodation.ToJSON(w)
+	if err != nil {
+		http.Error(w, "Unable to convert to json", http.StatusInternalServerError)
+		ah.logger.Fatal("Unable to convert to json :", err)
+		return
+	}
+}
+
+func (ah *AccoHandler) GetAllAccommodationsById(w http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	id := vars["id"]
+
+	accommodations, err := ah.db.GetAllById(id)
+	if err != nil {
+		ah.logger.Print("Database exception: ", err)
+	}
+
+	if accommodations == nil {
+		http.Error(w, "Accommodations with given username not found", http.StatusNotFound)
+		ah.logger.Printf("Accommodations with username: '%s' not found", id)
+		return
+	}
+
+	err = accommodations.ToJSON(w)
 	if err != nil {
 		http.Error(w, "Unable to convert to json", http.StatusInternalServerError)
 		ah.logger.Fatal("Unable to convert to json :", err)
@@ -149,22 +161,6 @@ func (ah *AccoHandler) MiddlewareRoleCheck(client *http.Client, breaker *gobreak
 				return
 			}
 			ah.logger.Println(resp)
-			//ah.logger.Println("Published")
-			//fields := strings.Fields(r.Header.Get("Authorization"))
-			//msg := nats2.AuthMessage{JToken: fields[1]}
-			////msg := nats.Msg{Data: []byte(fields[1])}
-			//ah.logger.Println(msg.JToken)
-			//response, err := publisher.Publish(msg)
-			//if err != nil {
-			//	ah.logger.Println(err)
-			//	w.WriteHeader(http.StatusInternalServerError)
-			//	return
-			//}
-			//ah.logger.Println(string(response.Data))
-			//if string(response.Data) != "ok" {
-			//	w.WriteHeader(http.StatusUnauthorized)
-			//	return
-			//}
 
 			next.ServeHTTP(w, r)
 		})

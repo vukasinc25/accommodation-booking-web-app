@@ -6,30 +6,6 @@
   >
     Create Accommodation
   </button>
-  <div class="row row-cols-3 g-4">
-    <div class="col" *ngFor="let accommodation of accommodations">
-      <div class="card h-100">
-        <img src="../../assets/temp.jpg" alt="" />
-        <div class="card-body">
-          <p>
-            {{
-              accommodation.location!.city +
-                ", " +
-                accommodation.location!.country
-            }}
-          </p>
-          <!-- <h3>{{ accommodation.name }}</h3> -->
-          <!-- <p>{{ "Min Guests:" + accommodation.minGuests }}</p> -->
-          <!-- <p>{{ "Max Guests:" + accommodation.maxGuests }}</p> -->
-          <!-- <p>{{ "Price:" + accommodation.price + "€" }}</p> -->
-          <a
-            class="mylink stretched-link opacity-0"
-            [routerLink]="['/accommodations/info', accommodation._id]"
-          >
-            Check
-          </a>
-        </div>
-      </div>
-    </div>
-  </div>
+
+  <app-accommo-list [accommodations]="accommodations"></app-accommo-list>
 </div>

@@ -21,6 +21,8 @@ import { PasswordEmailRecoveryComponent } from './password-email-recovery/passwo
 import { ResetPasswordComponent } from './reset-password/reset-password.component';
 import { VerifyEmailComponent } from './verify-email/verify-email.component';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
+import { MyAccommoComponent } from './my-accommo/my-accommo.component';
+import { AccommoListComponent } from './accommo-list/accommo-list.component';
 
 @NgModule({
   declarations: [
@@ -36,6 +38,8 @@ import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
     PasswordEmailRecoveryComponent,
     ResetPasswordComponent,
     VerifyEmailComponent,
+    MyAccommoComponent,
+    AccommoListComponent,
   ],
   imports: [
     BrowserModule,

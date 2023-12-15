@@ -72,7 +72,13 @@ export class AuthService {
     this.roleSubject.next(value);
   }
 
-  guardCheck(): string {
+  getUsername(): string {
+    let token = localStorage.getItem('jwt');
+    if (token != null) return this.jwt.decodeToken(token).username;
+    else return '';
+  }
+
+  getRole(): string {
     let token = localStorage.getItem('jwt');
     if (token != null) return this.jwt.decodeToken(token).role;
     else return '';

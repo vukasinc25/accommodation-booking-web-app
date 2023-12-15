@@ -11,6 +11,7 @@ import { loginGuard } from './guard/login.guard';
 import { PasswordEmailRecoveryComponent } from './password-email-recovery/password-email-recovery.component';
 import { AccommoInfoComponent } from './accommo-info/accommo-info.component';
 import { VerifyEmailComponent } from './verify-email/verify-email.component';
+import { MyAccommoComponent } from './my-accommo/my-accommo.component';
 
 const routes: Routes = [
   {
@@ -37,6 +38,10 @@ const routes: Routes = [
   {
     path: 'accommodations/info/:id',
     component: AccommoInfoComponent,
+  },
+  {
+    path: 'accommodations/myAccommodations',
+    component: MyAccommoComponent,
   },
   {
     path: 'accommodations/create',

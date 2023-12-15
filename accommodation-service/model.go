@@ -14,6 +14,7 @@ type Accommodation struct {
 	Amenities []Amenity          `bson:"amenities,omitempty" json:"amenities"`
 	MinGuests int                `bson:"minGuests,omitempty" json:"minGuests"`
 	MaxGuests int                `bson:"maxGuests,omitempty" json:"maxGuests"`
+	Username  string             `bson:"username,omitempty" json:"username"`
 	// Availability bool   `json:"availability"`
 	// Details      string `json:"details"`
 	//Price     string 			`bson:"price,omitempty" json:"price"`
