@@ -80,6 +80,7 @@
         (dateSelect)="onDateSelection($event)"
         [dayTemplate]="t"
         outsideDays="hidden"
+        [markDisabled]="isDisabled"
       >
       </ngb-datepicker>
 
@@ -89,6 +90,7 @@
           [class.focused]="focused"
           [class.range]="isRange(date)"
           [class.faded]="isHovered(date) || isInside(date)"
+          [class.disabled]="isDisabled(date)"
           (mouseenter)="hoveredDate = date"
           (mouseleave)="hoveredDate = null"
         >

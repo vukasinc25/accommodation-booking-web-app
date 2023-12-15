@@ -19,6 +19,7 @@ export class AccommoInfoComponent implements OnInit {
 
   role: string = '';
   username: string = '';
+
   id: number = 0;
   accommodation: Accommodation = {};
   isDataEmpty = false;
@@ -45,6 +46,13 @@ export class AccommoInfoComponent implements OnInit {
       },
     });
   }
+
+  isDisabled = (date: NgbDate, current?: { month: number }) => {
+    const startDate = new NgbDate(2023, 12, 5);
+    const endDate = new NgbDate(2023, 12, 20);
+
+    return date.after(startDate) && date.before(endDate);
+  };
 
   onDateSelection(date: NgbDate) {
     if (!this.fromDate && !this.toDate) {
