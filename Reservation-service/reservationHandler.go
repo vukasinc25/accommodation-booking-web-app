@@ -266,6 +266,12 @@ func (rh *reservationHandler) MiddlewareRoleCheck(client *http.Client, breaker *
 
 			authorizationHeader := r.Header.Get("authorization")
 			fields := strings.Fields(authorizationHeader)
+
+			if len(fields) == 0 {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+
 			accessToken := fields[1]
 
 			var token ReqToken
