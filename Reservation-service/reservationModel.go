@@ -10,17 +10,21 @@ import (
 
 type ReservationByAccommodation struct {
 	AccoId        gocql.UUID
+	UserId        gocql.UUID
 	ReservationId gocql.UUID
-	Price         int
-	Date          time.Time
+	NumberPeople  int
+	StartDate     time.Time
+	EndDate       time.Time
 	IsDeleted     bool
 }
 
 type ReservationByUser struct {
 	UserId        gocql.UUID
+	AccoId        gocql.UUID
 	ReservationId gocql.UUID
-	Price         int
-	Date          time.Time
+	NumberPeople  int
+	StartDate     time.Time
+	EndDate       time.Time
 	IsDeleted     bool
 }
 
