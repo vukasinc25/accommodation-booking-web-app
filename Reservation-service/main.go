@@ -45,7 +45,7 @@ func main() {
 	// getReservationIds2.HandleFunc("/api/r", reservationHandler.GetAllReservationIds)
 
 	getReservationsByAcco := router.Methods(http.MethodGet).Subrouter()
-	getReservationsByAcco.HandleFunc("/api/reservations/by_user", reservationHandler.getAllReservationsByAcco)
+	getReservationsByAcco.HandleFunc("/api/reservations/by_acco/{id}", reservationHandler.GetAllReservationsByAccomodationId)
 
 	getReservationsByUser := router.Methods(http.MethodGet).Subrouter()
 	getReservationsByUser.HandleFunc("/api/reservations/by_acco", reservationHandler.getAllReservationsByUser)
@@ -55,8 +55,8 @@ func main() {
 	postReservationForAcco.Use(reservationHandler.MiddlewareReservationForAccoDeserialization)
 
 	postReservationForUser := router.Methods(http.MethodPost).Subrouter()
-	postReservationForUser.HandleFunc("/api/reservations/for_acco", reservationHandler.CreateReservationForUser)
-	postReservationForUser.Use(reservationHandler.MiddlewareReservationForUserDeserialization)
+	postReservationForUser.HandleFunc("/api/reservations/for_acco", reservationHandler.CreateReservationForAcco)
+	// postReservationForUser.Use(reservationHandler.MiddlewareReservationForUserDeserialization)
 
 	postReservationDateByAccomodation := router.Methods(http.MethodPost).Subrouter()
 	postReservationDateByAccomodation.HandleFunc("/api/reservations/date_for_acoo", reservationHandler.CreateReservationDateForAccomodation)

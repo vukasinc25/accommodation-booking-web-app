@@ -90,7 +90,8 @@ func (rh *reservationHandler) GetReservationDatesByAccomodationId(res http.Respo
 // 	w.WriteHeader(http.StatusCreated)
 // }
 
-func (rh *reservationHandler) getAllReservationsByAcco(res http.ResponseWriter, req *http.Request) {
+func (rh *reservationHandler) GetAllReservationsByAccomodationId(res http.ResponseWriter, req *http.Request) {
+	log.Println("Usli u GetAllReservationsByAccomodationId")
 	vars := mux.Vars(req)
 	accoId := vars["id"]
 
@@ -154,8 +155,13 @@ func (rh *reservationHandler) CreateReservationDateForAccomodation(res http.Resp
 }
 
 func (rh *reservationHandler) CreateReservationForAcco(res http.ResponseWriter, req *http.Request) {
-	reservationAcco := req.Context().Value(KeyProduct{}).(*ReservationByAccommodation)
-	err := rh.repo.InsertReservationByAcco(reservationAcco)
+	log.Println("Usli u CreateReservationForAcco")
+	reservation, err := decodeReservationBody(req.Body)
+	if err != nil {
+		log.Println("Error in decoding body")
+		return
+	}
+	err = rh.repo.InsertReservationByAcco(reservation)
 	if err != nil {
 		rh.logger.Print("Database exception: ", err)
 		res.WriteHeader(http.StatusBadRequest)
@@ -268,6 +274,19 @@ func decodeBody(r io.Reader) (*ReservationDateByAccomodationId, error) {
 	dec.DisallowUnknownFields()
 
 	var rt ReservationDateByAccomodationId
+	if err := dec.Decode(&rt); err != nil {
+		log.Println("Error u decode body:", err)
+		return nil, err
+	}
+
+	return &rt, nil
+}
+
+func decodeReservationBody(r io.Reader) (*ReservationByAccommodation, error) {
+	dec := json.NewDecoder(r)
+	dec.DisallowUnknownFields()
+
+	var rt ReservationByAccommodation
 	if err := dec.Decode(&rt); err != nil {
 		log.Println("Error u decode body:", err)
 		return nil, err

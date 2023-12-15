@@ -9,13 +9,15 @@ import (
 )
 
 type ReservationByAccommodation struct {
-	AccoId        gocql.UUID
-	UserId        gocql.UUID
-	ReservationId gocql.UUID
-	NumberPeople  int
-	StartDate     time.Time
-	EndDate       time.Time
-	IsDeleted     bool
+	AccoId               string     `json:"accoId"`
+	ReservationId        gocql.UUID `json:"reservationId"`
+	HostId               string     `json:"hostId"`
+	NumberPeople         int        `json:"numberPeople"`
+	PriceByPeople        int        `json:"priceByPeople"`
+	PriceByAccommodation int        `json:"priceByAccommodation"`
+	StartDate            time.Time  `json:"startDate"`
+	EndDate              time.Time  `json:"endDate"`
+	IsDeleted            bool       `json:"isDeleted"`
 }
 
 type ReservationByUser struct {
