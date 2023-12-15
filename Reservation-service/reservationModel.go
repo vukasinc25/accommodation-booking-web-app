@@ -40,6 +40,10 @@ type ReservationDate struct {
 	EndAccomodationDate   time.Time `json:"end_accomodation_date"`
 }
 
+type ReqToken struct {
+	Token string `json:"token"`
+}
+
 type ReservationsByAccommodation []*ReservationByAccommodation
 type ReservationsByUser []*ReservationByUser
 type ReservationDatesByAccomodationId []*ReservationDate

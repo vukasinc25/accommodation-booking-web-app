@@ -11,9 +11,26 @@ import (
 
 	gorillaHandlers "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/sony/gobreaker"
 )
 
 func main() {
+
+	authClient := &http.Client{
+		Transport: &http.Transport{
+			MaxIdleConns:        10,
+			MaxIdleConnsPerHost: 10,
+			MaxConnsPerHost:     10,
+		},
+	}
+
+	authBreaker := gobreaker.NewCircuitBreaker(
+		gobreaker.Settings{
+			Name:        "auth",
+			MaxRequests: 1,
+			Timeout:     10 * time.Second,
+			Interval:    0,
+		})
 
 	port := os.Getenv("PORT")
 	if len(port) == 0 {
@@ -46,6 +63,7 @@ func main() {
 
 	getReservationsByAcco := router.Methods(http.MethodGet).Subrouter()
 	getReservationsByAcco.HandleFunc("/api/reservations/by_acco/{id}", reservationHandler.GetAllReservationsByAccomodationId)
+	getReservationsByAcco.Use(reservationHandler.MiddlewareRoleCheck(authClient, authBreaker))
 
 	getReservationsByUser := router.Methods(http.MethodGet).Subrouter()
 	getReservationsByUser.HandleFunc("/api/reservations/by_acco", reservationHandler.getAllReservationsByUser)
@@ -56,13 +74,15 @@ func main() {
 
 	postReservationForUser := router.Methods(http.MethodPost).Subrouter()
 	postReservationForUser.HandleFunc("/api/reservations/for_acco", reservationHandler.CreateReservationForAcco)
-	// postReservationForUser.Use(reservationHandler.MiddlewareReservationForUserDeserialization)
+	postReservationForUser.Use(reservationHandler.MiddlewareRoleCheck(authClient, authBreaker))
 
 	postReservationDateByAccomodation := router.Methods(http.MethodPost).Subrouter()
 	postReservationDateByAccomodation.HandleFunc("/api/reservations/date_for_acoo", reservationHandler.CreateReservationDateForAccomodation)
+	postReservationDateByAccomodation.Use(reservationHandler.MiddlewareRoleCheck(authClient, authBreaker))
 
 	getReservationDatesByAccomodationId := router.Methods(http.MethodGet).Subrouter()
 	getReservationDatesByAccomodationId.HandleFunc("/api/reservations/dates_by_acco_id/{id}", reservationHandler.GetReservationDatesByAccomodationId)
+	getReservationDatesByAccomodationId.Use(reservationHandler.MiddlewareRoleCheck(authClient, authBreaker))
 
 	cors := gorillaHandlers.CORS(gorillaHandlers.AllowedOrigins([]string{"*"}))
 
