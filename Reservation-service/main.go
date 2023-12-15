@@ -58,14 +58,20 @@ func main() {
 	postReservationForUser.HandleFunc("/api/reservations/for_acco", reservationHandler.CreateReservationForUser)
 	postReservationForUser.Use(reservationHandler.MiddlewareReservationForUserDeserialization)
 
+	postReservationDateByAccomodation := router.Methods(http.MethodPost).Subrouter()
+	postReservationDateByAccomodation.HandleFunc("/api/reservations/date_for_acoo", reservationHandler.CreateReservationDateForAccomodation)
+
+	getReservationDatesByAccomodationId := router.Methods(http.MethodGet).Subrouter()
+	getReservationDatesByAccomodationId.HandleFunc("/api/reservations/dates_by_acco_id/{id}", reservationHandler.GetReservationDatesByAccomodationId)
+
 	cors := gorillaHandlers.CORS(gorillaHandlers.AllowedOrigins([]string{"*"}))
 
 	server := http.Server{
 		Addr:         ":" + port,
 		Handler:      cors(router),
 		IdleTimeout:  120 * time.Second,
-		ReadTimeout:  1 * time.Second,
-		WriteTimeout: 1 * time.Second,
+		ReadTimeout:  120 * time.Second,
+		WriteTimeout: 120 * time.Second,
 	}
 
 	logger.Println("Server listening on port", port)

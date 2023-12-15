@@ -24,10 +24,25 @@ type ReservationByUser struct {
 	IsDeleted     bool
 }
 
+type ReservationDateByAccomodationId struct {
+	AccoId                string    `json:"acco_id"`
+	BeginAccomodationDate time.Time `json:"begin_accomodation_date"`
+	EndAccomodationDate   time.Time `json:"end_accomodation_date"`
+}
+type ReservationDate struct {
+	BeginAccomodationDate time.Time `json:"begin_accomodation_date"`
+	EndAccomodationDate   time.Time `json:"end_accomodation_date"`
+}
+
 type ReservationsByAccommodation []*ReservationByAccommodation
 type ReservationsByUser []*ReservationByUser
+type ReservationDatesByAccomodationId []*ReservationDate
 
 func (o *ReservationByAccommodation) ToJSON(w io.Writer) error {
+	e := json.NewEncoder(w)
+	return e.Encode(o)
+}
+func (o *ReservationDatesByAccomodationId) ToJSON(w io.Writer) error {
 	e := json.NewEncoder(w)
 	return e.Encode(o)
 }

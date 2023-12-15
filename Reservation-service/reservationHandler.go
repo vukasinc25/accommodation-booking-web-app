@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"log"
 	"net/http"
 
@@ -37,6 +38,27 @@ func (rh *reservationHandler) GetAllReservationIds(res http.ResponseWriter, req 
 
 	e := json.NewEncoder(res)
 	err = e.Encode(reservationIds)
+	if err != nil {
+		http.Error(res, "Unable to convert to json", http.StatusInternalServerError)
+		rh.logger.Fatal("Unable to convert to json :", err)
+		return
+	}
+}
+
+func (rh *reservationHandler) GetReservationDatesByAccomodationId(res http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	accoId := vars["id"]
+
+	reservationDatesByAccomodationId, err := rh.repo.GetReservationsDatesByAccomodationId(accoId)
+	if err != nil {
+		rh.logger.Print("Database exception: ", err)
+	}
+
+	if reservationDatesByAccomodationId == nil {
+		return
+	}
+
+	err = reservationDatesByAccomodationId.ToJSON(res)
 	if err != nil {
 		http.Error(res, "Unable to convert to json", http.StatusInternalServerError)
 		rh.logger.Fatal("Unable to convert to json :", err)
@@ -110,6 +132,27 @@ func (rh *reservationHandler) getAllReservationsByUser(res http.ResponseWriter, 
 	}
 }
 
+func (rh *reservationHandler) CreateReservationDateForAccomodation(res http.ResponseWriter, req *http.Request) {
+	log.Println("Usli u Metodu")
+	reservationDate, err := decodeBody(req.Body)
+	if err != nil {
+		log.Println("Error in decoding body")
+		return
+	}
+	// reservationDateByAccomodation := req.Context().Value(KeyProduct{}).(*ReservationDateByAccomodationId)
+	log.Println(reservationDate.AccoId)
+	log.Println(reservationDate.BeginAccomodationDate)
+	log.Println(reservationDate.EndAccomodationDate)
+
+	err = rh.repo.InsertReservationDateForAccomodation(reservationDate)
+	if err != nil {
+		rh.logger.Print("Database exception: ", err)
+		res.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	res.WriteHeader(http.StatusCreated)
+}
+
 func (rh *reservationHandler) CreateReservationForAcco(res http.ResponseWriter, req *http.Request) {
 	reservationAcco := req.Context().Value(KeyProduct{}).(*ReservationByAccommodation)
 	err := rh.repo.InsertReservationByAcco(reservationAcco)
@@ -123,6 +166,9 @@ func (rh *reservationHandler) CreateReservationForAcco(res http.ResponseWriter, 
 
 func (rh *reservationHandler) CreateReservationForUser(res http.ResponseWriter, req *http.Request) {
 	reservationUser := req.Context().Value(KeyProduct{}).(*ReservationByUser)
+	// provera da li je odredjeni period dostupnostio dostupan ili da ovde ne ide provera nego da se stavi provera kada se uzitava period dostupnosti za acomodaciju
+	// lista koju bi napravili na osnovu perioda rezevacije
+	// for petlja kroz period rezervacije i upis za svaki period u bazu
 	err := rh.repo.InsertReservationByUser(reservationUser)
 	if err != nil {
 		rh.logger.Print("Database exception: ", err)
@@ -213,7 +259,19 @@ func (rh *reservationHandler) MiddlewareContentTypeSet(next http.Handler) http.H
 // 	w.Write(js)
 // }
 
-// func (u *Reservations) ToJSON(w io.Writer) error {
-// 	e := json.NewEncoder(w)
-// 	return e.Encode(u)
-// }
+//	func (u *Reservations) ToJSON(w io.Writer) error {
+//		e := json.NewEncoder(w)
+//		return e.Encode(u)
+//	}
+func decodeBody(r io.Reader) (*ReservationDateByAccomodationId, error) {
+	dec := json.NewDecoder(r)
+	dec.DisallowUnknownFields()
+
+	var rt ReservationDateByAccomodationId
+	if err := dec.Decode(&rt); err != nil {
+		log.Println("Error u decode body:", err)
+		return nil, err
+	}
+
+	return &rt, nil
+}

@@ -96,13 +96,31 @@ func (rs *ReservationRepo) CreateTables() {
 	if err != nil {
 		rs.logger.Println(err)
 	}
+
+	// err = rs.session.Query(
+	// 	fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s
+	// 				(accommodation_id UUID, begin_reservation_date date, end_reservation_date date,
+	// 				PRIMARY KEY (accommodation_id))`,
+	// 		"reservations_dates_by_accomodation_id")).Exec()
+	// if err != nil {
+	// 	rs.logger.Println(err)
+	// }
+
+	err = rs.session.Query(
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s 
+					(id UUID, accommodation_id text, begin_reservation_date date, end_reservation_date date,
+					PRIMARY KEY (accommodation_id, id))`,
+			"reservations_dates_by_accomodation_id")).Exec()
+	if err != nil {
+		rs.logger.Println(err)
+	}
 }
 
 // -------Reservation By Accommodation-------//
 func (rs *ReservationRepo) GetReservationsByAcco(acco_id string) (ReservationsByAccommodation, error) {
 	scanner := rs.session.Query(`SELECT acco_id, reservation_id, price, date, isDeleted
 	 FROM reservations_by_acco WHERE acco_id = ? AND isDeleted = false ALLOW FILTERING;`,
-		acco_id).Iter().Scanner()
+		acco_id).Iter().Scanner() // lista
 
 	var reservations ReservationsByAccommodation
 	for scanner.Next() {
@@ -121,6 +139,29 @@ func (rs *ReservationRepo) GetReservationsByAcco(acco_id string) (ReservationsBy
 	return reservations, nil
 }
 
+func (rs *ReservationRepo) GetReservationsDatesByAccomodationId(acco_id string) (ReservationDatesByAccomodationId, error) {
+	scanner := rs.session.Query(`SELECT begin_reservation_date, end_reservation_date
+    FROM reservations_dates_by_accomodation_id
+    WHERE accommodation_id = ?`,
+		acco_id).Iter().Scanner()
+
+	var dates ReservationDatesByAccomodationId
+	for scanner.Next() {
+		var res ReservationDate
+		err := scanner.Scan(&res.BeginAccomodationDate, &res.EndAccomodationDate)
+		if err != nil {
+			rs.logger.Println(err)
+			return nil, err
+		}
+		dates = append(dates, &res)
+	}
+	if err := scanner.Err(); err != nil {
+		rs.logger.Println(err)
+		return nil, err
+	}
+	return dates, nil
+}
+
 func (rs *ReservationRepo) Aaa(v http.ResponseWriter, req *http.Request) {
 	log.Println("aezakmi")
 }
@@ -135,6 +176,23 @@ func (rs *ReservationRepo) InsertReservationByAcco(resAcco *ReservationByAccommo
 		rs.logger.Println(err)
 		return err
 	}
+	return nil
+}
+
+func (rs *ReservationRepo) InsertReservationDateForAccomodation(resDate *ReservationDateByAccomodationId) error { // -----------------------
+	log.Println("Usli u Insert")
+
+	id, _ := gocql.RandomUUID()
+
+	err := rs.session.Query(
+		`INSERT INTO reservations_dates_by_accomodation_id (id, accommodation_id, begin_reservation_date, end_reservation_date) 
+		VALUES (?, ?, ?, ?)`,
+		id, resDate.AccoId, resDate.BeginAccomodationDate, resDate.EndAccomodationDate).Exec()
+	if err != nil {
+		rs.logger.Println(err)
+		return err
+	}
+	log.Println("Insert prosao")
 	return nil
 }
 
