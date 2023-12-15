@@ -16,7 +16,18 @@ const (
 type User struct {
 	ID       string `bson:"_id,omitempty" json:"_id,omitempty"`
 	Username string `bson:"username,omitempty" json:"username"`
+	Email    string `bson:"email,omitempty" json:"email"`
 	Role     Role   `bson:"role,omitempty" json:"role"`
+	FirstName 	string  `bson:"firstname,omitempty" json:"firstname"`
+	LastName	string  `bson:"lastname,omitempty" json:"lastname"`
+	Location  Location           `bson:"location,omitempty,inline" json:"location"`
+}
+
+type Location struct {
+	Country      string `bson:"country,omitempty" json:"country"`
+	City         string `bson:"city,omitempty" json:"city"`
+	StreetName   string `bson:"streetName,omitempty" json:"streetName"`
+	StreetNumber string `bson:"streetNumber,omitempty" json:"streetNumber"`
 }
 
 type VerifyEmail struct {

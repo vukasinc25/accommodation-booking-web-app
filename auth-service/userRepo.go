@@ -390,6 +390,10 @@ func (uh *UserRepo) decodeUserB(user *User) *UserB {
 	userB := UserB{
 		Username: user.Username,
 		Role:     user.Role,
+		Email:	  user.Email,
+		FirstName:	user.FirstName,
+		LastName: user.LastName,
+		Location: user.Location,
 	}
 	return &userB
 }
