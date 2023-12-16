@@ -294,7 +294,7 @@ func (rh *reservationHandler) MiddlewareRoleCheck(client *http.Client, breaker *
 
 			resp := cbResp.(*http.Response)
 			resBody, err := io.ReadAll(resp.Body)
-			rh.logger.Println(string(resBody))
+			rh.logger.Println("Host Id:", string(resBody))
 			if resp.StatusCode != http.StatusOK {
 				rh.logger.Println("Error in auth response " + strconv.Itoa(resp.StatusCode))
 				rh.logger.Println("status " + resp.Status)
@@ -303,7 +303,57 @@ func (rh *reservationHandler) MiddlewareRoleCheck(client *http.Client, breaker *
 			}
 			rh.logger.Println(resp)
 
-			next.ServeHTTP(w, r)
+			hostID := string(resBody)
+
+			var requestBody map[string]interface{}
+			if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
+				rh.logger.Println("Error decoding request body:", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			if startDateStr, ok := requestBody["startDate"].(string); ok { //parsiranje datuma
+				startDate, err := time.Parse("2006-01-02", startDateStr)
+				if err != nil {
+					rh.logger.Println("Error parsing startDate:", err)
+					w.WriteHeader(http.StatusBadRequest)
+					return
+				}
+				requestBody["startDate"] = startDate
+			}
+
+			if endDateStr, ok := requestBody["endDate"].(string); ok { //
+				endDate, err := time.Parse("2006-01-02", endDateStr)
+				if err != nil {
+					rh.logger.Println("Error parsing endDate:", err)
+					w.WriteHeader(http.StatusBadRequest)
+					return
+				}
+				requestBody["endDate"] = endDate
+			}
+
+			hostID = strings.Trim(hostID, `"`)
+			requestBody["hostId"] = hostID
+
+			modifiedJSON, err := json.Marshal(requestBody)
+			if err != nil {
+				rh.logger.Println("Error marshaling modified JSON:", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			newReq, err := http.NewRequestWithContext(ctx, r.Method, r.URL.String(), bytes.NewBuffer(modifiedJSON))
+			if err != nil {
+				rh.logger.Println("Error creating new request:", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			newReq.Header = r.Header
+
+			newReq.Header.Set("Content-Type", "application/json")
+			log.Println(newReq.Body)
+
+			next.ServeHTTP(w, newReq)
 		})
 	}
 }

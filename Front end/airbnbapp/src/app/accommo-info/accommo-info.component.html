@@ -46,30 +46,62 @@
   <div class="mt-5 mb-5">
     <div *ngIf="role == 'HOST' && username == accommodation.username">
       <p>Create Availability period:</p>
-      <table class="table table-bordered table-striped-columns">
-        <tbody>
-          <tr>
-            <th scope="row">Avalilable from:</th>
-            <td><input type="date" /></td>
-          </tr>
-          <tr>
-            <th scope="row">Avalilable until:</th>
-            <td><input type="date" /></td>
-          </tr>
-          <tr>
-            <th>Price per night:</th>
-            <td><input type="number" /></td>
-          </tr>
-          <tr>
-            <th scope="row">Price per person:</th>
-            <td><input type="number" /></td>
-          </tr>
-          <tr>
-            <th></th>
-            <td><button class="btn btn-primary">Create</button></td>
-          </tr>
-        </tbody>
-      </table>
+      <form [formGroup]="accommodationForm" (ngSubmit)="onSubmit()">
+        <table class="table table-bordered table-striped-columns">
+          <tbody>
+            <tr>
+              <th scope="row">Available from:</th>
+              <td><input type="date" formControlName="availableFrom" /></td>
+            </tr>
+            <tr>
+              <th scope="row">Available until:</th>
+              <td><input type="date" formControlName="availableUntil" /></td>
+            </tr>
+            <tr>
+              <th>Price per night:</th>
+              <td>
+                <input type="number" formControlName="pricePerNight" />
+                <div
+                  style="color: red"
+                  *ngIf="
+                    accommodationForm.get('pricePerNight')?.hasError('required')
+                  "
+                >
+                  Price per night is required.
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <th scope="row">Price per person:</th>
+              <td>
+                <input type="number" formControlName="pricePerPerson" />
+                <div
+                  style="color: red"
+                  *ngIf="
+                    accommodationForm
+                      .get('pricePerPerson')
+                      ?.hasError('required')
+                  "
+                >
+                  Price per person is required.
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <th></th>
+              <td>
+                <button
+                  class="btn btn-primary"
+                  type="submit"
+                  [disabled]="!accommodationForm.valid"
+                >
+                  Create
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </form>
     </div>
 
     <div *ngIf="role == 'GUEST'">

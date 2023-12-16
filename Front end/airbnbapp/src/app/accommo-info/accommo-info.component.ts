@@ -1,9 +1,16 @@
 import { Component, OnInit } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { AccommodationService } from '../service/accommodation.service';
 import { Accommodation } from '../model/accommodation';
 import { NgbDate } from '@ng-bootstrap/ng-bootstrap';
 import { AuthService } from '../service/auth.service';
+import {
+  FormBuilder,
+  FormGroup,
+  ValidationErrors,
+  Validators,
+} from '@angular/forms';
+import { ReservationService } from '../service/reservation.service';
 
 @Component({
   selector: 'app-accommo-info',
@@ -11,10 +18,14 @@ import { AuthService } from '../service/auth.service';
   styleUrls: ['./accommo-info.component.css'],
 })
 export class AccommoInfoComponent implements OnInit {
+  accommodationForm!: FormGroup;
   constructor(
+    private fb: FormBuilder,
     private route: ActivatedRoute,
+    private router: Router,
     private accommodationService: AccommodationService,
-    private authService: AuthService
+    private authService: AuthService,
+    private reservationService: ReservationService
   ) {}
 
   role: string = '';
@@ -29,6 +40,13 @@ export class AccommoInfoComponent implements OnInit {
   toDate: NgbDate | null = null;
 
   ngOnInit(): void {
+    this.accommodationForm = this.fb.group({
+      availableFrom: ['', Validators.required],
+      availableUntil: ['', Validators.required],
+      pricePerNight: ['', Validators.required],
+      pricePerPerson: ['', Validators.required],
+    });
+
     this.route.params.subscribe((params) => {
       this.id = params['id'];
     });
@@ -86,5 +104,25 @@ export class AccommoInfoComponent implements OnInit {
       this.isInside(date) ||
       this.isHovered(date)
     );
+  }
+
+  onSubmit() {
+    console.log(this.accommodation._id, this.accommodationForm.value);
+    this.reservationService
+      .createReservationDatesForAccomodation(
+        this.accommodation._id,
+        this.accommodationForm.value
+      )
+      .subscribe({
+        next: (data) => {
+          console.log('Reservation in succesfuly created');
+          alert('Reservation is successfully.');
+          this.router.navigate(['accommodations/myAccommodations']);
+        },
+        error: (err) => {
+          console.log(err.error.message);
+          alert(err.error.message);
+        },
+      });
   }
 }
