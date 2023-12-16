@@ -35,4 +35,11 @@ export class ReservationService {
       { headers: this.headers, responseType: 'json' }
     );
   }
+  getAvailabelDatesForAccomodation(id: any): Observable<any> {
+    console.log(id);
+    return this.http.get(`${'/api/reservations/by_acco/'}${id}`, {
+      headers: this.headers,
+      responseType: 'json',
+    });
+  }
 }

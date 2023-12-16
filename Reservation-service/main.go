@@ -63,7 +63,7 @@ func main() {
 
 	getReservationsByAcco := router.Methods(http.MethodGet).Subrouter()
 	getReservationsByAcco.HandleFunc("/api/reservations/by_acco/{id}", reservationHandler.GetAllReservationsByAccomodationId)
-	getReservationsByAcco.Use(reservationHandler.MiddlewareRoleCheck(authClient, authBreaker))
+	getReservationsByAcco.Use(reservationHandler.MiddlewareRoleCheck1(authClient, authBreaker))
 
 	getReservationsByUser := router.Methods(http.MethodGet).Subrouter()
 	getReservationsByUser.HandleFunc("/api/reservations/by_acco", reservationHandler.getAllReservationsByUser)

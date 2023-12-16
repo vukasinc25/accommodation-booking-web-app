@@ -358,6 +358,58 @@ func (rh *reservationHandler) MiddlewareRoleCheck(client *http.Client, breaker *
 	}
 }
 
+func (rh *reservationHandler) MiddlewareRoleCheck1(client *http.Client, breaker *gobreaker.CircuitBreaker) mux.MiddlewareFunc {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+			ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+			defer cancel()
+			reqURL := "http://auth-service:8000/api/users/auth"
+
+			authorizationHeader := r.Header.Get("authorization")
+			fields := strings.Fields(authorizationHeader)
+
+			if len(fields) == 0 {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+
+			accessToken := fields[1]
+
+			var token ReqToken
+			token.Token = accessToken
+
+			jsonToken, _ := json.Marshal(token)
+
+			cbResp, err := breaker.Execute(func() (interface{}, error) {
+				req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, bytes.NewBuffer(jsonToken))
+				if err != nil {
+					return nil, err
+				}
+				return client.Do(req)
+			})
+			if err != nil {
+				rh.logger.Println(err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			resp := cbResp.(*http.Response)
+			resBody, err := io.ReadAll(resp.Body)
+			rh.logger.Println("Host Id:", string(resBody))
+			if resp.StatusCode != http.StatusOK {
+				rh.logger.Println("Error in auth response " + strconv.Itoa(resp.StatusCode))
+				rh.logger.Println("status " + resp.Status)
+				w.WriteHeader(resp.StatusCode)
+				return
+			}
+			rh.logger.Println(resp)
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 func (rh *reservationHandler) MiddlewareContentTypeSet(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, h *http.Request) {
 		rh.logger.Println("Method [", h.Method, "] - Hit path :", h.URL.Path)

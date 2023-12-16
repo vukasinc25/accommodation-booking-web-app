@@ -30,6 +30,8 @@ export class AccommoInfoComponent implements OnInit {
 
   role: string = '';
   username: string = '';
+  startDate: Date | null = null;
+  endDate: Date | null = null;
 
   id: number = 0;
   accommodation: Accommodation = {};
@@ -56,6 +58,7 @@ export class AccommoInfoComponent implements OnInit {
     this.accommodationService.getById(this.id).subscribe({
       next: (data) => {
         this.accommodation = data;
+        console.log(this.accommodation._id);
         // console.log(data);
       },
       error: (err) => {
@@ -63,6 +66,22 @@ export class AccommoInfoComponent implements OnInit {
         this.isDataEmpty = true;
       },
     });
+
+    this.reservationService
+      .getAvailabelDatesForAccomodation(this.id)
+      .subscribe({
+        next: (data) => {
+          console.log(data);
+          this.startDate = new Date(data[0].startDate);
+          this.endDate = new Date(data[0].endDate);
+          console.log(this.startDate);
+          console.log(this.endDate);
+        },
+        error: (err) => {
+          console.log(err);
+          alert(err);
+        },
+      });
   }
 
   isDisabled = (date: NgbDate, current?: { month: number }) => {

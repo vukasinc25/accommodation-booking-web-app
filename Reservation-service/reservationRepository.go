@@ -123,6 +123,7 @@ func (rs *ReservationRepo) CreateTables() {
 // -------Reservation By Accommodation-------//
 func (rs *ReservationRepo) GetReservationsByAcco(acco_id string) (ReservationsByAccommodation, error) {
 	log.Println("Usli u GetReservationsByAcco")
+	log.Println(acco_id)
 	scanner := rs.session.Query(`SELECT *
 	FROM reservations_by_acco WHERE acco_id = ? AND isDeleted = false ALLOW FILTERING;`,
 		acco_id).Iter().Scanner() // lista
@@ -141,6 +142,7 @@ func (rs *ReservationRepo) GetReservationsByAcco(acco_id string) (ReservationsBy
 		rs.logger.Println("Cant 2", err)
 		return nil, err
 	}
+	log.Println(reservations)
 	return reservations, nil
 }
 
