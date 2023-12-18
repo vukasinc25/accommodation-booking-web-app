@@ -104,7 +104,7 @@
       </form>
     </div>
 
-    <div *ngIf="role == 'GUEST'">
+    <div *ngIf="role == 'GUEST' && startDate != null">
       <p>Reservations:</p>
 
       <ngb-datepicker
@@ -113,6 +113,8 @@
         [dayTemplate]="t"
         outsideDays="hidden"
         [markDisabled]="isDisabled"
+        [minDate]="startDate!"
+        [maxDate]="endDate!"
       >
       </ngb-datepicker>
 
@@ -129,6 +131,12 @@
           {{ date.day }}
         </span>
       </ng-template>
+
+      <button class="btn btn-primary" (click)="reserveDates()">
+        Reserve Dates
+      </button>
+      <p>from: {{ fromDate | json }}</p>
+      <p>to: {{ toDate | json }}</p>
     </div>
   </div>
 </div>

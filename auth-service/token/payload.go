@@ -16,8 +16,8 @@ var (
 type Payload struct {
 	ID        primitive.ObjectID `json:"id"`
 	Username  string             `json:"username"`
-	Role      string             `json:"role"`
 	IssuedAt  time.Time          `json:"issued_at"`
+	Role      string             `json:"role"`
 	ExpiredAt time.Time          `json:"expired_at"`
 }
 

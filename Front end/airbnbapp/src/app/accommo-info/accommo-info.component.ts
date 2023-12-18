@@ -2,15 +2,17 @@ import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AccommodationService } from '../service/accommodation.service';
 import { Accommodation } from '../model/accommodation';
-import { NgbDate } from '@ng-bootstrap/ng-bootstrap';
+import { NgbDate, NgbDateStruct } from '@ng-bootstrap/ng-bootstrap';
 import { AuthService } from '../service/auth.service';
+import { ReservationService } from '../service/reservation.service';
+import { ResDateRange } from '../model/dateRange';
+import { DisabledDateRange } from '../model/disabledDateRange';
 import {
   FormBuilder,
   FormGroup,
   ValidationErrors,
   Validators,
 } from '@angular/forms';
-import { ReservationService } from '../service/reservation.service';
 
 @Component({
   selector: 'app-accommo-info',
@@ -30,16 +32,21 @@ export class AccommoInfoComponent implements OnInit {
 
   role: string = '';
   username: string = '';
-  startDate: Date | null = null;
-  endDate: Date | null = null;
+  startDate: NgbDate | null = null;
+  endDate: NgbDate | null = null;
 
   id: number = 0;
   accommodation: Accommodation = {};
+  dateList: ResDateRange[] = [];
+  blackDateList: DisabledDateRange[] = [];
   isDataEmpty = false;
 
   hoveredDate: NgbDate | null = null;
   fromDate: NgbDate | null = null;
   toDate: NgbDate | null = null;
+
+  fromDisDate: NgbDate | null = null;
+  toDisDate: NgbDate | null = null;
 
   ngOnInit(): void {
     this.accommodationForm = this.fb.group({
@@ -58,7 +65,7 @@ export class AccommoInfoComponent implements OnInit {
     this.accommodationService.getById(this.id).subscribe({
       next: (data) => {
         this.accommodation = data;
-        console.log(this.accommodation._id);
+        // console.log(this.accommodation._id);
         // console.log(data);
       },
       error: (err) => {
@@ -71,34 +78,107 @@ export class AccommoInfoComponent implements OnInit {
       .getAvailabelDatesForAccomodation(this.id)
       .subscribe({
         next: (data) => {
-          console.log(data);
-          this.startDate = new Date(data[0].startDate);
-          this.endDate = new Date(data[0].endDate);
-          console.log(this.startDate);
-          console.log(this.endDate);
+          // console.log(data);
+          this.startDate = new NgbDate(
+            new Date(data[0].startDate).getFullYear(),
+            new Date(data[0].startDate).getUTCMonth() + 1,
+            new Date(data[0].startDate).getUTCDate()
+          );
+          this.endDate = new NgbDate(
+            new Date(data[0].endDate).getFullYear(),
+            new Date(data[0].endDate).getUTCMonth() + 1,
+            new Date(data[0].endDate).getUTCDate()
+          );
+          // this.startDate = new Date(data[0].startDate);
+          // this.endDate = new Date(data[0].endDate);
+          // console.log(this.startDate);
+          // console.log(this.endDate);
         },
         error: (err) => {
           console.log(err);
-          alert(err);
+          // alert(err);
         },
       });
+    this.reservationService.getReservations(this.id).subscribe({
+      next: (data) => {
+        // console.log(data);
+        if (data != null) {
+          this.dateList = data as ResDateRange[];
+          for (let dateRange of this.dateList) {
+            let startDate = new NgbDate(
+              new Date(dateRange.begin_accomodation_date!).getFullYear(),
+              new Date(dateRange.begin_accomodation_date!).getUTCMonth() + 1,
+              new Date(dateRange.begin_accomodation_date!).getUTCDate()
+            );
+            let endDate = new NgbDate(
+              new Date(dateRange.end_accomodation_date!).getFullYear(),
+              new Date(dateRange.end_accomodation_date!).getUTCMonth() + 1,
+              new Date(dateRange.end_accomodation_date!).getUTCDate()
+            );
+            let blackDateRange: DisabledDateRange = { startDate, endDate };
+            this.blackDateList.push(blackDateRange);
+          }
+          console.log(this.blackDateList);
+        }
+      },
+      error: (err) => {
+        console.log(err);
+      },
+    });
   }
 
   isDisabled = (date: NgbDate, current?: { month: number }) => {
-    const startDate = new NgbDate(2023, 12, 5);
-    const endDate = new NgbDate(2023, 12, 20);
+    for (let dateRange of this.blackDateList) {
+      if (
+        (date.after(dateRange.startDate) && date.before(dateRange.endDate)) ||
+        date.equals(dateRange.startDate) ||
+        date.equals(dateRange.endDate)
+      ) {
+        return true;
+      }
+    }
 
-    return date.after(startDate) && date.before(endDate);
+    return date.after(this.fromDisDate) && date.before(this.toDisDate);
   };
 
   onDateSelection(date: NgbDate) {
-    if (!this.fromDate && !this.toDate) {
-      this.fromDate = date;
-    } else if (this.fromDate && !this.toDate && date.after(this.fromDate)) {
-      this.toDate = date;
+    if (this.blackDateList.length > 0) {
+      for (let blackDateRange of this.blackDateList) {
+        if (!this.fromDate && !this.toDate) {
+          this.fromDate = date;
+        } else if (
+          this.fromDate &&
+          !this.toDate &&
+          date.after(this.fromDate) &&
+          ((this.fromDate.before(blackDateRange.startDate) &&
+            date.before(blackDateRange.startDate)) ||
+            (this.fromDate.after(blackDateRange.endDate) &&
+              date.after(blackDateRange.endDate)))
+        ) {
+          this.toDate = date;
+        } else if (
+          this.fromDate &&
+          this.toDate &&
+          ((this.fromDate.before(blackDateRange.startDate) &&
+            date.before(blackDateRange.startDate)) ||
+            (this.fromDate.after(blackDateRange.endDate) &&
+              date.after(blackDateRange.endDate)))
+        ) {
+          continue;
+        } else {
+          this.toDate = null;
+          this.fromDate = date;
+        }
+      }
     } else {
-      this.toDate = null;
-      this.fromDate = date;
+      if (!this.fromDate && !this.toDate) {
+        this.fromDate = date;
+      } else if (this.fromDate && !this.toDate && date.after(this.fromDate)) {
+        this.toDate = date;
+      } else {
+        this.toDate = null;
+        this.fromDate = date;
+      }
     }
   }
 
@@ -125,6 +205,18 @@ export class AccommoInfoComponent implements OnInit {
     );
   }
 
+  reserveDates() {
+    this.reservationService
+      .createReservation(this.accommodation._id!, this.fromDate!, this.toDate!)
+      .subscribe({
+        next: (data) => {
+          console.log(data);
+        },
+        error: (err) => {
+          console.log(err);
+        },
+      });
+  }
   onSubmit() {
     console.log(this.accommodation._id, this.accommodationForm.value);
     this.reservationService

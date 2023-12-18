@@ -144,6 +144,7 @@ func (rh *reservationHandler) CreateReservationDateForAccomodation(res http.Resp
 	reservationDate, err := decodeBody(req.Body)
 	if err != nil {
 		log.Println("Error in decoding body")
+		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	// reservationDateByAccomodation := req.Context().Value(KeyProduct{}).(*ReservationDateByAccomodationId)

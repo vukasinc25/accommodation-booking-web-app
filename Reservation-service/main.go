@@ -78,11 +78,11 @@ func main() {
 
 	postReservationDateByAccomodation := router.Methods(http.MethodPost).Subrouter()
 	postReservationDateByAccomodation.HandleFunc("/api/reservations/date_for_acoo", reservationHandler.CreateReservationDateForAccomodation)
-	postReservationDateByAccomodation.Use(reservationHandler.MiddlewareRoleCheck(authClient, authBreaker))
+	postReservationDateByAccomodation.Use(reservationHandler.MiddlewareRoleCheck1(authClient, authBreaker))
 
 	getReservationDatesByAccomodationId := router.Methods(http.MethodGet).Subrouter()
 	getReservationDatesByAccomodationId.HandleFunc("/api/reservations/dates_by_acco_id/{id}", reservationHandler.GetReservationDatesByAccomodationId)
-	getReservationDatesByAccomodationId.Use(reservationHandler.MiddlewareRoleCheck(authClient, authBreaker))
+	getReservationDatesByAccomodationId.Use(reservationHandler.MiddlewareRoleCheck1(authClient, authBreaker))
 
 	cors := gorillaHandlers.CORS(gorillaHandlers.AllowedOrigins([]string{"*"}))
 
