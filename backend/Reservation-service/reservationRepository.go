@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -188,11 +189,20 @@ func (rs *ReservationRepo) GetReservationsDatesByAccomodationId(acco_id string) 
 func (rs *ReservationRepo) InsertReservationDateForAccomodation(resDate *ReservationDateByAccomodationId) error { // -----------------------
 	log.Println("Usli u Insert")
 
+	overlap, err := rs.CheckOverlap(resDate.AccoId, resDate.BeginAccomodationDate, resDate.EndAccomodationDate)
+	if err != nil {
+		return err
+	}
+
+	if overlap {
+		return errors.New("Overlap detected: Cannot insert overlapping date range")
+	}
+
 	id, _ := gocql.RandomUUID()
 
-	err := rs.session.Query(
+	err = rs.session.Query(
 		`INSERT INTO reservations_dates_by_accomodation_id (id, accommodation_id, begin_reservation_date, end_reservation_date) 
-		VALUES (?, ?, ?, ?)`,
+		VALUES (?, ?, ?, ?);`,
 		id, resDate.AccoId, resDate.BeginAccomodationDate, resDate.EndAccomodationDate).Exec()
 	if err != nil {
 		rs.logger.Println(err)
@@ -255,6 +265,22 @@ func (rs *ReservationRepo) UpdateReservationByAcco(accoId string, reservationId 
 		return err
 	}
 	return nil
+}
+
+func (rs *ReservationRepo) CheckOverlap(accommodationID string, beginDate, endDate time.Time) (bool, error) {
+	var count int
+	err := rs.session.Query(
+		`SELECT COUNT(*) FROM reservations_dates_by_accomodation_id 
+         WHERE accommodation_id = ? 
+         AND begin_reservation_date <= ? AND end_reservation_date >= ? ALLOW FILTERING`,
+		accommodationID, endDate, beginDate).Scan(&count)
+
+	if err != nil {
+		rs.logger.Println(err)
+		return false, err
+	}
+
+	return count > 0, nil
 }
 
 func (rs *ReservationRepo) GetDistinctIds(idColumnName string, tableName string) ([]string, error) {

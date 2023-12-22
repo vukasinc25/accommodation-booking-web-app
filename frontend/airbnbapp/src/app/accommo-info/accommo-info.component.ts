@@ -69,8 +69,10 @@ export class AccommoInfoComponent implements OnInit {
         // console.log(data);
       },
       error: (err) => {
+        alert(err.error.error);
         console.log(err);
         this.isDataEmpty = true;
+        this.router.navigate(['']);
       },
     });
 
@@ -96,7 +98,8 @@ export class AccommoInfoComponent implements OnInit {
         },
         error: (err) => {
           console.log(err);
-          // alert(err);
+          alert(err.error.error);
+          this.router.navigate(['']);
         },
       });
     this.reservationService.getReservations(this.id).subscribe({

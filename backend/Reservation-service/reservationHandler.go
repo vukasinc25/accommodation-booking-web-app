@@ -58,6 +58,8 @@ func (rh *reservationHandler) GetReservationDatesByAccomodationId(res http.Respo
 	reservationDatesByAccomodationId, err := rh.repo.GetReservationsDatesByAccomodationId(accoId)
 	if err != nil {
 		rh.logger.Print("Database exception: ", err)
+		sendErrorWithMessage(res, "Error when getting reservation dates", http.StatusBadRequest)
+		return
 	}
 
 	if reservationDatesByAccomodationId == nil {
@@ -66,7 +68,7 @@ func (rh *reservationHandler) GetReservationDatesByAccomodationId(res http.Respo
 
 	err = reservationDatesByAccomodationId.ToJSON(res)
 	if err != nil {
-		http.Error(res, "Unable to convert to json", http.StatusInternalServerError)
+		sendErrorWithMessage(res, "Unable to convert to json", http.StatusInternalServerError)
 		rh.logger.Fatal("Unable to convert to json :", err)
 		return
 	}
@@ -104,6 +106,8 @@ func (rh *reservationHandler) GetAllReservationsByAccomodationId(res http.Respon
 	reservationsByAcco, err := rh.repo.GetReservationsByAcco(accoId)
 	if err != nil {
 		rh.logger.Print("Database exception: ", err)
+		sendErrorWithMessage(res, "Error when getting reservations", http.StatusBadRequest)
+		return
 	}
 
 	if reservationsByAcco == nil {
@@ -112,7 +116,7 @@ func (rh *reservationHandler) GetAllReservationsByAccomodationId(res http.Respon
 
 	err = reservationsByAcco.ToJSON(res)
 	if err != nil {
-		http.Error(res, "Unable to convert to json", http.StatusInternalServerError)
+		sendErrorWithMessage(res, "Unable to convert to json", http.StatusInternalServerError)
 		rh.logger.Fatal("Unable to convert to json :", err)
 		return
 	}
@@ -144,7 +148,7 @@ func (rh *reservationHandler) CreateReservationDateForAccomodation(res http.Resp
 	reservationDate, err := decodeBody(req.Body)
 	if err != nil {
 		log.Println("Error in decoding body")
-		res.WriteHeader(http.StatusBadRequest)
+		sendErrorWithMessage(res, "Error in decoding body", http.StatusBadRequest)
 		return
 	}
 	// reservationDateByAccomodation := req.Context().Value(KeyProduct{}).(*ReservationDateByAccomodationId)
@@ -155,7 +159,7 @@ func (rh *reservationHandler) CreateReservationDateForAccomodation(res http.Resp
 	err = rh.repo.InsertReservationDateForAccomodation(reservationDate)
 	if err != nil {
 		rh.logger.Print("Database exception: ", err)
-		res.WriteHeader(http.StatusBadRequest)
+		sendErrorWithMessage(res, err.Error(), http.StatusBadRequest)
 		return
 	}
 	res.WriteHeader(http.StatusCreated)
@@ -166,12 +170,13 @@ func (rh *reservationHandler) CreateReservationForAcco(res http.ResponseWriter, 
 	reservation, err := decodeReservationBody(req.Body)
 	if err != nil {
 		log.Println("Error in decoding body")
+		sendErrorWithMessage(res, "Error in decoding body", http.StatusBadRequest)
 		return
 	}
 	err = rh.repo.InsertReservationByAcco(reservation)
 	if err != nil {
 		rh.logger.Print("Database exception: ", err)
-		res.WriteHeader(http.StatusBadRequest)
+		sendErrorWithMessage(res, "Cant create reservation", http.StatusBadRequest)
 		return
 	}
 	res.WriteHeader(http.StatusCreated)
