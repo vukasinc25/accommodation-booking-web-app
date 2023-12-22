@@ -289,7 +289,7 @@ func (rh *reservationHandler) MiddlewareRoleCheck(client *http.Client, breaker *
 			})
 			if err != nil {
 				rh.logger.Println(err)
-				w.WriteHeader(http.StatusInternalServerError)
+				sendErrorWithMessage(w, "Service is not working", http.StatusInternalServerError)
 				return
 			}
 
@@ -391,7 +391,7 @@ func (rh *reservationHandler) MiddlewareRoleCheck1(client *http.Client, breaker 
 			})
 			if err != nil {
 				rh.logger.Println(err)
-				w.WriteHeader(http.StatusInternalServerError)
+				sendErrorWithMessage(w, "Service is not working", http.StatusInternalServerError)
 				return
 			}
 
@@ -471,4 +471,11 @@ func decodeReservationBody(r io.Reader) (*ReservationByAccommodation, error) {
 	}
 
 	return &rt, nil
+}
+
+func sendErrorWithMessage(w http.ResponseWriter, message string, statusCode int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	errorResponse := map[string]string{"message": message}
+	json.NewEncoder(w).Encode(errorResponse)
 }

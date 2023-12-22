@@ -18,12 +18,13 @@ import (
 
 // UserRepo is a repository for MongoDB operations related to User.
 type UserRepo struct {
-	cli    *mongo.Client
-	logger *log.Logger
+	cli                 *mongo.Client
+	logger              *log.Logger
+	prof_service_string string
 }
 
 // New creates a new UserRepo instance.
-func New(ctx context.Context, logger *log.Logger) (*UserRepo, error) {
+func New(ctx context.Context, logger *log.Logger, conn_address_string string) (*UserRepo, error) {
 	dbURI := os.Getenv("MONGO_DB_URI")
 
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(dbURI))
@@ -32,8 +33,9 @@ func New(ctx context.Context, logger *log.Logger) (*UserRepo, error) {
 	}
 
 	return &UserRepo{
-		cli:    client,
-		logger: logger,
+		cli:                 client,
+		logger:              logger,
+		prof_service_string: conn_address_string,
 	}, nil
 }
 
@@ -84,7 +86,7 @@ func (uh *UserRepo) Insert(newUser *User) (*http.Response, error) {
 	}
 	uh.logger.Printf("Document ID: %v\n", result.InsertedID)
 
-	url := "http://prof-service:8000" + "/api/prof/create"
+	url := uh.prof_service_string + "/api/prof/create"
 
 	userB := uh.decodeUserB(newUser)
 
@@ -388,12 +390,12 @@ func (uh *UserRepo) decodeUserA(user *User) *UserA {
 
 func (uh *UserRepo) decodeUserB(user *User) *UserB {
 	userB := UserB{
-		Username: user.Username,
-		Role:     user.Role,
-		Email:	  user.Email,
-		FirstName:	user.FirstName,
-		LastName: user.LastName,
-		Location: user.Location,
+		Username:  user.Username,
+		Role:      user.Role,
+		Email:     user.Email,
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		Location:  user.Location,
 	}
 	return &userB
 }

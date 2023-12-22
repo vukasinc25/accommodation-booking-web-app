@@ -11,6 +11,8 @@ services:
     environment:
       PORT: ${AUTH_SERVICE_PORT}
       MONGO_DB_URI: ${MONGO_DB_URI}
+      PROF_SERVICE_HOST: ${PROF_SERVICE_HOST}
+      PROF_SERVICE_PORT: ${PROF_SERVICE_PORT}
     depends_on:
       mongo:
         condition: service_healthy
@@ -86,14 +88,14 @@ services:
     networks:
       - network
 
-#  nats:
-#    image: nats
-#    container_name: nats
-#    ports:
-#      - "4222:4222"
-#    restart: on-failure
-#    networks:
-#      - network
+  #  nats:
+  #    image: nats
+  #    container_name: nats
+  #    ports:
+  #      - "4222:4222"
+  #    restart: on-failure
+  #    networks:
+  #      - network
 
   # NOSQL: MongoDB
   mongo:

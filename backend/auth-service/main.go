@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -15,6 +16,8 @@ import (
 )
 
 func main() {
+
+	config := loadConfig()
 	// Read the port from the environment variable, default to "8000" if not set
 	port := os.Getenv("PORT")
 	if len(port) == 0 {
@@ -40,7 +43,7 @@ func main() {
 	}
 
 	// NoSQL: Initialize auth Repository store
-	store, err := New(timeoutContext, storeLogger)
+	store, err := New(timeoutContext, storeLogger, config["conn_service_address"])
 	if err != nil {
 		logger.Fatal(err)
 	}
@@ -120,4 +123,10 @@ func main() {
 		logger.Fatal("Cannot gracefully shutdown...")
 	}
 	logger.Println("Server stopped")
+}
+
+func loadConfig() map[string]string {
+	config := make(map[string]string)
+	config["conn_service_address"] = fmt.Sprintf("http://%s:%s", os.Getenv("PROF_SERVICE_HOST"), os.Getenv("PROF_SERVICE_PORT"))
+	return config
 }

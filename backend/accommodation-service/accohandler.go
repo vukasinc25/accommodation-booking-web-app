@@ -155,7 +155,7 @@ func (ah *AccoHandler) MiddlewareRoleCheck(client *http.Client, breaker *gobreak
 			})
 			if err != nil {
 				ah.logger.Println(err)
-				w.WriteHeader(http.StatusInternalServerError)
+				sendErrorWithMessage(w, "Service is not working", http.StatusInternalServerError)
 				return
 			}
 
@@ -205,4 +205,11 @@ func renderJSON(w http.ResponseWriter, v interface{}) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(js)
+}
+
+func sendErrorWithMessage(w http.ResponseWriter, message string, statusCode int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	errorResponse := map[string]string{"message": message}
+	json.NewEncoder(w).Encode(errorResponse)
 }
