@@ -36,6 +36,7 @@ export class AuthService {
   }
 
   register(user: any): Observable<any> {
+    console.log(user);
     return this.http.post(
       '/api/users/register',
       {
@@ -43,6 +44,14 @@ export class AuthService {
         password: user.password,
         role: user.userRole,
         email: user.email,
+        firstname: user.firstName,
+        lastname: user.lastName,
+        location: {
+          country: user.country,
+          city: user.city,
+          streetName: user.streetName,
+          streetNumber: user.streetNumber,
+        },
       },
       { headers: this.headers, responseType: 'json' }
     );
