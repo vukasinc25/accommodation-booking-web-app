@@ -47,10 +47,10 @@ type User struct {
 }
 
 type Location struct {
-	Country      string `bson:"country,omitempty" json:"country"`
-	City         string `bson:"city,omitempty" json:"city"`
-	StreetName   string `bson:"streetName,omitempty" json:"streetName"`
-	StreetNumber string `bson:"streetNumber,omitempty" json:"streetNumber"`
+	Country      string `bson:"country,omitempty" json:"country" validate:"required"`
+	City         string `bson:"city,omitempty" json:"city" validate:"required"`
+	StreetName   string `bson:"streetName,omitempty" json:"streetName" validate:"required"`
+	StreetNumber string `bson:"streetNumber,omitempty" json:"streetNumber" validate:"required"`
 }
 
 type ResponseUser struct {
