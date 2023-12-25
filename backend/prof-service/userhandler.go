@@ -7,6 +7,8 @@ import (
 	"log"
 	"mime"
 	"net/http"
+
+	"github.com/gorilla/mux"
 )
 
 type userHandler struct {
@@ -100,9 +102,39 @@ func (u *Users) ToJSON(w io.Writer) error {
 	e := json.NewEncoder(w)
 	return e.Encode(u)
 }
+func (u *User) ToJSON(w io.Writer) error {
+	e := json.NewEncoder(w)
+	return e.Encode(u)
+}
 
 func sendErrorWithMessage(w http.ResponseWriter, message string, statusCode int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(message))
 	w.WriteHeader(statusCode)
+}
+func (uh *userHandler) GetUserById(rw http.ResponseWriter, h *http.Request) {
+	
+	vars := mux.Vars(h)
+	email := vars["email"]
+
+	log.Println("usao u metodu")
+	
+	user, err := uh.db.Get(email)
+	if err != nil {
+		http.Error(rw, "Database exception", http.StatusInternalServerError)
+		uh.logger.Fatal("Database exception: ", err)
+	}
+
+	if user == nil {
+		http.Error(rw, "User with given email not found", http.StatusNotFound)
+		uh.logger.Printf("User with email: '%s' not found", email)
+		return
+	}
+
+	err = user.ToJSON(rw)
+	if err != nil {
+		http.Error(rw, "Unable to convert to json", http.StatusInternalServerError)
+		uh.logger.Fatal("Unable to convert to json :", err)
+		return
+	}
 }

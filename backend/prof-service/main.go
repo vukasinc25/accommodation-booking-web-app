@@ -35,6 +35,7 @@ func main() {
 	// router.HandleFunc("/api/prof/email/{code}", service.verifyEmail).Methods("POST") // for sending verification mail
 	router.HandleFunc("/api/prof/create", service.createUser).Methods("POST")
 	router.HandleFunc("/api/prof/users/", service.getAllUsers).Methods("GET")
+	router.HandleFunc("/api/prof/user/{email}", service.GetUserById).Methods("GET")
 
 	// start servergo get -u github.com/gorilla/mux
 
