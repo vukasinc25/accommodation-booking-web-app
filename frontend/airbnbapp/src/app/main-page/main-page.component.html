@@ -6,6 +6,19 @@
   >
     Create Accommodation
   </button>
-
+  <div class="container">
+    <form>
+      <div class="wrapper">
+        <p>Search Accommodations</p>
+        <div class="search-container">
+          <input type="text" class="location" placeholder="Location">
+          <input type="date" class="date-from" placeholder="Check In">
+          <input type="date" class="date-to" placeholder="Check Out">
+          <input type="text" class="noPeople" placeholder="Number of people">
+          <button type="submit" class="button">Search</button>
+        </div>
+      </div> 
+    </form>
+    </div>
   <app-accommo-list [accommodations]="accommodations"></app-accommo-list>
 </div>

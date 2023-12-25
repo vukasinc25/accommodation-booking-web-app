@@ -24,6 +24,10 @@ import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { MyAccommoComponent } from './my-accommo/my-accommo.component';
 import { AccommoListComponent } from './accommo-list/accommo-list.component';
 
+//FA
+import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import { faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons';
+
 @NgModule({
   declarations: [
     AppComponent,
@@ -50,6 +54,7 @@ import { AccommoListComponent } from './accommo-list/accommo-list.component';
     NgxCaptchaModule,
     BrowserAnimationsModule,
     NgbModule,
+    FontAwesomeModule,
     // MatDialogModule,
   ],
   providers: [
@@ -57,4 +62,6 @@ import { AccommoListComponent } from './accommo-list/accommo-list.component';
   ],
   bootstrap: [AppComponent],
 })
-export class AppModule {}
+export class AppModule {
+  faMagnifyingGlass = faMagnifyingGlass;
+}
