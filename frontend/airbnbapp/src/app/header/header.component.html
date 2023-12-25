@@ -20,6 +20,12 @@
             >Profile</a
           >
           <a
+            *ngIf="isLoggedin && userRole == 'GUEST'"
+            class="nav-link"
+            routerLink="/reservations"
+            >Reservations</a
+          >
+          <a
             *ngIf="isLoggedin && userRole == 'HOST'"
             class="nav-link"
             routerLink="/accommodations/myAccommodations"
