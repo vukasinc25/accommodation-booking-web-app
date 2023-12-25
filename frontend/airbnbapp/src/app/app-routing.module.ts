@@ -12,6 +12,7 @@ import { PasswordEmailRecoveryComponent } from './password-email-recovery/passwo
 import { AccommoInfoComponent } from './accommo-info/accommo-info.component';
 import { VerifyEmailComponent } from './verify-email/verify-email.component';
 import { MyAccommoComponent } from './my-accommo/my-accommo.component';
+import { ReservationsComponent } from './reservations/reservations.component';
 
 const routes: Routes = [
   {
@@ -47,6 +48,10 @@ const routes: Routes = [
     path: 'accommodations/create',
     component: AccommoAddComponent,
     canActivate: [loginGuard, roleGuard],
+  },
+  {
+    path: 'reservations',
+    component: ReservationsComponent,
   },
   {
     path: 'verify-email',

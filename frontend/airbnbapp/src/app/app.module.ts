@@ -23,6 +23,7 @@ import { VerifyEmailComponent } from './verify-email/verify-email.component';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { MyAccommoComponent } from './my-accommo/my-accommo.component';
 import { AccommoListComponent } from './accommo-list/accommo-list.component';
+import { ReservationsComponent } from './reservations/reservations.component';
 
 @NgModule({
   declarations: [
@@ -40,6 +41,7 @@ import { AccommoListComponent } from './accommo-list/accommo-list.component';
     VerifyEmailComponent,
     MyAccommoComponent,
     AccommoListComponent,
+    ReservationsComponent,
   ],
   imports: [
     BrowserModule,
