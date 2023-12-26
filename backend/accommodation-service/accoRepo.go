@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"log"
 	"os"
+	"strconv"
 	"time"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -116,6 +118,53 @@ func (ar *AccoRepo) GetById(id string) (*Accommodation, error) {
 		return nil, err
 	}
 	return &accommodation, nil
+}
+
+func (ar *AccoRepo) GetAllByLocation(location string) (*Accommodations, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	accommoCollection := ar.getCollection()
+
+	var accommodations Accommodations
+	accoByLocationList, err := accommoCollection.Find(ctx, bson.M{"city": location})
+	log.Println(accoByLocationList)
+	if err != nil {
+		ar.logger.Println(err)
+		return nil, err
+	}
+	if err = accoByLocationList.All(ctx, &accommodations); err != nil {
+		ar.logger.Println(err)
+		return nil, err
+	}
+	return &accommodations, nil
+}
+
+func (ar *AccoRepo) GetAllByNoGuests(noGuestsString string) (*Accommodations, error) {
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	noGuests, err := strconv.Atoi(noGuestsString)
+	if err != nil {
+		log.Println("SJEBO SE ABUUU", err)
+		return nil, err
+	}
+
+	accommoCollection := ar.getCollection()
+
+	var accommodations Accommodations
+	accoByGuestList, err := accommoCollection.Find(ctx, bson.M{"minGuests": bson.M{"$lte": noGuests}, "maxGuests": bson.M{"$gte": noGuests}})
+	if err != nil {
+		ar.logger.Println(err)
+		return nil, err
+	}
+	if err = accoByGuestList.All(ctx, &accommodations); err != nil {
+		ar.logger.Println(err)
+		return nil, err
+	}
+
+	return &accommodations, nil
 }
 
 func (ar *AccoRepo) Insert(accommodation *Accommodation) error {

@@ -86,6 +86,51 @@ func (ah *AccoHandler) GetAllAccommodationsById(w http.ResponseWriter, req *http
 	}
 }
 
+func (ah *AccoHandler) GetAllAccommodationsByLocation(w http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	locations := vars["locations"]
+	accommodations, err := ah.db.GetAllByLocation(locations)
+	if err != nil {
+		ah.logger.Print("Database exception: ", err)
+	}
+
+	if accommodations == nil {
+		http.Error(w, "Accommodations with given location not found", http.StatusNotFound)
+		ah.logger.Printf("Accommodations with location: '%s' not found", locations)
+		return
+	}
+
+	err = accommodations.ToJSON(w)
+	if err != nil {
+		http.Error(w, "Unable to convert to json", http.StatusInternalServerError)
+		ah.logger.Fatal("Unable to convert to json :", err)
+		return
+	}
+}
+
+func (ah *AccoHandler) GetAllAccommodationsByNoGuests(w http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	noGuests := vars["noGuests"]
+
+	accommodations, err := ah.db.GetAllByNoGuests(noGuests)
+	if err != nil {
+		ah.logger.Print("Database exception: ", err)
+	}
+
+	if accommodations == nil {
+		http.Error(w, "Accommodations with given noGuests not found", http.StatusNotFound)
+		ah.logger.Printf("Accommodations with noGuests: '%s' not found", noGuests)
+		return
+	}
+
+	err = accommodations.ToJSON(w)
+	if err != nil {
+		http.Error(w, "Unable to convert to json", http.StatusInternalServerError)
+		ah.logger.Fatal("Unable to convert to json :", err)
+		return
+	}
+}
+
 func (ah *AccoHandler) getAllAccommodations(rw http.ResponseWriter, req *http.Request) {
 
 	accommodations, err := ah.db.GetAll()

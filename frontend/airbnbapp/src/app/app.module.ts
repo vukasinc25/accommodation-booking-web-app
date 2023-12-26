@@ -26,7 +26,6 @@ import { AccommoListComponent } from './accommo-list/accommo-list.component';
 
 //FA
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
-import { faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons';
 
 @NgModule({
   declarations: [
@@ -63,5 +62,4 @@ import { faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons';
   bootstrap: [AppComponent],
 })
 export class AppModule {
-  faMagnifyingGlass = faMagnifyingGlass;
 }

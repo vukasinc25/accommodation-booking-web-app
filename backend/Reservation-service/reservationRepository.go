@@ -77,7 +77,7 @@ func (rs *ReservationRepo) CloseSession() {
 // }
 
 func (rs *ReservationRepo) CreateTables() {
-	//Reservation Acco
+	//RESERVATION BY ACCO
 	err := rs.session.Query(
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s 
 						(reservation_id UUID, acco_id text, host_id text, numberPeople int, priceByPeople int, priceByAcoommodation int,
@@ -89,7 +89,7 @@ func (rs *ReservationRepo) CreateTables() {
 		rs.logger.Println(err)
 	}
 
-	//Reservation Guest
+	//RESERVATION BY GUEST
 	err = rs.session.Query(
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s 
 					(user_id UUID, reservation_id UUID, acco_id UUID, pricePerson int, 
@@ -110,7 +110,7 @@ func (rs *ReservationRepo) CreateTables() {
 	// 	rs.logger.Println(err)
 	// }
 
-	//RESERVATION DATE
+	//RESERVATION DATE BASIC
 	err = rs.session.Query(
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s 
 					(id UUID, accommodation_id text, begin_reservation_date date, end_reservation_date date,
@@ -119,6 +119,26 @@ func (rs *ReservationRepo) CreateTables() {
 	if err != nil {
 		rs.logger.Println(err)
 	}
+
+	//SEARCH - START AND END DATE
+	err = rs.session.Query(
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s 
+					(id UUID, accommodation_id text, begin_reservation_date date, end_reservation_date date,
+					PRIMARY KEY (begin_reservation_date, end_reservation_date))`,
+			"reservations_dates_by_date")).Exec()
+	if err != nil {
+		rs.logger.Println(err)
+	}
+
+	//SEARCH - END DATE
+	// err = rs.session.Query(
+	// 	fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s
+	// 				(id UUID, accommodation_id text, begin_reservation_date date, end_reservation_date date,
+	// 				PRIMARY KEY (accommodation_id, id))`,
+	// 		"reservations_dates_by_endDate")).Exec()
+	// if err != nil {
+	// 	rs.logger.Println(err)
+	// }
 }
 
 // -------Reservation By Accommodation-------//
@@ -167,6 +187,29 @@ func (rs *ReservationRepo) GetReservationsDatesByAccomodationId(acco_id string) 
 	scanner := rs.session.Query(`SELECT begin_reservation_date, end_reservation_date
     FROM reservations_dates_by_accomodation_id
     WHERE accommodation_id = ?`,
+		acco_id).Iter().Scanner()
+
+	var dates ReservationDatesByAccomodationId
+	for scanner.Next() {
+		var res ReservationDate
+		err := scanner.Scan(&res.BeginAccomodationDate, &res.EndAccomodationDate)
+		if err != nil {
+			rs.logger.Println(err)
+			return nil, err
+		}
+		dates = append(dates, &res)
+	}
+	if err := scanner.Err(); err != nil {
+		rs.logger.Println(err)
+		return nil, err
+	}
+	return dates, nil
+}
+
+func (rs *ReservationRepo) GetReservationsDatesByDate(acco_id string) (ReservationDatesByAccomodationId, error) {
+	scanner := rs.session.Query(`SELECT begin_reservation_date, end_reservation_date
+    FROM reservations_dates_by_accomodation_id
+    WHERE begin_reservation_date = ? AND end_reservation_date = ?`,
 		acco_id).Iter().Scanner()
 
 	var dates ReservationDatesByAccomodationId

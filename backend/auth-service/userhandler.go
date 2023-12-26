@@ -158,7 +158,7 @@ func (uh *UserHandler) createUser(w http.ResponseWriter, req *http.Request) {
 		// 		<h1>Verify your email</h1>
 		// 		<h1>This is a verification message from AirBnb</h1>
 		// 		<h4>Use the following code: %s</h4>
-		// 		<h4><a href="https://localhost:4200/verify-email">Click here</a> to verify your email.</h4>`
+		// 		<h4><a href="localhost:4200/verify-email">Click here</a> to verify your email.</h4>`
 		subject := "Verification email"
 		uh.sendEmail(rt, content, subject, true, rt.Email)
 		sendErrorWithMessage(w, "User cretated. Check the email for verification code", http.StatusCreated)

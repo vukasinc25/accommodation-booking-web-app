@@ -4,6 +4,7 @@ import { AccommodationService } from '../service/accommodation.service';
 import { Router } from '@angular/router';
 import { AuthService } from '../service/auth.service';
 import { Subscription } from 'rxjs';
+import { FormControl, FormGroup } from '@angular/forms';
 
 @Component({
   selector: 'app-main-page',
@@ -17,6 +18,8 @@ export class MainPageComponent implements OnInit, OnDestroy {
   logSub: Subscription;
   rolesub: Subscription;
 
+  searchAccoForm: FormGroup;
+
   constructor(
     private router: Router,
     private accommodationService: AccommodationService,
@@ -28,6 +31,13 @@ export class MainPageComponent implements OnInit, OnDestroy {
     this.rolesub = this.authService.role.subscribe(
       (data) => (this.userRole = data)
     );
+
+    this.searchAccoForm = new FormGroup({
+      location: new FormControl,
+      startDate: new FormControl,
+      endDate: new FormControl,
+      noPeople: new FormControl
+    })
   }
 
   ngOnInit(): void {
@@ -48,5 +58,9 @@ export class MainPageComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.logSub.unsubscribe();
     this.rolesub.unsubscribe();
+  }
+
+  searchAcco(): void {
+    console.log("test search");
   }
 }
