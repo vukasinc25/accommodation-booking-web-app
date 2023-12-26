@@ -23,8 +23,18 @@
   overflow: hidden;
 }
 
+#createAccoButton{
+  margin: 20px;
+  
+}
+
+.accommodations {
+  padding: 20px;
+  margin: 20px;
+}
+
 form {
-  padding: 40px;
+  padding: 20px;
 }
 
 .wrapper {

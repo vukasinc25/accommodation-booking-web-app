@@ -3,6 +3,7 @@
     *ngIf="isLoggedin && userRole === 'HOST'"
     routerLink="/accommodations/create"
     class="btn btn-primary mb-4"
+    id="createAccoButton"
   >
     Create Accommodation
   </button>
@@ -14,11 +15,12 @@
           <input type="text" [formControlName]="'location'" class="location" placeholder="Location">
           <input type="date" [formControlName]="'startDate'" class="date-from" placeholder="Check In">
           <input type="date" [formControlName]="'endDate'" class="date-to" placeholder="Check Out">
-          <input type="text" [formControlName]="'noPeople'" class="noPeople" placeholder="Number of people">
+          <input type="text" [formControlName]="'noGuests'" class="noPeople" placeholder="Number of people">
           <button type="submit" class="button">Search</button>
+          <button type="button" class="button" (click)="ngOnInit()">Reset</button>
         </div>
       </div> 
     </form>
     </div>
-  <app-accommo-list [accommodations]="accommodations"></app-accommo-list>
+  <app-accommo-list [accommodations]="accommodations" class="accommodations"></app-accommo-list>
 </div>
