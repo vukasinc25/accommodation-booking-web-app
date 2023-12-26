@@ -1,24 +1,110 @@
-<div class="container">
-  <label for="fname">First name:</label><br />
-  <input type="text" id="fname" name="fname" /><br />
-  <label for="lname">Last name:</label><br />
-  <input type="text" id="lname" name="lname" /><br />
-  <label for="username">Username:</label><br />
-  <input type="text" id="username" name="username" /><br />
-  <label for="email">Email:</label><br />
-  <input type="email" id="email" name="email" /><br />
-  <label for="password">Password:</label><br />
-  <input type="password" id="password" name="password" /><br />
-  <label for="country">Country:</label><br />
-  <input type="text" id="country" name="country" /><br />
-  <label for="city">City:</label><br />
-  <input type="text" id="city" name="city" /><br />
-  <label for="streetName">Street Name:</label><br />
-  <input type="text" id="streetName" name="streetName" /><br />
-  <label for="streetNumber">Street Number:</label><br />
-  <input type="text" id="streetNumber" name="streetNumber" /><br />
-  <br />
+<div class="container mt-3">
+  <h2>User Profile</h2>
+  <form (ngSubmit)="submitForm()" #userProfileForm="ngForm">
+    <div class="form-group">
+      <label for="username">Username:</label>
+      <input
+        type="text"
+        id="username"
+        name="username"
+        [(ngModel)]="user.username"
+        class="form-control"
+        required
+      />
+    </div>
 
-  <button class="btn btn-primary">Edit</button>
+    <div class="form-group">
+      <label for="email">Email:</label>
+      <input
+        type="email"
+        id="email"
+        name="email"
+        [(ngModel)]="user.email"
+        class="form-control"
+        required
+      />
+    </div>
+
+    <div class="form-row">
+      <div class="form-group col-md-6">
+        <label for="firstName">First Name:</label>
+        <input
+          type="text"
+          id="firstName"
+          name="firstName"
+          [(ngModel)]="user.firstName"
+          class="form-control"
+        />
+      </div>
+
+      <div class="form-group col-md-6">
+        <label for="lastName">Last Name:</label>
+        <input
+          type="text"
+          id="lastName"
+          name="lastName"
+          [(ngModel)]="user.lastName"
+          class="form-control"
+        />
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group col-md-6">
+        <label for="city">City:</label>
+        <input
+          type="text"
+          id="city"
+          name="city"
+          [(ngModel)]="user.city"
+          class="form-control"
+        />
+      </div>
+
+      <div class="form-group col-md-6">
+        <label for="country">Country:</label>
+        <input
+          type="text"
+          id="country"
+          name="country"
+          [(ngModel)]="user.country"
+          class="form-control"
+        />
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group col-md-8">
+        <label for="streetName">Street Name:</label>
+        <input
+          type="text"
+          id="streetName"
+          name="streetName"
+          [(ngModel)]="user.streetName"
+          class="form-control"
+        />
+      </div>
+
+      <div class="form-group col-md-4">
+        <label for="streetNumber">Street Number:</label>
+        <input
+          type="text"
+          id="streetNumber"
+          name="streetNumber"
+          [(ngModel)]="user.streetNumber"
+          class="form-control"
+        />
+      </div>
+    </div>
+
+    <button
+      type="submit"
+      class="btn btn-primary"
+      [disabled]="userProfileForm.invalid"
+    >
+      Edit
+    </button>
+  </form>
+  <br />
   <button class="btn btn-primary" (click)="logout()">Logout</button>
 </div>

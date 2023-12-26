@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -88,8 +89,10 @@ func (uh *UserRepo) Insert(newUser *User) (*http.Response, error) {
 
 	url := uh.prof_service_string + "/api/prof/create"
 
-	userB := uh.decodeUserB(newUser)
+	insertedID := result.InsertedID.(primitive.ObjectID).Hex()
+	log.Println("User: ", insertedID)
 
+	userB := uh.decodeUserB(insertedID, newUser)
 	reqBody, err := json.Marshal(userB)
 	if err != nil {
 		fmt.Println("Error marshaling JSON:", err)
@@ -388,8 +391,9 @@ func (uh *UserRepo) decodeUserA(user *User) *UserA {
 	return &userA
 }
 
-func (uh *UserRepo) decodeUserB(user *User) *UserB {
+func (uh *UserRepo) decodeUserB(userId string, user *User) *UserB {
 	userB := UserB{
+		ID:        userId,
 		Username:  user.Username,
 		Role:      user.Role,
 		Email:     user.Email,

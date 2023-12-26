@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/google/uuid"
 	"github.com/hashicorp/consul/api"
 )
 
@@ -19,9 +18,9 @@ const (
 	all   = "users"
 )
 
-func generateKey(email string) (string, string) {
-	id := email
-	return fmt.Sprintf(users, id), id
+func generateKey(Id string) string {
+	id := Id
+	return fmt.Sprintf(users, id)
 }
 
 func New(logger *log.Logger) (*UserRepo, error) {
@@ -42,15 +41,14 @@ func (ur *UserRepo) Insert(user *User) error {
 	log.Println("Usli u Insert")
 	kv := ur.cli.KV()
 
-	//dbId, id := generateKey()
-	user.ID = uuid.New().String();
+	dbId := generateKey(user.ID)
 
 	data, err := json.Marshal(user)
 	if err != nil {
 		return err
 	}
 
-	userKeyValue := &api.KVPair{Key: user.Email, Value: data}
+	userKeyValue := &api.KVPair{Key: dbId, Value: data}
 	_, err = kv.Put(userKeyValue, nil)
 	if err != nil {
 		return err
@@ -78,20 +76,19 @@ func (pr *UserRepo) GetAll() (Users, error) {
 
 	return users, nil
 }
-func (ur *UserRepo) Get(email string) (*User, error) {
+func (ur *UserRepo) Get(id string) (*ResponseUser, error) {
 	kv := ur.cli.KV()
 
-	pair, _, err := kv.Get(constructKey(email), nil)
+	pair, _, err := kv.Get(constructKey(id), nil)
 	if err != nil {
 		return nil, err
 	}
-	// If pair is nil -> no object found for given id -> return nil
 	if pair == nil {
-		log.Println("blabla:",pair)
+		log.Println("blabla:", pair)
 		return nil, nil
 	}
 
-	user := &User{}
+	user := &ResponseUser{}
 	err = json.Unmarshal(pair.Value, user)
 	if err != nil {
 		return nil, err
@@ -99,6 +96,7 @@ func (ur *UserRepo) Get(email string) (*User, error) {
 
 	return user, nil
 }
-func constructKey(email string) string {
-	return fmt.Sprintf(users, email)
+
+func constructKey(id string) string {
+	return fmt.Sprintf(users, id)
 }

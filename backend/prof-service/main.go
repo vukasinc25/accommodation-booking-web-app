@@ -11,9 +11,26 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/sony/gobreaker"
 )
 
 func main() {
+
+	authClient := &http.Client{
+		Transport: &http.Transport{
+			MaxIdleConns:        10,
+			MaxIdleConnsPerHost: 10,
+			MaxConnsPerHost:     10,
+		},
+	}
+
+	authBreaker := gobreaker.NewCircuitBreaker(
+		gobreaker.Settings{
+			Name:        "auth",
+			MaxRequests: 1,
+			Timeout:     10 * time.Second,
+			Interval:    0,
+		})
 
 	quit := make(chan os.Signal)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
@@ -35,7 +52,9 @@ func main() {
 	// router.HandleFunc("/api/prof/email/{code}", service.verifyEmail).Methods("POST") // for sending verification mail
 	router.HandleFunc("/api/prof/create", service.createUser).Methods("POST")
 	router.HandleFunc("/api/prof/users/", service.getAllUsers).Methods("GET")
-	router.HandleFunc("/api/prof/user/{email}", service.GetUserById).Methods("GET")
+	getUserInfoByUserId := router.Methods(http.MethodGet).Subrouter()
+	getUserInfoByUserId.HandleFunc("/api/prof/user", service.GetUserById)
+	getUserInfoByUserId.Use(service.MiddlewareRoleCheck(authClient, authBreaker))
 
 	// start servergo get -u github.com/gorilla/mux
 

@@ -26,13 +26,13 @@ type UserA struct {
 	Role            Role               `bson:"role,omitempty" json:"role"`
 }
 type UserB struct {
-	ID       primitive.ObjectID `bson:"_id,omitempty" json:"_id,omitempty"`
-	Username string             `bson:"username,omitempty" json:"username"`
-	Email           string             `bson:"email,omitempty" json:"email"`
-	Role     Role               `bson:"role,omitempty" json:"role"`
-	FirstName 	string  `bson:"firstname,omitempty" json:"firstname"`
-	LastName	string  `bson:"lastname,omitempty" json:"lastname"`
-	Location  Location           `bson:"location,omitempty,inline" json:"location"`
+	ID        string   `bson:"_id,omitempty" json:"_id,omitempty"`
+	Username  string   `bson:"username,omitempty" json:"username"`
+	Email     string   `bson:"email,omitempty" json:"email"`
+	Role      Role     `bson:"role,omitempty" json:"role"`
+	FirstName string   `bson:"firstname,omitempty" json:"firstname"`
+	LastName  string   `bson:"lastname,omitempty" json:"lastname"`
+	Location  Location `bson:"location,omitempty,inline" json:"location"`
 }
 type User struct {
 	ID              primitive.ObjectID `bson:"_id,omitempty" json:"_id,omitempty"`
@@ -41,9 +41,9 @@ type User struct {
 	Role            Role               `bson:"role,omitempty" json:"role" validate:"required,oneof=HOST GUEST"`
 	Email           string             `bson:"email,omitempty" json:"email" validate:"required,email"`
 	IsEmailVerified bool               `bson:"isEmailVerified" json:"isEmailVerified"`
-	FirstName 	string  `bson:"firstname,omitempty" json:"firstname"`
-	LastName	string  `bson:"lastname,omitempty" json:"lastname"`
-	Location  Location           `bson:"location,omitempty,inline" json:"location"`
+	FirstName       string             `bson:"firstname,omitempty" json:"firstname"`
+	LastName        string             `bson:"lastname,omitempty" json:"lastname"`
+	Location        Location           `bson:"location,omitempty,inline" json:"location"`
 }
 
 type Location struct {
