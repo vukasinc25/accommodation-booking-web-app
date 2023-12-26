@@ -305,7 +305,7 @@ func (rs *ReservationRepo) CheckOverlap(accommodationID string, beginDate, endDa
 	err := rs.session.Query(
 		`SELECT COUNT(*) FROM reservations_by_user
          WHERE acco_id = ? 
-         AND begin_reservation_date <= ? AND end_reservation_date >= ? ALLOW FILTERING`,
+         AND begin_reservation_date <= ? AND end_reservation_date >= ? AND isDeleted = false ALLOW FILTERING`,
 		accommodationID, endDate, beginDate).Scan(&count)
 
 	if err != nil {
