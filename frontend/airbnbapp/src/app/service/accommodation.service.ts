@@ -34,6 +34,20 @@ export class AccommodationService {
     });
   }
 
+  getAllByLocation(location: string): Observable<any>{
+    return this.http.get('/api/accommodations/search_by_location/' + location, {
+      headers: this.headers,
+      responseType: 'json',
+    })
+  }
+
+  getAllByNoGuests(noGuests: string): Observable<any>{
+    return this.http.get('/api/accommodations/search_by_noGuests/' + noGuests, {
+      headers: this.headers,
+      responseType: 'json',
+    })
+  }
+
   insert(accommodation: Accommodation): Observable<any> {
     return this.http.post(
       '/api/accommodations/create',

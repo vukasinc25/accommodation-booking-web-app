@@ -27,9 +27,6 @@ func NewReservationHandler(l *log.Logger, r *ReservationRepo) *reservationHandle
 	return &reservationHandler{l, r}
 }
 
-func (rh *reservationHandler) Test(res http.ResponseWriter, req *http.Request) {
-	log.Println("AAA")
-}
 func (rh *reservationHandler) GetAllReservationIds(res http.ResponseWriter, req *http.Request) {
 	reservationIds, err := rh.repo.GetDistinctIds("reservation_id", "reservations_by_user")
 	if err != nil {
@@ -51,7 +48,7 @@ func (rh *reservationHandler) GetAllReservationIds(res http.ResponseWriter, req 
 	}
 }
 
-func (rh *reservationHandler) GetReservationDatesByAccomodationId(res http.ResponseWriter, req *http.Request) {
+func (rh *reservationHandler) GetReservationDatesByAccommodationId(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	accoId := vars["id"]
 
@@ -74,32 +71,7 @@ func (rh *reservationHandler) GetReservationDatesByAccomodationId(res http.Respo
 	}
 }
 
-// func (rh *reservationHandler) createReservation(w http.ResponseWriter, req *http.Request) {
-// 	contentType := req.Header.Get("Content-Type")
-// 	mediatype, _, err := mime.ParseMediaType(contentType)
-// 	if err != nil {
-// 		http.Error(w, err.Error(), http.StatusBadRequest)
-// 		return
-// 	}
-
-// 	if mediatype != "application/json" {
-// 		err := errors.New("Expect application/json Content-Type")
-// 		http.Error(w, err.Error(), http.StatusUnsupportedMediaType)
-// 		return
-// 	}
-
-// 	rt, err := decodeBody(req.Body)
-// 	if err != nil {
-// 		http.Error(w, err.Error(), http.StatusBadRequest)
-// 		return
-// 	}
-
-// 	rh.repo.Insert(rt)
-// 	w.WriteHeader(http.StatusCreated)
-// }
-
-func (rh *reservationHandler) GetAllReservationsByAccomodationId(res http.ResponseWriter, req *http.Request) {
-	log.Println("Usli u GetAllReservationsByAccomodationId")
+func (rh *reservationHandler) GetAllReservationsByAccommodationId(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	accoId := vars["id"]
 
@@ -123,15 +95,33 @@ func (rh *reservationHandler) GetAllReservationsByAccomodationId(res http.Respon
 	}
 }
 
-func (rh *reservationHandler) GetAllReservationsByUserId(res http.ResponseWriter, req *http.Request) {
-	log.Println("Request Body: ", req.Body)
-	requestId, err := decodeIdBody(req.Body)
+func (rh *reservationHandler) GetAllReservationsDatesByDate(res http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	startDate := vars["startDate"]
+	endDate := vars["endDate"]
+
+	reservationsByAcco, err := rh.repo.GetReservationsDatesByDate(startDate, endDate)
 	if err != nil {
-		log.Println("Cant decode body")
-		sendErrorWithMessage(res, "Cant decode body", http.StatusBadRequest)
+		rh.logger.Print("Database exception: ", err)
+		sendErrorWithMessage(res, "Error when getting reservations", http.StatusBadRequest)
 		return
 	}
 
+	if reservationsByAcco == nil {
+		return
+	}
+
+	err = reservationsByAcco.ToJSON(res)
+	if err != nil {
+		sendErrorWithMessage(res, "Unable to convert to json", http.StatusInternalServerError)
+		rh.logger.Fatal("Unable to convert to json :", err)
+		return
+	}
+}
+
+func (rh *reservationHandler) getAllReservationsByUser(res http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	userId := vars["id"] 
 	reservationsByUser, err := rh.repo.GetReservationsByUser(requestId.UserId)
 	if err != nil {
 		rh.logger.Println("Database exception: ", err)
@@ -151,18 +141,39 @@ func (rh *reservationHandler) GetAllReservationsByUserId(res http.ResponseWriter
 	}
 }
 
-func (rh *reservationHandler) CreateReservationDateForAccomodation(res http.ResponseWriter, req *http.Request) {
-	log.Println("Usli u Metodu")
+func (rh *reservationHandler) GetAllReservationsByUserId(res http.ResponseWriter, req *http.Request) {
+	log.Println("Request Body: ", req.Body)
+	requestId, err := decodeIdBody(req.Body)
+	if err != nil {
+		log.Println("Cant decode body")
+		sendErrorWithMessage(res, "Cant decode body", http.StatusBadRequest)
+		return
+	}
+  
+func (rh *reservationHandler) CreateReservationDateForDate(res http.ResponseWriter, req *http.Request) {
 	reservationDate, err := decodeBody(req.Body)
 	if err != nil {
 		log.Println("Error in decoding body")
 		sendErrorWithMessage(res, "Error in decoding body", http.StatusBadRequest)
 		return
 	}
-	// reservationDateByAccomodation := req.Context().Value(KeyProduct{}).(*ReservationDateByAccomodationId)
-	log.Println(reservationDate.AccoId)
-	log.Println(reservationDate.BeginAccomodationDate)
-	log.Println(reservationDate.EndAccomodationDate)
+
+	err = rh.repo.InsertReservationDateByDate(reservationDate)
+	if err != nil {
+		rh.logger.Print("Database exception: ", err)
+		sendErrorWithMessage(res, err.Error(), http.StatusBadRequest)
+		return
+	}
+	res.WriteHeader(http.StatusCreated)
+}
+
+func (rh *reservationHandler) CreateReservationDateForAccommodation(res http.ResponseWriter, req *http.Request) {
+	reservationDate, err := decodeBody(req.Body)
+	if err != nil {
+		log.Println("Error in decoding body")
+		sendErrorWithMessage(res, "Error in decoding body", http.StatusBadRequest)
+		return
+	}
 
 	err = rh.repo.InsertReservationDateForAccomodation(reservationDate)
 	if err != nil {
@@ -174,7 +185,6 @@ func (rh *reservationHandler) CreateReservationDateForAccomodation(res http.Resp
 }
 
 func (rh *reservationHandler) CreateReservationForAcco(res http.ResponseWriter, req *http.Request) {
-	log.Println("Usli u CreateReservationForAcco")
 	reservation, err := decodeReservationBody(req.Body)
 	if err != nil {
 		log.Println("Error in decoding body")
@@ -280,23 +290,6 @@ func (rh *reservationHandler) MiddlewareReservationForUserDeserialization(next h
 		next.ServeHTTP(rw, h)
 	})
 }
-
-// func (ah *reservationHandler) MiddlewareAccommodationDeserialization(next http.Handler) http.Handler {
-// 	return http.HandlerFunc(func(rw http.ResponseWriter, h *http.Request) {
-// 		accommodation := &Accommodation{}
-// 		err := accommodation.FromJSON(h.Body)
-// 		if err != nil {
-// 			http.Error(rw, "Unable to decode json", http.StatusBadRequest)
-// 			ah.logger.Fatal(err)
-// 			return
-// 		}
-
-// 		ctx := context.WithValue(h.Context(), KeyProduct{}, accommodation)
-// 		h = h.WithContext(ctx)
-
-// 		next.ServeHTTP(rw, h)
-// 	})
-// }
 
 func (rh *reservationHandler) MiddlewareRoleCheck(client *http.Client, breaker *gobreaker.CircuitBreaker) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
@@ -539,37 +532,11 @@ func (rh *reservationHandler) MiddlewareContentTypeSet(next http.Handler) http.H
 	})
 }
 
-// func decodeBody(r io.Reader) (*Reservation, error) {
-// 	dec := json.NewDecoder(r)
-// 	dec.DisallowUnknownFields()
-
-// 	var rt Reservation
-// 	if err := dec.Decode(&rt); err != nil {
-// 		return nil, err
-// 	}
-// 	return &rt, nil
-// }
-
-// func renderJSON(w http.ResponseWriter, v interface{}) {
-// 	js, err := json.Marshal(v)
-// 	if err != nil {
-// 		http.Error(w, err.Error(), http.StatusInternalServerError)
-// 		return
-// 	}
-
-// 	w.Header().Set("Content-Type", "application/json")
-// 	w.Write(js)
-// }
-
-//	func (u *Reservations) ToJSON(w io.Writer) error {
-//		e := json.NewEncoder(w)
-//		return e.Encode(u)
-//	}
-func decodeBody(r io.Reader) (*ReservationDateByAccomodationId, error) {
+func decodeBody(r io.Reader) (*ReservationDateByDate, error) {
 	dec := json.NewDecoder(r)
 	dec.DisallowUnknownFields()
 
-	var rt ReservationDateByAccomodationId
+	var rt ReservationDateByDate
 	if err := dec.Decode(&rt); err != nil {
 		log.Println("Error u decode body:", err)
 		return nil, err

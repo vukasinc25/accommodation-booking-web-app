@@ -25,6 +25,9 @@ import { MyAccommoComponent } from './my-accommo/my-accommo.component';
 import { AccommoListComponent } from './accommo-list/accommo-list.component';
 import { ReservationsComponent } from './reservations/reservations.component';
 
+//FA
+import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+
 @NgModule({
   declarations: [
     AppComponent,
@@ -52,6 +55,7 @@ import { ReservationsComponent } from './reservations/reservations.component';
     NgxCaptchaModule,
     BrowserAnimationsModule,
     NgbModule,
+    FontAwesomeModule,
     // MatDialogModule,
   ],
   providers: [
@@ -59,4 +63,5 @@ import { ReservationsComponent } from './reservations/reservations.component';
   ],
   bootstrap: [AppComponent],
 })
-export class AppModule {}
+export class AppModule {
+}

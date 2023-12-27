@@ -52,17 +52,12 @@ func main() {
 
 	reservationHandler := NewReservationHandler(logger, store)
 	router := mux.NewRouter()
-	router.HandleFunc("/api/reservations/r", reservationHandler.Test).Methods("GET")
-	// router.Use(reservationHandler.MiddlewareContentTypeSet)
 
 	getReservationIds := router.Methods(http.MethodGet).Subrouter()
 	getReservationIds.HandleFunc("/api/reservations/", reservationHandler.GetAllReservationIds)
 
-	// getReservationIds2 := router.Methods(http.MethodGet).Subrouter()
-	// getReservationIds2.HandleFunc("/api/r", reservationHandler.GetAllReservationIds)
-
 	getReservationsByAcco := router.Methods(http.MethodGet).Subrouter()
-	getReservationsByAcco.HandleFunc("/api/reservations/by_acco/{id}", reservationHandler.GetAllReservationsByAccomodationId)
+	getReservationsByAcco.HandleFunc("/api/reservations/by_acco/{id}", reservationHandler.GetAllReservationsByAccommodationId)
 	getReservationsByAcco.Use(reservationHandler.MiddlewareRoleCheck1(authClient, authBreaker))
 
 	getReservationsByUser := router.Methods(http.MethodGet).Subrouter()
@@ -82,12 +77,18 @@ func main() {
 	postReservationForUser.Use(reservationHandler.MiddlewareRoleCheck(authClient, authBreaker))
 
 	postReservationDateByAccomodation := router.Methods(http.MethodPost).Subrouter()
-	postReservationDateByAccomodation.HandleFunc("/api/reservations/date_for_acoo", reservationHandler.CreateReservationDateForAccomodation)
+	postReservationDateByAccomodation.HandleFunc("/api/reservations/date_for_acoo", reservationHandler.CreateReservationDateForAccommodation)
 	postReservationDateByAccomodation.Use(reservationHandler.MiddlewareRoleCheck1(authClient, authBreaker))
 
 	getReservationDatesByAccomodationId := router.Methods(http.MethodGet).Subrouter()
-	getReservationDatesByAccomodationId.HandleFunc("/api/reservations/dates_by_acco_id/{id}", reservationHandler.GetReservationDatesByAccomodationId)
+	getReservationDatesByAccomodationId.HandleFunc("/api/reservations/dates_by_acco_id/{id}", reservationHandler.GetReservationDatesByAccommodationId)
 	getReservationDatesByAccomodationId.Use(reservationHandler.MiddlewareRoleCheck1(authClient, authBreaker))
+
+	getReservationDatesByDate := router.Methods(http.MethodGet).Subrouter()
+	getReservationDatesByDate.HandleFunc("/api/reservations/search_by_date/{startDate}/{endDate}", reservationHandler.GetAllReservationsDatesByDate)
+
+	postReservationDateByDate := router.Methods(http.MethodPost).Subrouter()
+	postReservationDateByDate.HandleFunc("/api/reservations/date_for_date", reservationHandler.CreateReservationDateForDate)
 
 	cors := gorillaHandlers.CORS(gorillaHandlers.AllowedOrigins([]string{"*"}))
 
