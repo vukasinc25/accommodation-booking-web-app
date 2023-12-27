@@ -9,9 +9,9 @@ import {
 } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AccommodationService } from 'src/app/service/accommodation.service';
-import { Accommodation } from '../model/accommodation';
-import { AmenityType } from '../model/amenityType';
-import { AuthService } from '../service/auth.service';
+import { Accommodation } from '../../model/accommodation';
+import { AmenityType } from '../../model/amenityType';
+import { AuthService } from '../../service/auth.service';
 
 @Component({
   selector: 'app-accommo-add',

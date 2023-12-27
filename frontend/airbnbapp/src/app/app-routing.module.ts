@@ -1,17 +1,17 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { MainPageComponent } from './main-page/main-page.component';
-import { LoginComponent } from './login/login.component';
-import { RegisterComponent } from './register/register.component';
-import { AccommoAddComponent } from './accommo-add/accommo-add.component';
-import { ResetPasswordComponent } from './reset-password/reset-password.component';
+import { LoginComponent } from './auth/login/login.component';
+import { RegisterComponent } from './auth/register/register.component';
+import { AccommoAddComponent } from './accommodation/accommo-add/accommo-add.component';
+import { ResetPasswordComponent } from './auth/reset-password/reset-password.component';
 import { ProfileComponent } from './profile/profile.component';
-import { roleGuard } from './guard/role.guard';
-import { loginGuard } from './guard/login.guard';
-import { PasswordEmailRecoveryComponent } from './password-email-recovery/password-email-recovery.component';
-import { AccommoInfoComponent } from './accommo-info/accommo-info.component';
-import { VerifyEmailComponent } from './verify-email/verify-email.component';
-import { MyAccommoComponent } from './my-accommo/my-accommo.component';
+import { roleGuard } from './auth/guard/role.guard';
+import { loginGuard } from './auth/guard/login.guard';
+import { PasswordEmailRecoveryComponent } from './auth/password-email-recovery/password-email-recovery.component';
+import { AccommoInfoComponent } from './accommodation/accommo-info/accommo-info.component';
+import { VerifyEmailComponent } from './auth/verify-email/verify-email.component';
+import { MyAccommoComponent } from './accommodation/my-accommo/my-accommo.component';
 import { ReservationsComponent } from './reservations/reservations.component';
 
 const routes: Routes = [

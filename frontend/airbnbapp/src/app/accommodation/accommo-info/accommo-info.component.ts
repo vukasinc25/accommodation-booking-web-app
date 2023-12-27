@@ -1,12 +1,12 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { AccommodationService } from '../service/accommodation.service';
-import { Accommodation } from '../model/accommodation';
+import { AccommodationService } from '../../service/accommodation.service';
+import { Accommodation } from '../../model/accommodation';
 import { NgbDate, NgbDateStruct } from '@ng-bootstrap/ng-bootstrap';
-import { AuthService } from '../service/auth.service';
-import { ReservationService } from '../service/reservation.service';
-import { ResDateRange } from '../model/dateRange';
-import { DisabledDateRange } from '../model/disabledDateRange';
+import { AuthService } from '../../service/auth.service';
+import { ReservationService } from '../../service/reservation.service';
+import { ResDateRange } from '../../model/dateRange';
+import { DisabledDateRange } from '../../model/disabledDateRange';
 import {
   FormBuilder,
   FormGroup,

@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { FormGroup, FormBuilder, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-import { AuthService } from '../service/auth.service';
+import { AuthService } from '../../service/auth.service';
 // import { MatDialog } from '@angular/material/dialog';
 import { EmailVerificationPopupComponent } from '../email-verification-popup/email-verification-popup.component';
 

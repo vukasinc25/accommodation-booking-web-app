@@ -5,7 +5,7 @@ import {
   Validators,
   AbstractControl,
 } from '@angular/forms';
-import { AuthService } from '../service/auth.service';
+import { AuthService } from '../../service/auth.service';
 import { group } from '@angular/animations';
 import { Router } from '@angular/router';
 

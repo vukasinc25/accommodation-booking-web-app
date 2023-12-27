@@ -1,5 +1,5 @@
 import { Component, Input } from '@angular/core';
-import { Accommodation } from '../model/accommodation';
+import { Accommodation } from '../../model/accommodation';
 
 @Component({
   selector: 'app-accommo-list',
