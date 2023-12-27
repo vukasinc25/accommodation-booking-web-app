@@ -19,4 +19,25 @@ export class ProfServiceService {
       responseType: 'json',
     });
   }
+
+  updateUserInfo(user: any): Observable<any> {
+    return this.http.patch(
+      '/api/users/update',
+      {
+        email: user.email,
+        firstname: user.firstName,
+        lastname: user.lastName,
+        location: {
+          country: user.country,
+          city: user.city,
+          streetName: user.streetName,
+          streetNumber: user.streetNumber,
+        },
+      },
+      {
+        headers: this.headers,
+        responseType: 'json',
+      }
+    );
+  }
 }

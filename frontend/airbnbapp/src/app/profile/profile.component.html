@@ -1,7 +1,7 @@
 <div class="container mt-3">
   <h2>User Profile</h2>
   <form (ngSubmit)="submitForm()" #userProfileForm="ngForm">
-    <div class="form-group">
+    <div class="form-group col-md-4">
       <label for="username">Username:</label>
       <input
         type="text"
@@ -10,10 +10,11 @@
         [(ngModel)]="user.username"
         class="form-control"
         required
+        disabled="true"
       />
     </div>
 
-    <div class="form-group">
+    <div class="form-group col-md-4">
       <label for="email">Email:</label>
       <input
         type="email"
@@ -26,7 +27,7 @@
     </div>
 
     <div class="form-row">
-      <div class="form-group col-md-6">
+      <div class="form-group col-md-4">
         <label for="firstName">First Name:</label>
         <input
           type="text"
@@ -34,10 +35,11 @@
           name="firstName"
           [(ngModel)]="user.firstName"
           class="form-control"
+          required
         />
       </div>
 
-      <div class="form-group col-md-6">
+      <div class="form-group col-md-4">
         <label for="lastName">Last Name:</label>
         <input
           type="text"
@@ -45,12 +47,13 @@
           name="lastName"
           [(ngModel)]="user.lastName"
           class="form-control"
+          required
         />
       </div>
     </div>
 
     <div class="form-row">
-      <div class="form-group col-md-6">
+      <div class="form-group col-md-4">
         <label for="city">City:</label>
         <input
           type="text"
@@ -58,10 +61,11 @@
           name="city"
           [(ngModel)]="user.city"
           class="form-control"
+          required
         />
       </div>
 
-      <div class="form-group col-md-6">
+      <div class="form-group col-md-4">
         <label for="country">Country:</label>
         <input
           type="text"
@@ -69,12 +73,13 @@
           name="country"
           [(ngModel)]="user.country"
           class="form-control"
+          required
         />
       </div>
     </div>
 
     <div class="form-row">
-      <div class="form-group col-md-8">
+      <div class="form-group col-md-4">
         <label for="streetName">Street Name:</label>
         <input
           type="text"
@@ -82,6 +87,7 @@
           name="streetName"
           [(ngModel)]="user.streetName"
           class="form-control"
+          required
         />
       </div>
 
@@ -93,16 +99,19 @@
           name="streetNumber"
           [(ngModel)]="user.streetNumber"
           class="form-control"
+          required
         />
       </div>
     </div>
+
+    <br />
 
     <button
       type="submit"
       class="btn btn-primary"
       [disabled]="userProfileForm.invalid"
     >
-      Edit
+      Update
     </button>
   </form>
   <br />

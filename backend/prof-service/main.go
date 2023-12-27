@@ -55,7 +55,8 @@ func main() {
 	getUserInfoByUserId := router.Methods(http.MethodGet).Subrouter()
 	getUserInfoByUserId.HandleFunc("/api/prof/user", service.GetUserById)
 	getUserInfoByUserId.Use(service.MiddlewareRoleCheck(authClient, authBreaker))
-
+	router.Methods(http.MethodPatch).Subrouter()
+	router.HandleFunc("/api/prof/update", service.UpdateUser).Methods("PATCH")
 	// start servergo get -u github.com/gorilla/mux
 
 	// srv := &http.Server{Addr: config["address"], Handler: router}

@@ -44,7 +44,15 @@ export class ProfileComponent implements OnInit {
   }
 
   submitForm() {
-    console.log('Form submitted:', this.user);
+    this.profService.updateUserInfo(this.user).subscribe({
+      next: (data) => {
+        alert('User succesfully updated');
+        this.router.navigate(['']);
+      },
+      error: (err) => {
+        alert(err.error.message);
+      },
+    });
   }
 
   logout() {

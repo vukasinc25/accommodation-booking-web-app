@@ -26,7 +26,7 @@ type UserA struct {
 	Role            Role               `bson:"role,omitempty" json:"role"`
 }
 type UserB struct {
-	ID        string   `bson:"_id,omitempty" json:"_id,omitempty"`
+	ID        string   `bson:"_id,omitempty" json:"userId,omitempty"`
 	Username  string   `bson:"username,omitempty" json:"username"`
 	Email     string   `bson:"email,omitempty" json:"email"`
 	Role      Role     `bson:"role,omitempty" json:"role"`

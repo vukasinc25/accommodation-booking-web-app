@@ -103,6 +103,86 @@ func (rh *userHandler) MiddlewareRoleCheck(client *http.Client, breaker *gobreak
 	}
 }
 
+func (rh *userHandler) MiddlewareRoleCheck0(client *http.Client, breaker *gobreaker.CircuitBreaker) mux.MiddlewareFunc {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+			defer cancel()
+
+			reqURL := "http://auth-service:8000/api/users/auth"
+
+			authorizationHeader := r.Header.Get("authorization")
+			fields := strings.Fields(authorizationHeader)
+
+			if len(fields) == 0 {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+
+			accessToken := fields[1]
+
+			var token ReqToken
+			token.Token = accessToken
+
+			jsonToken, _ := json.Marshal(token)
+
+			cbResp, err := breaker.Execute(func() (interface{}, error) {
+				req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, bytes.NewBuffer(jsonToken))
+				if err != nil {
+					return nil, err
+				}
+				return client.Do(req)
+			})
+			if err != nil {
+				rh.logger.Println(err)
+				sendErrorWithMessage(w, "Service is not working", http.StatusInternalServerError)
+				return
+			}
+
+			resp := cbResp.(*http.Response)
+			resBody, err := io.ReadAll(resp.Body)
+			rh.logger.Println("User Id:", string(resBody))
+			if resp.StatusCode != http.StatusOK {
+				rh.logger.Println("Error in auth response " + strconv.Itoa(resp.StatusCode))
+				rh.logger.Println("status " + resp.Status)
+				w.WriteHeader(resp.StatusCode)
+				return
+			}
+
+			userID := string(resBody)
+
+			requestBody := map[string]interface{}{}
+			if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
+				rh.logger.Println("Error decoding request body:", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			userID = strings.Trim(userID, `"`)
+			requestBody["userId"] = userID
+
+			modifiedJSON, err := json.Marshal(requestBody)
+			if err != nil {
+				rh.logger.Println("Error marshaling modified JSON:", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			newReq, err := http.NewRequestWithContext(ctx, r.Method, r.URL.String(), bytes.NewBuffer(modifiedJSON))
+			if err != nil {
+				rh.logger.Println("Error creating new request:", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			newReq.Header = r.Header
+
+			newReq.Header.Set("Content-Type", "application/json")
+
+			next.ServeHTTP(w, newReq)
+		})
+	}
+}
+
 func (uh *userHandler) createUser(w http.ResponseWriter, req *http.Request) {
 	log.Println("Usli u CreateUser")
 	contentType := req.Header.Get("Content-Type")
@@ -119,6 +199,7 @@ func (uh *userHandler) createUser(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	log.Println("Request User:", req.Body)
 	rt, err := decodeBody(req.Body)
 	if err != nil {
 		log.Println("Cant decode user")
@@ -164,7 +245,7 @@ func decodeBody(r io.Reader) (*User, error) {
 
 	var rt User
 	if err := dec.Decode(&rt); err != nil {
-		log.Println("Lavor", r)
+		log.Println("Lavor", err)
 		return nil, err
 	}
 	return &rt, nil
@@ -181,6 +262,23 @@ func renderJSON(w http.ResponseWriter, v interface{}) {
 	w.Write(js)
 }
 
+func decodeUserInfoBody(r io.Reader) (*User, error) {
+	dec := json.NewDecoder(r)
+	dec.DisallowUnknownFields()
+
+	var rt User
+	if err := dec.Decode(&rt); err != nil {
+		log.Println("Lavor", r)
+		return nil, err
+	}
+
+	if err := ValidateUser(&rt); err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	return &rt, nil
+}
+
 func (u *Users) ToJSON(w io.Writer) error {
 	e := json.NewEncoder(w)
 	return e.Encode(u)
@@ -192,6 +290,42 @@ func (u *User) ToJSON(w io.Writer) error {
 func (u *ResponseUser) ToJSON(w io.Writer) error {
 	e := json.NewEncoder(w)
 	return e.Encode(u)
+}
+
+func (uh *userHandler) UpdateUser(res http.ResponseWriter, req *http.Request) {
+	log.Println("Usli u Update")
+	log.Println(req.Body)
+
+	user, err := decodeUserInfoBody(req.Body)
+	if err != nil {
+		log.Println("Cant decode body")
+		sendErrorWithMessage1(res, "Cant decode body", http.StatusBadRequest)
+		return
+	}
+
+	userDb, err := uh.db.Get(user.ID)
+	if err != nil {
+		log.Fatal("Database exception:", err)
+		http.Error(res, "Database exception", http.StatusInternalServerError)
+		return
+	}
+
+	if userDb == nil {
+		log.Printf("Product with id: '%s' not found", user.ID)
+		sendErrorWithMessage1(res, "Product with given id not found", http.StatusNotFound)
+		return
+	}
+
+	user.Role = userDb.Role
+
+	err = uh.db.UpdateUser(user)
+	if err != nil {
+		log.Println("Error in updating user: ", err)
+		sendErrorWithMessage1(res, "Cant update user", http.StatusInternalServerError)
+		return
+	}
+
+	sendErrorWithMessage(res, "User updated", http.StatusOK)
 }
 
 func (uh *userHandler) GetUserById(res http.ResponseWriter, req *http.Request) {

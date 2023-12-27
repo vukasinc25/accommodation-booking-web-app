@@ -76,6 +76,7 @@ func (pr *UserRepo) GetAll() (Users, error) {
 
 	return users, nil
 }
+
 func (ur *UserRepo) Get(id string) (*ResponseUser, error) {
 	kv := ur.cli.KV()
 
@@ -99,4 +100,21 @@ func (ur *UserRepo) Get(id string) (*ResponseUser, error) {
 
 func constructKey(id string) string {
 	return fmt.Sprintf(users, id)
+}
+
+func (ur *UserRepo) UpdateUser(user *User) error {
+	kv := ur.cli.KV()
+
+	data, err := json.Marshal(user)
+	if err != nil {
+		return err
+	}
+
+	productKeyValue := &api.KVPair{Key: constructKey(user.ID), Value: data}
+	_, err = kv.Put(productKeyValue, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
