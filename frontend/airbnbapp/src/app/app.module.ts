@@ -23,6 +23,7 @@ import { VerifyEmailComponent } from './verify-email/verify-email.component';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { MyAccommoComponent } from './my-accommo/my-accommo.component';
 import { AccommoListComponent } from './accommo-list/accommo-list.component';
+import { ReservationsComponent } from './reservations/reservations.component';
 
 //FA
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
@@ -43,6 +44,7 @@ import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
     VerifyEmailComponent,
     MyAccommoComponent,
     AccommoListComponent,
+    ReservationsComponent,
   ],
   imports: [
     BrowserModule,

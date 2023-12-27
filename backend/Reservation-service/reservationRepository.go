@@ -92,10 +92,10 @@ func (rs *ReservationRepo) CreateTables() {
 	//RESERVATION BY GUEST
 	err = rs.session.Query(
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s 
-					(user_id UUID, reservation_id UUID, acco_id UUID, pricePerson int, 
-						startDate date, endDate date, isDeleted boolean,
-					PRIMARY KEY ((user_id, reservation_id), startDate, pricePerson))
-					WITH CLUSTERING ORDER BY (startDate DESC, pricePerson ASC)`,
+					(user_id text, reservation_id text, acco_id text, price int, 
+						begin_reservation_date date, numberOfPeople int, end_reservation_date date, isDeleted boolean,
+					PRIMARY KEY ((user_id, reservation_id, acco_id, begin_reservation_date, end_reservation_date), price))
+					WITH CLUSTERING ORDER BY (price ASC)`,
 			"reservations_by_user")).Exec()
 	if err != nil {
 		rs.logger.Println(err)
@@ -162,8 +162,8 @@ func (rs *ReservationRepo) InsertReservationByAcco(resAcco *ReservationByAccommo
 // RESERVATION DATE FOR ACCO
 func (rs *ReservationRepo) GetReservationsDatesByAccomodationId(acco_id string) (ReservationDatesByAccomodationId, error) {
 	scanner := rs.session.Query(`SELECT begin_reservation_date, end_reservation_date
-    FROM reservations_dates_by_accomodation_id
-    WHERE accommodation_id = ?`,
+    FROM reservations_by_user
+    WHERE acco_id = ? and isDeleted = false ALLOW FILTERING`,
 		acco_id).Iter().Scanner()
 
 	var dates ReservationDatesByAccomodationId
@@ -248,16 +248,16 @@ func (rs *ReservationRepo) InsertReservationDateByDate(resDate *ReservationDateB
 
 // -------Reservation By User-------//
 func (rs *ReservationRepo) GetReservationsByUser(user_id string) (ReservationsByUser, error) {
-	scanner := rs.session.Query(`SELECT user_id, reservation_id, acco_id, numberPeople, 
-	startDate, endDate, isDeleted
-	FROM reservations_by_acco WHERE user_id = ? AND isDeleted = false ALLOW FILTERING;`,
+	scanner := rs.session.Query(`SELECT reservation_id, acco_id, price, 
+	begin_reservation_date, numberOfPeople, end_reservation_date
+	FROM reservations_by_user WHERE user_id = ? AND isDeleted = false ALLOW FILTERING;`,
 		user_id).Iter().Scanner()
 
 	var reservations ReservationsByUser
 	for scanner.Next() {
-		var res ReservationByUser
-		err := scanner.Scan(&res.UserId, &res.ReservationId, &res.AccoId, &res.NumberPeople,
-			&res.StartDate, &res.EndDate, &res.IsDeleted)
+		var res UserReservations
+		err := scanner.Scan(&res.ReservationId, &res.AccoId, &res.Price,
+			&res.StartDate, &res.NumberOfPeople, &res.EndDate)
 		if err != nil {
 			rs.logger.Println(err)
 			return nil, err
@@ -272,13 +272,22 @@ func (rs *ReservationRepo) GetReservationsByUser(user_id string) (ReservationsBy
 }
 
 func (rs *ReservationRepo) InsertReservationByUser(resUser *ReservationByUser) error {
-	reservationId, _ := gocql.RandomUUID()
-	err := rs.session.Query(
-		`INSERT INTO reservations_by_user (user_id, reservation_id, acco_id, numberPeople, 
-			startDate, endDate, isDeleted) 
-		VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		resUser.UserId, reservationId, resUser.AccoId, resUser.NumberPeople,
-		resUser.StartDate, resUser.EndDate, false).Exec()
+	log.Println("Usli u metodu")
+	overlap, err := rs.CheckOverlap(resUser.AccoId, resUser.StartDate, resUser.EndDate)
+	if err != nil {
+		return err
+	}
+
+	if overlap {
+		return errors.New("Dates are already reserved for that accommodation")
+	}
+
+	err = rs.session.Query(
+		`INSERT INTO reservations_by_user (user_id, reservation_id, acco_id, price, 
+			begin_reservation_date, numberOfPeople, end_reservation_date, isDeleted) 
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		resUser.UserId, resUser.ReservationId, resUser.AccoId, 100,
+		resUser.StartDate, 2, resUser.EndDate, false).Exec()
 	if err != nil {
 		rs.logger.Println(err)
 		return err
@@ -301,12 +310,36 @@ func (rs *ReservationRepo) UpdateReservationByAcco(accoId string, reservationId 
 	return nil
 }
 
+func (rs *ReservationRepo) CheckTable(user_id string, reservation_id string, acco_id string, start_date time.Time, end_date time.Time) (bool, error) {
+	log.Println("Start: ", start_date.Format("2006-01-02"))
+	log.Println("End: ", end_date.Format("2006-01-02"))
+
+	var count int
+	err := rs.session.Query(
+		`SELECT COUNT(*) FROM reservation.reservations_by_user
+		WHERE user_id = ? 
+		AND reservation_id = ?
+		AND acco_id = ?
+		AND begin_reservation_date = ?
+		AND end_reservation_date = ? ALLOW FILTERING`,
+		user_id, reservation_id, acco_id, start_date, end_date).Scan(&count)
+
+	if err != nil {
+		rs.logger.Println(err)
+		return false, err
+	}
+
+	log.Println("Count: ", count)
+
+	return count > 0, nil
+}
+
 func (rs *ReservationRepo) CheckOverlap(accommodationID string, beginDate, endDate time.Time) (bool, error) {
 	var count int
 	err := rs.session.Query(
-		`SELECT COUNT(*) FROM reservations_dates_by_accomodation_id 
-         WHERE accommodation_id = ? 
-         AND begin_reservation_date <= ? AND end_reservation_date >= ? ALLOW FILTERING`,
+		`SELECT COUNT(*) FROM reservations_by_user
+         WHERE acco_id = ? 
+         AND begin_reservation_date <= ? AND end_reservation_date >= ? AND isDeleted = false ALLOW FILTERING`,
 		accommodationID, endDate, beginDate).Scan(&count)
 
 	if err != nil {
@@ -314,7 +347,45 @@ func (rs *ReservationRepo) CheckOverlap(accommodationID string, beginDate, endDa
 		return false, err
 	}
 
+	log.Println("Count: ", count)
+
 	return count > 0, nil
+}
+
+func (rs *ReservationRepo) UpdateReservationByUser(reservationByUser *ReservationByUser) error {
+	overlap, err := rs.CheckTable(reservationByUser.UserId, reservationByUser.ReservationId, reservationByUser.AccoId, reservationByUser.StartDate, reservationByUser.EndDate)
+	if err != nil {
+		return err
+	}
+
+	log.Println("Overlap:", overlap)
+
+	if !overlap {
+		return errors.New("Cant find reservation")
+	}
+
+	passed, err := isDatePassed(reservationByUser.StartDate)
+	if err != nil {
+		log.Println("Error:", err)
+		return err
+	}
+
+	if passed {
+		return errors.New("Reservation cant be canceled")
+	}
+
+	// treba da se postavi validacija da li je datum prosao ako jeste onda ne moze da otkaze rezervaciju
+
+	err = rs.session.Query(
+		`UPDATE reservations_by_user SET isDeleted = true where user_id = ? and reservation_id = ? and acco_id = ? and begin_reservation_date = ? and end_reservation_date = ? and price = ?`,
+		reservationByUser.UserId, reservationByUser.ReservationId, reservationByUser.AccoId, reservationByUser.StartDate, reservationByUser.EndDate, reservationByUser.Price).Exec()
+
+	if err != nil {
+		rs.logger.Println(err)
+		return err
+	}
+
+	return nil
 }
 
 func (rs *ReservationRepo) GetDistinctIds(idColumnName string, tableName string) ([]string, error) {
@@ -336,4 +407,9 @@ func (rs *ReservationRepo) GetDistinctIds(idColumnName string, tableName string)
 		return nil, err
 	}
 	return ids, nil
+}
+
+func isDatePassed(dateStr time.Time) (bool, error) {
+	currentDate := time.Now()
+	return dateStr.Before(currentDate), nil
 }

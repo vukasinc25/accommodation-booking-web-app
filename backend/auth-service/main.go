@@ -80,7 +80,7 @@ func main() {
 	router.HandleFunc("/api/users/email/{code}", service.verifyEmail).Methods("POST")                            //uradjeno                         // for sending verification mail
 	router.HandleFunc("/api/users/sendforgottemail/{email}", service.sendForgottenPasswordEmail).Methods("POST") // nije  // for sending forgotten password email
 	router.HandleFunc("/api/users/changeForgottenPassword", service.changeForgottenPassword).Methods("POST")     // nije      // treba da se prosledi body sa newPassword, confirmPassword, code
-	//authRoutes.HandleFunc("/api/users/users", service.getAllUsers).Methods("GET")
+	authRoutes.HandleFunc("/api/users/update", service.UpdateUser).Methods("PATCH")
 
 	// Configure the HTTP server
 	server := http.Server{

@@ -61,11 +61,16 @@ func main() {
 	getReservationsByAcco.Use(reservationHandler.MiddlewareRoleCheck1(authClient, authBreaker))
 
 	getReservationsByUser := router.Methods(http.MethodGet).Subrouter()
-	getReservationsByUser.HandleFunc("/api/reservations/by_acco", reservationHandler.getAllReservationsByUser)
+	getReservationsByUser.HandleFunc("/api/reservations/by_user", reservationHandler.GetAllReservationsByUserId)
+	getReservationsByUser.Use(reservationHandler.MiddlewareRoleCheck0(authClient, authBreaker))
 
 	postReservationForAcco := router.Methods(http.MethodPost).Subrouter()
-	postReservationForAcco.HandleFunc("/api/reservations/for_user", reservationHandler.CreateReservationForAcco)
-	postReservationForAcco.Use(reservationHandler.MiddlewareReservationForAccoDeserialization)
+	postReservationForAcco.HandleFunc("/api/reservations/for_user", reservationHandler.CreateReservationForUser)
+	postReservationForAcco.Use(reservationHandler.MiddlewareRoleCheck(authClient, authBreaker))
+
+	patchReservationForAcco := router.Methods(http.MethodPatch).Subrouter()
+	patchReservationForAcco.HandleFunc("/api/reservations/for_user", reservationHandler.UpdateReservationByUser)
+	patchReservationForAcco.Use(reservationHandler.MiddlewareRoleCheck(authClient, authBreaker))
 
 	postReservationForUser := router.Methods(http.MethodPost).Subrouter()
 	postReservationForUser.HandleFunc("/api/reservations/for_acco", reservationHandler.CreateReservationForAcco)

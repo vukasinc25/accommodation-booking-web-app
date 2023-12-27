@@ -18,6 +18,7 @@ import (
 	"github.com/thanhpk/randstr"
 	"github.com/vukasinc25/fst-airbnb/mail"
 	"github.com/vukasinc25/fst-airbnb/token"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // UserHandler handles HTTP requests related to user operations.
@@ -461,6 +462,88 @@ func (uh *UserHandler) changeForgottenPassword(w http.ResponseWriter, req *http.
 	}
 }
 
+func (uh *UserHandler) UpdateUser(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+
+	authPayload, ok := ctx.Value(AuthorizationPayloadKey).(*token.Payload)
+	if !ok || authPayload == nil {
+		sendErrorWithMessage(res, "Authorization payload not found", http.StatusInternalServerError)
+		return
+	}
+	log.Println("AuthPayload:", authPayload)
+
+	log.Println("Usli u UpdateUser metodu")
+	user, err := decodeProfInfoBody(req.Body) // trebao bi da je citav UserB
+	if err != nil {
+		sendErrorWithMessage(res, "Cant decode body", http.StatusBadRequest)
+		return
+	}
+
+	log.Println("Userr:", authPayload.Role)
+	userRole := authPayload.Role
+	var role Role
+	switch userRole {
+	case "HOST":
+		role = "HOST"
+	case "GUEST":
+		role = "GUEST"
+	}
+	user.ID = authPayload.ID.Hex()
+	user.Username = authPayload.Username
+	user.Role = role
+
+	log.Println("UserB:", user)
+
+	// proveravamo da li postoji user sa usernejmom ako postoji
+	userUsername, err := uh.db.GetByUsername(user.Username)
+	if err != nil {
+		sendErrorWithMessage(res, "Cant get user by email", http.StatusInternalServerError)
+		return
+	}
+
+	if userUsername == nil {
+		sendErrorWithMessage(res, "User with that username dont exists", http.StatusBadRequest)
+		return
+	}
+
+	if userUsername.Email != user.Email {
+		userId, err := primitive.ObjectIDFromHex(user.ID)
+		if err != nil {
+			// Handle the error, e.g., log it or return an error
+			fmt.Println("Error parsing ObjectID:", err)
+			return
+		}
+
+		newUser := User{
+			ID:    userId,
+			Email: user.Email,
+		}
+
+		log.Println("NewUser: ", newUser)
+		err = uh.db.UpdateEmail(&newUser)
+		if err != nil {
+			sendErrorWithMessage(res, "Cant update user by email", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	response, err := uh.db.UpdateProfileServiceUser(user)
+	if err != nil {
+		sendErrorWithMessage(res, "Error in updating user in prof service", http.StatusInternalServerError)
+		return
+	}
+
+	responseBody, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		log.Println("Error reading response body:", err)
+		sendErrorWithMessage(res, "Error reading response body", http.StatusInternalServerError)
+		return
+	}
+
+	log.Println("Response from prof-service:", string(responseBody))
+	sendErrorWithMessage(res, string(responseBody), response.StatusCode)
+}
+
 func (uh *UserHandler) verifyEmail(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	code := vars["code"]
@@ -549,6 +632,19 @@ func decodeBody(r io.Reader) (*User, error) {
 
 	if err := ValidateUser(rt); err != nil {
 		log.Println("User is not succesfuly validated in ValidateUser func")
+		return nil, err
+	}
+
+	return &rt, nil
+}
+
+func decodeProfInfoBody(r io.Reader) (*UserB, error) {
+	dec := json.NewDecoder(r)
+	dec.DisallowUnknownFields()
+
+	var rt UserB
+	if err := dec.Decode(&rt); err != nil {
+		log.Println("Decode cant be done")
 		return nil, err
 	}
 

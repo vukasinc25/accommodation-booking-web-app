@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -88,8 +89,10 @@ func (uh *UserRepo) Insert(newUser *User) (*http.Response, error) {
 
 	url := uh.prof_service_string + "/api/prof/create"
 
-	userB := uh.decodeUserB(newUser)
+	insertedID := result.InsertedID.(primitive.ObjectID).Hex()
+	log.Println("User: ", insertedID)
 
+	userB := uh.decodeUserB(insertedID, newUser)
 	reqBody, err := json.Marshal(userB)
 	if err != nil {
 		fmt.Println("Error marshaling JSON:", err)
@@ -355,6 +358,26 @@ func (uh *UserRepo) UpdateVerificationEmail(code string) error {
 	return nil
 }
 
+func (uh *UserRepo) GetByEmail(email string) (*UserA, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	usersCollection, err := uh.getCollection()
+	if err != nil {
+		log.Println("Error getting collection: ", err)
+		return nil, err
+	}
+	var user UserA
+	log.Println("Querying for user with email: ", email)
+	// objUsername, _ := primitive.ObjectIDFromHex(username)
+	err = usersCollection.FindOne(ctx, bson.M{"email": email}).Decode(&user)
+	if err != nil {
+		log.Println("Error decoding user document: ", err)
+		return nil, err
+	}
+	return &user, nil
+}
+
 func (uh *UserRepo) UpdateForgottenPasswordEmail(code string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -388,8 +411,9 @@ func (uh *UserRepo) decodeUserA(user *User) *UserA {
 	return &userA
 }
 
-func (uh *UserRepo) decodeUserB(user *User) *UserB {
+func (uh *UserRepo) decodeUserB(userId string, user *User) *UserB {
 	userB := UserB{
+		ID:        userId,
 		Username:  user.Username,
 		Role:      user.Role,
 		Email:     user.Email,
@@ -438,4 +462,61 @@ func (uh *UserRepo) getFogottenPasswordEmailCollection() *mongo.Collection {
 	userDatabase := uh.cli.Database("mongoDemo")
 	forgottenPasswordEmailCollection := userDatabase.Collection("forgottenPasswordEmails")
 	return forgottenPasswordEmailCollection
+}
+
+func (uh *UserRepo) UpdateEmail(user *User) error {
+	// treba da promeni email i da promeni da li je mejl verifikovan
+	log.Println("Usli u UpdateUser", "User:", user)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	userCollection, err := uh.getCollection()
+	if err != nil {
+		log.Println("Cant get User collection in UpdateUser method")
+		return err
+	}
+
+	// objID, _ := primitive.ObjectIDFromHex(id)
+	filter := bson.M{"_id": user.ID}
+	update := bson.M{"$set": bson.M{
+		"email": user.Email,
+	}}
+	result, err := userCollection.UpdateOne(ctx, filter, update)
+	log.Printf("Documents matched: %v\n", result.MatchedCount)
+	log.Printf("Documents updated: %v\n", result.ModifiedCount)
+
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	return nil
+}
+
+func (uh *UserRepo) UpdateProfileServiceUser(newUser *UserB) (*http.Response, error) {
+	// samo salje vec promenjene podatke na prof-service
+	url := uh.prof_service_string + "/api/prof/update"
+
+	log.Println("Update User putanja: ", url)
+
+	// insertedID := result.InsertedID.(primitive.ObjectID).Hex()
+	// log.Println("User: ", insertedID)
+
+	// userB := uh.decodeUserB(insertedID, newUser)
+	reqBody, err := json.Marshal(newUser)
+	if err != nil {
+		fmt.Println("Error marshaling JSON:", err)
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, url, bytes.NewBuffer(reqBody))
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	httpResp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	return httpResp, nil
 }

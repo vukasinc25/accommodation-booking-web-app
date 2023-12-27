@@ -2,7 +2,6 @@ module github.com/vukasinc25/fst-airbnb
 
 go 1.21
 
-
 require (
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
@@ -11,7 +10,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/jordan-wright/email v4.0.1-0.20210109023952-943e75fe5223+incompatible
 	github.com/thanhpk/randstr v1.0.6
-	go.mongodb.org/mongo-driver v1.12.1
+	go.mongodb.org/mongo-driver v1.13.1
 	golang.org/x/crypto v0.13.0
 )
 

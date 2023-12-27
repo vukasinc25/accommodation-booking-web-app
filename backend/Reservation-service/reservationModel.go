@@ -11,7 +11,7 @@ import (
 type ReservationByAccommodation struct {
 	AccoId               string     `json:"accoId"`
 	ReservationId        gocql.UUID `json:"reservationId"`
-	HostId               string     `json:"hostId"`
+	HostId               string     `json:"userId"`
 	NumberPeople         int        `json:"numberPeople"`
 	PriceByPeople        int        `json:"priceByPeople"`
 	PriceByAccommodation int        `json:"priceByAccommodation"`
@@ -21,13 +21,23 @@ type ReservationByAccommodation struct {
 }
 
 type ReservationByUser struct {
-	UserId        gocql.UUID
-	AccoId        gocql.UUID
-	ReservationId gocql.UUID
-	NumberPeople  int
-	StartDate     time.Time
-	EndDate       time.Time
-	IsDeleted     bool
+	UserId         string    `json:"userId" validate:"required"`
+	ReservationId  string    `json:"reservationId" validate:"required"`
+	AccoId         string    `json:"accoId" validate:"required"`
+	Price          int       `json:"price" validate:"required"`
+	StartDate      time.Time `json:"startDate" validate:"required"`
+	NumberOfPeople int       `json:"numberOfPeople"`
+	EndDate        time.Time `json:"endDate" validate:"required"`
+	IsDeleted      bool      `json:"isDeleted"`
+}
+
+type UserReservations struct {
+	ReservationId  string    `json:"reservationId" validate:"required"`
+	AccoId         string    `json:"accoId" validate:"required"`
+	Price          int       `json:"price" validate:"required"`
+	StartDate      time.Time `json:"startDate" validate:"required"`
+	NumberOfPeople int       `json:"numberOfPeople"`
+	EndDate        time.Time `json:"endDate" validate:"required"`
 }
 
 type ReservationDateByDate struct {
@@ -44,8 +54,12 @@ type ReqToken struct {
 	Token string `json:"token"`
 }
 
+type RequestId struct {
+	UserId string `json:"userId"`
+}
+
 type ReservationsByAccommodation []*ReservationByAccommodation
-type ReservationsByUser []*ReservationByUser
+type ReservationsByUser []*UserReservations
 type ReservationDatesByAccomodationId []*ReservationDate
 type ReservationDatesByDate []*ReservationDateByDate
 

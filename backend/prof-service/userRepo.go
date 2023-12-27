@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/google/uuid"
-
 	"github.com/hashicorp/consul/api"
 )
 
@@ -20,9 +18,9 @@ const (
 	all   = "users"
 )
 
-func generateKey() (string, string) {
-	id := uuid.New().String()
-	return fmt.Sprintf(users, id), id
+func generateKey(Id string) string {
+	id := Id
+	return fmt.Sprintf(users, id)
 }
 
 func New(logger *log.Logger) (*UserRepo, error) {
@@ -43,8 +41,7 @@ func (ur *UserRepo) Insert(user *User) error {
 	log.Println("Usli u Insert")
 	kv := ur.cli.KV()
 
-	dbId, id := generateKey()
-	user.ID = id
+	dbId := generateKey(user.ID)
 
 	data, err := json.Marshal(user)
 	if err != nil {
@@ -78,4 +75,46 @@ func (pr *UserRepo) GetAll() (Users, error) {
 	}
 
 	return users, nil
+}
+
+func (ur *UserRepo) Get(id string) (*ResponseUser, error) {
+	kv := ur.cli.KV()
+
+	pair, _, err := kv.Get(constructKey(id), nil)
+	if err != nil {
+		return nil, err
+	}
+	if pair == nil {
+		log.Println("blabla:", pair)
+		return nil, nil
+	}
+
+	user := &ResponseUser{}
+	err = json.Unmarshal(pair.Value, user)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+func constructKey(id string) string {
+	return fmt.Sprintf(users, id)
+}
+
+func (ur *UserRepo) UpdateUser(user *User) error {
+	kv := ur.cli.KV()
+
+	data, err := json.Marshal(user)
+	if err != nil {
+		return err
+	}
+
+	productKeyValue := &api.KVPair{Key: constructKey(user.ID), Value: data}
+	_, err = kv.Put(productKeyValue, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

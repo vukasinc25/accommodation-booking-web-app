@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -17,6 +18,7 @@ const (
 	authorizationHeaderKey  = "authorization"
 	authorizationTypeBearer = "bearer"
 	AuthorizationPayloadKey = "authorization_payload"
+	AccessTokenKey          = "accessToken"
 )
 
 // AuthMiddleware creates a Gorilla middleware for authorization
@@ -61,12 +63,54 @@ func AuthMiddleware(tokenMaker token.Maker) mux.MiddlewareFunc {
 			}
 
 			// Store the payload in the request context
-			r = r.WithContext(context.WithValue(r.Context(), AuthorizationPayloadKey, payload))
+			ctx := context.WithValue(r.Context(), AuthorizationPayloadKey, payload)
+			ctx = context.WithValue(ctx, AccessTokenKey, accessToken)
+			r = r.WithContext(ctx)
 
 			//xss handling
 			w.Header().Set("Content-Security-Policy", "default-src 'self'")
 			w.Header().Set("X-XSS-Protection", "1; mode=block")
 			// Call the next handler in the chain
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+func AuthMiddleware1(tokenMaker token.Maker) mux.MiddlewareFunc {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			log.Println("req received")
+
+			dec := json.NewDecoder(r.Body)
+
+			var rt ReqToken
+			err := dec.Decode(&rt)
+			if err != nil {
+				log.Println(err)
+				log.Println("Request decode error")
+			}
+
+			log.Println(rt.Token)
+
+			payload, err := tokenMaker.VerifyToken(rt.Token)
+			if err != nil {
+				// If the token verification fails, return an error
+				log.Println("error in token verification")
+				writeError(w, http.StatusUnauthorized, err)
+				return
+			}
+
+			// respBytes, err := json.Marshal(payload.ID)
+			// if err != nil {
+			// 	log.Println("error while creating response")
+			// 	w.WriteHeader(http.StatusInternalServerError)
+			// 	return
+			// }
+
+			// w.Header().Add("Content-Type", "application/json")
+			// w.Write(respBytes)
+			// 	})
+			r = r.WithContext(context.WithValue(r.Context(), AuthorizationPayloadKey, payload))
 			next.ServeHTTP(w, r)
 		})
 	}

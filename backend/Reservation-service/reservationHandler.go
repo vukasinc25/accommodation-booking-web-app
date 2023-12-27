@@ -83,6 +83,7 @@ func (rh *reservationHandler) GetAllReservationsByAccommodationId(res http.Respo
 	}
 
 	if reservationsByAcco == nil {
+		sendErrorWithMessage(res, "There is no reservation for that accommodation", http.StatusBadRequest)
 		return
 	}
 
@@ -120,11 +121,12 @@ func (rh *reservationHandler) GetAllReservationsDatesByDate(res http.ResponseWri
 
 func (rh *reservationHandler) getAllReservationsByUser(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
-	userId := vars["id"]
-
-	reservationsByUser, err := rh.repo.GetReservationsByUser(userId)
+	userId := vars["id"] 
+	reservationsByUser, err := rh.repo.GetReservationsByUser(requestId.UserId)
 	if err != nil {
-		rh.logger.Print("Database exception: ", err)
+		rh.logger.Println("Database exception: ", err)
+		sendErrorWithMessage(res, "Error in getting reservation", http.StatusBadRequest)
+		return
 	}
 
 	if reservationsByUser == nil {
@@ -133,12 +135,21 @@ func (rh *reservationHandler) getAllReservationsByUser(res http.ResponseWriter, 
 
 	err = reservationsByUser.ToJSON(res)
 	if err != nil {
-		http.Error(res, "Unable to convert to json", http.StatusInternalServerError)
-		rh.logger.Fatal("Unable to convert to json :", err)
+		rh.logger.Println("Unable to convert to json :", err)
+		sendErrorWithMessage(res, "Unable to convert to json", http.StatusBadRequest)
 		return
 	}
 }
 
+func (rh *reservationHandler) GetAllReservationsByUserId(res http.ResponseWriter, req *http.Request) {
+	log.Println("Request Body: ", req.Body)
+	requestId, err := decodeIdBody(req.Body)
+	if err != nil {
+		log.Println("Cant decode body")
+		sendErrorWithMessage(res, "Cant decode body", http.StatusBadRequest)
+		return
+	}
+  
 func (rh *reservationHandler) CreateReservationDateForDate(res http.ResponseWriter, req *http.Request) {
 	reservationDate, err := decodeBody(req.Body)
 	if err != nil {
@@ -190,17 +201,45 @@ func (rh *reservationHandler) CreateReservationForAcco(res http.ResponseWriter, 
 }
 
 func (rh *reservationHandler) CreateReservationForUser(res http.ResponseWriter, req *http.Request) {
-	reservationUser := req.Context().Value(KeyProduct{}).(*ReservationByUser)
-	// provera da li je odredjeni period dostupnostio dostupan ili da ovde ne ide provera nego da se stavi provera kada se uzitava period dostupnosti za acomodaciju
-	// lista koju bi napravili na osnovu perioda rezevacije
-	// for petlja kroz period rezervacije i upis za svaki period u bazu
-	err := rh.repo.InsertReservationByUser(reservationUser)
+	reservationUser, err := decodeReservationByUserBody(req.Body)
+	if err != nil {
+		sendErrorWithMessage(res, "Cant decode body", http.StatusBadRequest)
+		return
+	}
+	err = rh.repo.InsertReservationByUser(reservationUser)
 	if err != nil {
 		rh.logger.Print("Database exception: ", err)
-		res.WriteHeader(http.StatusBadRequest)
+		if strings.Contains(err.Error(), "Dates are already reserved for that accommodation") {
+			sendErrorWithMessage(res, "Dates are already reserved for that accommodation", http.StatusBadRequest)
+		} else {
+			sendErrorWithMessage(res, "Cant create reservation", http.StatusBadRequest)
+		}
 		return
 	}
 	res.WriteHeader(http.StatusCreated)
+}
+
+func (rh *reservationHandler) UpdateReservationByUser(res http.ResponseWriter, req *http.Request) {
+	reservation, err := decodeReservationByUserBody(req.Body)
+	if err != nil {
+		log.Println(err)
+		sendErrorWithMessage(res, "Cant decode body", http.StatusBadRequest)
+		return
+	}
+
+	err = rh.repo.UpdateReservationByUser(reservation)
+	if err != nil {
+		rh.logger.Print("Database exception: ", err)
+		if strings.Contains(err.Error(), "Cant find reservation") {
+			sendErrorWithMessage(res, "There is no reservation for that date range", http.StatusBadRequest)
+		} else if strings.Contains(err.Error(), "Reservation cant be canceled") {
+			sendErrorWithMessage(res, "Reservation cant be canceled", http.StatusBadRequest)
+		} else {
+			sendErrorWithMessage(res, "Cant update reservation", http.StatusBadRequest)
+		}
+		return
+	}
+	res.WriteHeader(http.StatusOK)
 }
 
 func (rh *reservationHandler) UpdateReservationByAcco(res http.ResponseWriter, req *http.Request) {
@@ -329,7 +368,7 @@ func (rh *reservationHandler) MiddlewareRoleCheck(client *http.Client, breaker *
 			}
 
 			hostID = strings.Trim(hostID, `"`)
-			requestBody["hostId"] = hostID
+			requestBody["userId"] = hostID
 
 			modifiedJSON, err := json.Marshal(requestBody)
 			if err != nil {
@@ -406,6 +445,83 @@ func (rh *reservationHandler) MiddlewareRoleCheck1(client *http.Client, breaker 
 	}
 }
 
+func (rh *reservationHandler) MiddlewareRoleCheck0(client *http.Client, breaker *gobreaker.CircuitBreaker) mux.MiddlewareFunc {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+			ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+			defer cancel()
+			reqURL := "http://auth-service:8000/api/users/auth"
+
+			authorizationHeader := r.Header.Get("authorization")
+			fields := strings.Fields(authorizationHeader)
+
+			if len(fields) == 0 {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+
+			accessToken := fields[1]
+
+			var token ReqToken
+			token.Token = accessToken
+
+			jsonToken, _ := json.Marshal(token)
+
+			cbResp, err := breaker.Execute(func() (interface{}, error) {
+				req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, bytes.NewBuffer(jsonToken))
+				if err != nil {
+					return nil, err
+				}
+				return client.Do(req)
+			})
+			if err != nil {
+				rh.logger.Println(err)
+				sendErrorWithMessage(w, "Service is not working", http.StatusInternalServerError)
+				return
+			}
+
+			resp := cbResp.(*http.Response)
+			resBody, err := io.ReadAll(resp.Body)
+			rh.logger.Println("Host Id:", string(resBody))
+			if resp.StatusCode != http.StatusOK {
+				rh.logger.Println("Error in auth response " + strconv.Itoa(resp.StatusCode))
+				rh.logger.Println("status " + resp.Status)
+				w.WriteHeader(resp.StatusCode)
+				return
+			}
+
+			userID := string(resBody)
+
+			requestBody := map[string]interface{}{
+				"userId": userID,
+			}
+
+			userID = strings.Trim(userID, `"`)
+			requestBody["userId"] = userID
+
+			modifiedJSON, err := json.Marshal(requestBody)
+			if err != nil {
+				rh.logger.Println("Error marshaling modified JSON:", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			newReq, err := http.NewRequestWithContext(ctx, r.Method, r.URL.String(), bytes.NewBuffer(modifiedJSON))
+			if err != nil {
+				rh.logger.Println("Error creating new request:", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			newReq.Header = r.Header
+
+			newReq.Header.Set("Content-Type", "application/json")
+
+			next.ServeHTTP(w, newReq)
+		})
+	}
+}
+
 func (rh *reservationHandler) MiddlewareContentTypeSet(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, h *http.Request) {
 		rh.logger.Println("Method [", h.Method, "] - Hit path :", h.URL.Path)
@@ -434,6 +550,32 @@ func decodeReservationBody(r io.Reader) (*ReservationByAccommodation, error) {
 	dec.DisallowUnknownFields()
 
 	var rt ReservationByAccommodation
+	if err := dec.Decode(&rt); err != nil {
+		log.Println("Error u decode body:", err)
+		return nil, err
+	}
+
+	return &rt, nil
+}
+
+func decodeIdBody(r io.Reader) (*RequestId, error) {
+	dec := json.NewDecoder(r)
+	dec.DisallowUnknownFields()
+
+	var rt RequestId
+	if err := dec.Decode(&rt); err != nil {
+		log.Println("Error u decode body:", err)
+		return nil, err
+	}
+
+	return &rt, nil
+}
+
+func decodeReservationByUserBody(r io.Reader) (*ReservationByUser, error) {
+	dec := json.NewDecoder(r)
+	dec.DisallowUnknownFields()
+
+	var rt ReservationByUser
 	if err := dec.Decode(&rt); err != nil {
 		log.Println("Error u decode body:", err)
 		return nil, err

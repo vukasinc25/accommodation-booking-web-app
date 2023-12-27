@@ -36,6 +36,7 @@ export class AccommoInfoComponent implements OnInit {
   endDate: NgbDate | null = null;
 
   id: number = 0;
+  reservationId: string = '';
   accommodation: Accommodation = {};
   dateList: ResDateRange[] = [];
   blackDateList: DisabledDateRange[] = [];
@@ -69,7 +70,7 @@ export class AccommoInfoComponent implements OnInit {
         // console.log(data);
       },
       error: (err) => {
-        alert(err.error.error);
+        alert(err.error.message);
         console.log(err);
         this.isDataEmpty = true;
         this.router.navigate(['']);
@@ -80,7 +81,7 @@ export class AccommoInfoComponent implements OnInit {
       .getAvailabelDatesForAccomodation(this.id)
       .subscribe({
         next: (data) => {
-          // console.log(data);
+          this.reservationId = data[0].reservationId;
           this.startDate = new NgbDate(
             new Date(data[0].startDate).getFullYear(),
             new Date(data[0].startDate).getUTCMonth() + 1,
@@ -98,8 +99,8 @@ export class AccommoInfoComponent implements OnInit {
         },
         error: (err) => {
           console.log(err);
-          alert(err.error.error);
-          this.router.navigate(['']);
+          alert(err.error.message);
+          // this.router.navigate(['']);
         },
       });
     this.reservationService.getReservations(this.id).subscribe({
@@ -210,13 +211,20 @@ export class AccommoInfoComponent implements OnInit {
 
   reserveDates() {
     this.reservationService
-      .createReservation(this.accommodation._id!, this.fromDate!, this.toDate!)
+      .createReservation(
+        this.reservationId,
+        this.accommodation._id!,
+        this.fromDate!,
+        this.toDate!
+      )
       .subscribe({
         next: (data) => {
-          console.log(data);
+          alert('Reserved');
+          this.router.navigate(['']);
         },
         error: (err) => {
-          console.log(err);
+          console.log(err.error.message);
+          alert(err.error.message);
         },
       });
   }

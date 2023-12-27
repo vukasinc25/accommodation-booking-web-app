@@ -3,8 +3,9 @@ package token
 import (
 	"errors"
 	"fmt"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"time"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"github.com/dgrijalva/jwt-go"
 )
@@ -33,6 +34,7 @@ func (maker *JWTMaker) CreateToken(id primitive.ObjectID, username string, role 
 
 	jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, payload)
 	token, err := jwtToken.SignedString([]byte(maker.secretKey))
+
 	return token, payload, err
 }
 
