@@ -101,21 +101,12 @@ func (rs *ReservationRepo) CreateTables() {
 		rs.logger.Println(err)
 	}
 
-	// err = rs.session.Query(
-	// 	fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s
-	// 				(accommodation_id UUID, begin_reservation_date date, end_reservation_date date,
-	// 				PRIMARY KEY (accommodation_id))`,
-	// 		"reservations_dates_by_accomodation_id")).Exec()
-	// if err != nil {
-	// 	rs.logger.Println(err)
-	// }
-
-	//RESERVATION DATE BASIC
+	//FIND RESERVATION DATES FOR ACCO
 	err = rs.session.Query(
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s 
 					(id UUID, accommodation_id text, begin_reservation_date date, end_reservation_date date,
 					PRIMARY KEY (accommodation_id, id))`,
-			"reservations_dates_by_accomodation_id")).Exec()
+			"reservations_dates_by_acco_id")).Exec()
 	if err != nil {
 		rs.logger.Println(err)
 	}
@@ -123,32 +114,18 @@ func (rs *ReservationRepo) CreateTables() {
 	//SEARCH - START AND END DATE
 	err = rs.session.Query(
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s 
-					(id UUID, accommodation_id text, begin_reservation_date date, end_reservation_date date,
-					PRIMARY KEY (begin_reservation_date, end_reservation_date))`,
+					(id UUID, accommodation_id text, begin_reservation_date date, end_reservation_date date, 
+					PRIMARY KEY ((begin_reservation_date, end_reservation_date), id))`,
 			"reservations_dates_by_date")).Exec()
 	if err != nil {
 		rs.logger.Println(err)
 	}
-
-	//SEARCH - END DATE
-	// err = rs.session.Query(
-	// 	fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s
-	// 				(id UUID, accommodation_id text, begin_reservation_date date, end_reservation_date date,
-	// 				PRIMARY KEY (accommodation_id, id))`,
-	// 		"reservations_dates_by_endDate")).Exec()
-	// if err != nil {
-	// 	rs.logger.Println(err)
-	// }
 }
 
 // -------Reservation By Accommodation-------//
 func (rs *ReservationRepo) GetReservationsByAcco(acco_id string) (ReservationsByAccommodation, error) {
-	log.Println("Usli u GetReservationsByAcco")
-	log.Println(acco_id)
-	scanner := rs.session.Query(`SELECT *
-	FROM reservations_by_acco WHERE acco_id = ? AND isDeleted = false ALLOW FILTERING;`,
+	scanner := rs.session.Query(`SELECT * FROM reservations_by_acco WHERE acco_id = ? AND isDeleted = false ALLOW FILTERING;`,
 		acco_id).Iter().Scanner() // lista
-
 	var reservations ReservationsByAccommodation
 	for scanner.Next() {
 		var res ReservationByAccommodation
@@ -182,7 +159,7 @@ func (rs *ReservationRepo) InsertReservationByAcco(resAcco *ReservationByAccommo
 	return nil
 }
 
-// RESERVATION DATE
+// RESERVATION DATE FOR ACCO
 func (rs *ReservationRepo) GetReservationsDatesByAccomodationId(acco_id string) (ReservationDatesByAccomodationId, error) {
 	scanner := rs.session.Query(`SELECT begin_reservation_date, end_reservation_date
     FROM reservations_dates_by_accomodation_id
@@ -206,30 +183,7 @@ func (rs *ReservationRepo) GetReservationsDatesByAccomodationId(acco_id string) 
 	return dates, nil
 }
 
-func (rs *ReservationRepo) GetReservationsDatesByDate(acco_id string) (ReservationDatesByAccomodationId, error) {
-	scanner := rs.session.Query(`SELECT begin_reservation_date, end_reservation_date
-    FROM reservations_dates_by_accomodation_id
-    WHERE begin_reservation_date = ? AND end_reservation_date = ?`,
-		acco_id).Iter().Scanner()
-
-	var dates ReservationDatesByAccomodationId
-	for scanner.Next() {
-		var res ReservationDate
-		err := scanner.Scan(&res.BeginAccomodationDate, &res.EndAccomodationDate)
-		if err != nil {
-			rs.logger.Println(err)
-			return nil, err
-		}
-		dates = append(dates, &res)
-	}
-	if err := scanner.Err(); err != nil {
-		rs.logger.Println(err)
-		return nil, err
-	}
-	return dates, nil
-}
-
-func (rs *ReservationRepo) InsertReservationDateForAccomodation(resDate *ReservationDateByAccomodationId) error { // -----------------------
+func (rs *ReservationRepo) InsertReservationDateForAccomodation(resDate *ReservationDateByDate) error { // -----------------------
 	log.Println("Usli u Insert")
 
 	overlap, err := rs.CheckOverlap(resDate.AccoId, resDate.BeginAccomodationDate, resDate.EndAccomodationDate)
@@ -238,7 +192,7 @@ func (rs *ReservationRepo) InsertReservationDateForAccomodation(resDate *Reserva
 	}
 
 	if overlap {
-		return errors.New("Overlap detected: Cannot insert overlapping date range")
+		return errors.New("overlap detected: Cannot insert overlapping date range")
 	}
 
 	id, _ := gocql.RandomUUID()
@@ -252,6 +206,43 @@ func (rs *ReservationRepo) InsertReservationDateForAccomodation(resDate *Reserva
 		return err
 	}
 	log.Println("Insert prosao")
+	return nil
+}
+
+// SEARCH - RESERVATION DATES BY START AND END DATE
+func (rs *ReservationRepo) GetReservationsDatesByDate(begin_reservation_date string, end_reservation_date string) (ReservationDatesByDate, error) {
+	scanner := rs.session.Query(`SELECT accommodation_id, begin_reservation_date, end_reservation_date
+    FROM reservations_dates_by_date
+    WHERE begin_reservation_date = ? AND end_reservation_date = ?`,
+		begin_reservation_date, end_reservation_date).Iter().Scanner()
+
+	var dates ReservationDatesByDate
+	for scanner.Next() {
+		var res ReservationDateByDate
+		err := scanner.Scan(&res.AccoId, &res.BeginAccomodationDate, &res.EndAccomodationDate)
+		if err != nil {
+			rs.logger.Println(err)
+			return nil, err
+		}
+		dates = append(dates, &res)
+	}
+	if err := scanner.Err(); err != nil {
+		rs.logger.Println(err)
+		return nil, err
+	}
+	return dates, nil
+}
+
+func (rs *ReservationRepo) InsertReservationDateByDate(resDate *ReservationDateByDate) error {
+	reservationId, _ := gocql.RandomUUID()
+	err := rs.session.Query(
+		`INSERT INTO reservations_dates_by_date (id, accommodation_id, begin_reservation_date, end_reservation_date) 
+		VALUES (?, ?, ?, ?);`,
+		reservationId, resDate.AccoId, resDate.BeginAccomodationDate, resDate.EndAccomodationDate).Exec()
+	if err != nil {
+		rs.logger.Println(err)
+		return err
+	}
 	return nil
 }
 

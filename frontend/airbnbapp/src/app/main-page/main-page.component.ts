@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { AuthService } from '../service/auth.service';
 import { Subscription, forkJoin, of } from 'rxjs';
 import { FormControl, FormGroup } from '@angular/forms';
+import { NgbDate } from '@ng-bootstrap/ng-bootstrap';
 
 @Component({
   selector: 'app-main-page',
@@ -21,6 +22,8 @@ export class MainPageComponent implements OnInit, OnDestroy {
   searchAccoForm: FormGroup;
   locationInput: string = '';
   noGuestsInput: string = '';
+  startDateInput: NgbDate | null = null
+  endDateInout: NgbDate | null = null
   accomodationsByLocation: Accommodation[] = [];
   accomodationsByNoGuests: Accommodation[] = [];
 
@@ -66,10 +69,13 @@ export class MainPageComponent implements OnInit, OnDestroy {
 
   
 searchAcco(): void {
-  console.log(this.locationInput);
-  console.log(this.noGuestsInput);
   this.locationInput = this.searchAccoForm.get('location')?.value;
+  this.startDateInput = this.searchAccoForm.get('startDate')?.value
+  this.endDateInout = this.searchAccoForm.get('endDate')?.value
   this.noGuestsInput = this.searchAccoForm.get('noGuests')?.value;
+
+  console.log(this.startDateInput)
+  console.log(this.endDateInout)
 
   const locationObservable = this.locationInput != null && this.locationInput !== ''
     ? this.accommodationService.getAllByLocation(this.locationInput)

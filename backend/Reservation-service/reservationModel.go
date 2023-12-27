@@ -30,7 +30,7 @@ type ReservationByUser struct {
 	IsDeleted     bool
 }
 
-type ReservationDateByAccomodationId struct {
+type ReservationDateByDate struct {
 	AccoId                string    `json:"acco_id"`
 	BeginAccomodationDate time.Time `json:"begin_accomodation_date"`
 	EndAccomodationDate   time.Time `json:"end_accomodation_date"`
@@ -47,6 +47,7 @@ type ReqToken struct {
 type ReservationsByAccommodation []*ReservationByAccommodation
 type ReservationsByUser []*ReservationByUser
 type ReservationDatesByAccomodationId []*ReservationDate
+type ReservationDatesByDate []*ReservationDateByDate
 
 func (o *ReservationByAccommodation) ToJSON(w io.Writer) error {
 	e := json.NewEncoder(w)
@@ -68,12 +69,20 @@ func (o *ReservationByUser) ToJSON(w io.Writer) error {
 	e := json.NewEncoder(w)
 	return e.Encode(o)
 }
+func (o *ReservationDatesByDate) ToJSON(w io.Writer) error {
+	e := json.NewEncoder(w)
+	return e.Encode(o)
+}
 
 func (o *ReservationByAccommodation) FromJSON(r io.Reader) error {
 	d := json.NewDecoder(r)
 	return d.Decode(o)
 }
 func (o *ReservationByUser) FromJSON(r io.Reader) error {
+	d := json.NewDecoder(r)
+	return d.Decode(o)
+}
+func (o *ReservationDatesByDate) FromJSON(r io.Reader) error {
 	d := json.NewDecoder(r)
 	return d.Decode(o)
 }
