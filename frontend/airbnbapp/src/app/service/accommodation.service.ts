@@ -13,7 +13,7 @@ export class AccommodationService {
 
   private headers = new HttpHeaders({ 'Content-Type': 'application/json' });
 
-  getById(id: number): Observable<any> {
+  getById(id: any): Observable<any> {
     return this.http.get('/api/accommodations/' + id, {
       headers: this.headers,
       responseType: 'json',

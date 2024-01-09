@@ -45,6 +45,10 @@ type ReservationDateByDate struct {
 	BeginAccomodationDate time.Time `json:"begin_accomodation_date"`
 	EndAccomodationDate   time.Time `json:"end_accomodation_date"`
 }
+
+type ReservationDateByDateGet struct {
+	AccoId string `json:"acco_id"`
+}
 type ReservationDate struct {
 	BeginAccomodationDate time.Time `json:"begin_accomodation_date"`
 	EndAccomodationDate   time.Time `json:"end_accomodation_date"`
@@ -62,6 +66,7 @@ type ReservationsByAccommodation []*ReservationByAccommodation
 type ReservationsByUser []*UserReservations
 type ReservationDatesByAccomodationId []*ReservationDate
 type ReservationDatesByDate []*ReservationDateByDate
+type ReservationDatesByDateGet []*ReservationDateByDateGet
 
 func (o *ReservationByAccommodation) ToJSON(w io.Writer) error {
 	e := json.NewEncoder(w)
@@ -87,6 +92,10 @@ func (o *ReservationDatesByDate) ToJSON(w io.Writer) error {
 	e := json.NewEncoder(w)
 	return e.Encode(o)
 }
+func (o *ReservationDatesByDateGet) ToJSON(w io.Writer) error {
+	e := json.NewEncoder(w)
+	return e.Encode(o)
+}
 
 func (o *ReservationByAccommodation) FromJSON(r io.Reader) error {
 	d := json.NewDecoder(r)
@@ -97,6 +106,10 @@ func (o *ReservationByUser) FromJSON(r io.Reader) error {
 	return d.Decode(o)
 }
 func (o *ReservationDatesByDate) FromJSON(r io.Reader) error {
+	d := json.NewDecoder(r)
+	return d.Decode(o)
+}
+func (o *ReservationDatesByDateGet) FromJSON(r io.Reader) error {
 	d := json.NewDecoder(r)
 	return d.Decode(o)
 }

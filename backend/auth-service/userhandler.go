@@ -156,10 +156,10 @@ func (uh *UserHandler) createUser(w http.ResponseWriter, req *http.Request) {
 	defer response.Body.Close()
 	if string(responseBody) == "User created" {
 		content := `
-		// 		<h1>Verify your email</h1>
-		// 		<h1>This is a verification message from AirBnb</h1>
-		// 		<h4>Use the following code: %s</h4>
-		// 		<h4><a href="localhost:4200/verify-email">Click here</a> to verify your email.</h4>`
+				<h1>Verify your email</h1>
+				<h1>This is a verification message from AirBnb</h1>
+				<h4>Use the following code: %s</h4>
+				<h4><a href="localhost:4200/verify-email">Click here</a> to verify your email.</h4>`
 		subject := "Verification email"
 		uh.sendEmail(rt, content, subject, true, rt.Email)
 		sendErrorWithMessage(w, "User cretated. Check the email for verification code", http.StatusCreated)
@@ -223,7 +223,7 @@ func (uh *UserHandler) loginUser(w http.ResponseWriter, req *http.Request) {
 	// prooveravamo da li korisnik ima verifikovan mejl 169,170,171,172,173,174
 	log.Println(user.IsEmailVerified)
 	if !user.IsEmailVerified {
-		sendErrorWithMessage(w, "Email is not verifyed (treba da postoji dugme da se ponovo posalje email ili da mu se napise da proveri email ako nije)", http.StatusBadRequest)
+		sendErrorWithMessage(w, "Email is not verified", http.StatusBadRequest)
 		return
 	}
 

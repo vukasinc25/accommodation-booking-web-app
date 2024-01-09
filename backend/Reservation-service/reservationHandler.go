@@ -27,6 +27,15 @@ func NewReservationHandler(l *log.Logger, r *ReservationRepo) *reservationHandle
 	return &reservationHandler{l, r}
 }
 
+//type AccoHandler struct {
+//	logger *log.Logger
+//	db     *AccoRepo
+//}
+//func NewAccoHandler(l *log.Logger, r *AccoRepo) *AccoHandler {
+//
+//	return &AccoHandler{l, r}
+//}
+
 func (rh *reservationHandler) GetAllReservationIds(res http.ResponseWriter, req *http.Request) {
 	reservationIds, err := rh.repo.GetDistinctIds("reservation_id", "reservations_by_user")
 	if err != nil {
@@ -120,8 +129,9 @@ func (rh *reservationHandler) GetAllReservationsDatesByDate(res http.ResponseWri
 }
 
 func (rh *reservationHandler) getAllReservationsByUser(res http.ResponseWriter, req *http.Request) {
-	vars := mux.Vars(req)
-	userId := vars["id"] 
+	//vars := mux.Vars(req)
+	////userId := vars["id"]
+	requestId, err := decodeIdBody(req.Body)
 	reservationsByUser, err := rh.repo.GetReservationsByUser(requestId.UserId)
 	if err != nil {
 		rh.logger.Println("Database exception: ", err)
@@ -149,7 +159,26 @@ func (rh *reservationHandler) GetAllReservationsByUserId(res http.ResponseWriter
 		sendErrorWithMessage(res, "Cant decode body", http.StatusBadRequest)
 		return
 	}
-  
+
+	reservationsByUser, err := rh.repo.GetReservationsByUser(requestId.UserId)
+	if err != nil {
+		rh.logger.Println("Database exception: ", err)
+		sendErrorWithMessage(res, "Error in getting reservation", http.StatusBadRequest)
+		return
+	}
+
+	if reservationsByUser == nil {
+		return
+	}
+
+	err = reservationsByUser.ToJSON(res)
+	if err != nil {
+		rh.logger.Println("Unable to convert to json :", err)
+		sendErrorWithMessage(res, "Unable to convert to json", http.StatusBadRequest)
+		return
+	}
+}
+
 func (rh *reservationHandler) CreateReservationDateForDate(res http.ResponseWriter, req *http.Request) {
 	reservationDate, err := decodeBody(req.Body)
 	if err != nil {

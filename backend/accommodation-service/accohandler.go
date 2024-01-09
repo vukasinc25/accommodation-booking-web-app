@@ -63,18 +63,41 @@ func (ah *AccoHandler) GetAccommodationById(w http.ResponseWriter, req *http.Req
 	}
 }
 
-func (ah *AccoHandler) GetAllAccommodationsById(w http.ResponseWriter, req *http.Request) {
+func (ah *AccoHandler) GetAllAccommodationsByUsername(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
-	id := vars["id"]
+	username := vars["username"]
 
-	accommodations, err := ah.db.GetAllById(id)
+	accommodations, err := ah.db.GetAllByUsername(username)
 	if err != nil {
 		ah.logger.Print("Database exception: ", err)
 	}
 
 	if accommodations == nil {
 		http.Error(w, "Accommodations with given username not found", http.StatusNotFound)
-		ah.logger.Printf("Accommodations with username: '%s' not found", id)
+		ah.logger.Printf("Accommodations with username: '%s' not found", username)
+		return
+	}
+
+	err = accommodations.ToJSON(w)
+	if err != nil {
+		http.Error(w, "Unable to convert to json", http.StatusInternalServerError)
+		ah.logger.Fatal("Unable to convert to json :", err)
+		return
+	}
+}
+
+func (ah *AccoHandler) GetAllAccommodationsById(w http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	id := vars["id"]
+	log.Println(id)
+	accommodations, err := ah.db.GetAllById(id)
+	if err != nil {
+		ah.logger.Print("Database exception: ", err)
+	}
+
+	if accommodations == nil {
+		http.Error(w, "Accommodations with given id not found", http.StatusNotFound)
+		ah.logger.Printf("Accommodations with id: '%s' not found", id)
 		return
 	}
 

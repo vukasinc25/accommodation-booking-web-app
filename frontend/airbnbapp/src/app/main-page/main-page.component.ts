@@ -6,6 +6,8 @@ import { AuthService } from '../service/auth.service';
 import { Subscription, forkJoin, of } from 'rxjs';
 import { FormControl, FormGroup } from '@angular/forms';
 import { NgbDate } from '@ng-bootstrap/ng-bootstrap';
+import { ReservationService } from '../service/reservation.service';
+import { ReservationByDateSearch } from '../model/reservationByDateSearch';
 
 @Component({
   selector: 'app-main-page',
@@ -22,15 +24,20 @@ export class MainPageComponent implements OnInit, OnDestroy {
   searchAccoForm: FormGroup;
   locationInput: string = '';
   noGuestsInput: string = '';
-  startDateInput: NgbDate | null = null
-  endDateInout: NgbDate | null = null
-  accomodationsByLocation: Accommodation[] = [];
-  accomodationsByNoGuests: Accommodation[] = [];
+  // startDateInput: NgbDate | null = null
+  // endDateInput: NgbDate | null = null
+  startDateInput: string = '';
+  endDateInput: string = '';
+  accommodationsByLocation: Accommodation[] = [];
+  accommodationsByNoGuest: Accommodation[] = [];
+  accommodationsByDate: Accommodation[] = [];
+  reservationsByDate: ReservationByDateSearch[] = [];
 
   constructor(
     private router: Router,
     private accommodationService: AccommodationService,
-    private authService: AuthService
+    private authService: AuthService,
+    private reservationService: ReservationService
   ) {
     this.logSub = this.authService.isLoggedin.subscribe(
       (data) => (this.isLoggedin = data)
@@ -71,11 +78,11 @@ export class MainPageComponent implements OnInit, OnDestroy {
 searchAcco(): void {
   this.locationInput = this.searchAccoForm.get('location')?.value;
   this.startDateInput = this.searchAccoForm.get('startDate')?.value
-  this.endDateInout = this.searchAccoForm.get('endDate')?.value
+  this.endDateInput = this.searchAccoForm.get('endDate')?.value
   this.noGuestsInput = this.searchAccoForm.get('noGuests')?.value;
 
   console.log(this.startDateInput)
-  console.log(this.endDateInout)
+  console.log(this.endDateInput)
 
   const locationObservable = this.locationInput != null && this.locationInput !== ''
     ? this.accommodationService.getAllByLocation(this.locationInput)
@@ -85,24 +92,40 @@ searchAcco(): void {
     ? this.accommodationService.getAllByNoGuests(this.noGuestsInput)
     : of([]);
 
-  forkJoin([locationObservable, noGuestsObservable]).subscribe({
-    next: ([locations, noGuests]: [Accommodation[], Accommodation[]]) => {
-      this.accomodationsByLocation = locations as Accommodation[];
-      this.accomodationsByNoGuests = noGuests as Accommodation[];
+  const reservationsDateObservable = this.startDateInput != null && this.endDateInput != null
+    ? this.reservationService.getAllReservationDatesByDate(this.startDateInput, this.endDateInput)
+    : of([]);
 
-      if (this.accomodationsByLocation.length > 0 && this.accomodationsByNoGuests.length == 0) {
+  forkJoin([locationObservable, noGuestsObservable, reservationsDateObservable]).subscribe({
+    next: ([locations, noGuests, accoDate]: [Accommodation[], Accommodation[], ReservationByDateSearch[]]) => {
+      this.accommodationsByLocation = locations as Accommodation[];
+      this.accommodationsByNoGuest = noGuests as Accommodation[];
+      this.reservationsByDate = accoDate as ReservationByDateSearch[];
+      console.log(this.reservationsByDate)
+      if (this.reservationsByDate.length > 0) {
+        for (const accoDate of this.reservationsByDate) {
+          this.accommodationService.getById(accoDate.acco_id).subscribe({
+            next: (data) => {
+              this.accommodationsByDate.push(data)
+            }
+          })
+        }
+      }
+      console.log(this.accommodationsByDate)
+
+      if (this.accommodationsByLocation.length > 0 && this.accommodationsByNoGuest.length == 0) {
         console.log("Ima lokacija nema gostiju");
-        this.accommodations = this.accomodationsByLocation;
+        this.accommodations = this.accommodationsByLocation;
       } 
-      else if (this.accomodationsByLocation.length == 0 && this.accomodationsByNoGuests.length > 0) {
+      else if (this.accommodationsByLocation.length == 0 && this.accommodationsByNoGuest.length > 0) {
         console.log("Nema lokacija ima gostiju");
-        this.accommodations = this.accomodationsByNoGuests;
+        this.accommodations = this.accommodationsByNoGuest;
       } 
-      else if (this.accomodationsByLocation.length > 0 && this.accomodationsByNoGuests.length > 0) {
+      else if (this.accommodationsByLocation.length > 0 && this.accommodationsByNoGuest.length > 0) {
         console.log("Ima oba");
         const tempList: Accommodation[] = [];
-        for (const accoLocation of this.accomodationsByLocation){
-          for (const accoNoGuest of this.accomodationsByNoGuests){
+        for (const accoLocation of this.accommodationsByLocation){
+          for (const accoNoGuest of this.accommodationsByNoGuest){
             if (accoLocation._id == accoNoGuest._id){
               tempList.push(accoLocation);
             }
@@ -113,18 +136,19 @@ searchAcco(): void {
         }
         this.accommodations = tempList
       } 
-      else if (this.accomodationsByLocation.length == 0 && this.accomodationsByNoGuests.length == 0) {
+      else if (this.accommodationsByLocation.length == 0 && this.accommodationsByNoGuest.length == 0) {
         this.ngOnInit();
       }
 
-      this.accomodationsByLocation = [];
-      this.accomodationsByNoGuests = [];
+      this.accommodationsByLocation = [];
+      this.accommodationsByNoGuest = [];
     },
     error: (err) => {
       console.log(err);
     },
     complete: () => {
       console.log('Both observables complete');
+      console.log(this.accommodationsByDate)
     },
   });
 }

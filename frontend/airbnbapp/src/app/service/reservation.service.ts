@@ -4,7 +4,7 @@ import { Injectable } from '@angular/core';
 import { Router } from '@angular/router';
 import { JwtHelperService } from '@auth0/angular-jwt';
 import { NgbDate } from '@ng-bootstrap/ng-bootstrap';
-import { end } from '@popperjs/core';
+import { end, start } from '@popperjs/core';
 import { Observable } from 'rxjs';
 
 @Injectable({
@@ -49,10 +49,6 @@ export class ReservationService {
     id: any,
     reservation: any
   ): Observable<any> {
-    // console.log(reservation.pricePerPerson);
-    // console.log(reservation.pricePerNight);
-    // console.log(reservation.availableFrom);
-    // console.log(reservation.availableUntil);
     return this.http.post(
       '/api/reservations/for_acco',
       {
@@ -67,7 +63,6 @@ export class ReservationService {
     );
   }
   getAvailabelDatesForAccomodation(id: any): Observable<any> {
-    // console.log(id);
     return this.http.get(`${'/api/reservations/by_acco/'}${id}`, {
       headers: this.headers,
       responseType: 'json',
@@ -76,6 +71,13 @@ export class ReservationService {
 
   getAllReservationsByUserId(): Observable<any> {
     return this.http.get(`/api/reservations/by_user`, {
+      headers: this.headers,
+      responseType: 'json',
+    });
+  }
+
+  getAllReservationDatesByDate(startDate: string, endDate: string): Observable<any>{
+    return this.http.get('/api/reservations/search_by_date/' + startDate + '/' + endDate, {
       headers: this.headers,
       responseType: 'json',
     });

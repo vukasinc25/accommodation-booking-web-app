@@ -17,8 +17,6 @@ type ReservationRepo struct {
 
 func New(logger *log.Logger) (*ReservationRepo, error) {
 	db := os.Getenv("CASS_DB")
-	log.Println(db)
-	log.Println("A sto ne radi")
 
 	cluster := gocql.NewCluster(db)
 	cluster.Keyspace = "system"
@@ -210,16 +208,15 @@ func (rs *ReservationRepo) InsertReservationDateForAccomodation(resDate *Reserva
 }
 
 // SEARCH - RESERVATION DATES BY START AND END DATE
-func (rs *ReservationRepo) GetReservationsDatesByDate(begin_reservation_date string, end_reservation_date string) (ReservationDatesByDate, error) {
-	scanner := rs.session.Query(`SELECT accommodation_id, begin_reservation_date, end_reservation_date
-    FROM reservations_dates_by_date
+func (rs *ReservationRepo) GetReservationsDatesByDate(beginReservationDate string, endReservationDate string) (ReservationDatesByDateGet, error) {
+	scanner := rs.session.Query(`SELECT accommodation_id FROM reservations_dates_by_date
     WHERE begin_reservation_date = ? AND end_reservation_date = ?`,
-		begin_reservation_date, end_reservation_date).Iter().Scanner()
+		beginReservationDate, endReservationDate).Iter().Scanner()
 
-	var dates ReservationDatesByDate
+	var dates ReservationDatesByDateGet
 	for scanner.Next() {
-		var res ReservationDateByDate
-		err := scanner.Scan(&res.AccoId, &res.BeginAccomodationDate, &res.EndAccomodationDate)
+		var res ReservationDateByDateGet
+		err := scanner.Scan(&res.AccoId)
 		if err != nil {
 			rs.logger.Println(err)
 			return nil, err

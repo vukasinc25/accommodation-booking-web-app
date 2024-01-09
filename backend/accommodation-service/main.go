@@ -64,9 +64,10 @@ func main() {
 
 	router.HandleFunc("/api/accommodations/", service.getAllAccommodations).Methods("GET")
 	router.HandleFunc("/api/accommodations/{id}", service.GetAccommodationById).Methods("GET")
-	router.HandleFunc("/api/accommodations/myAccommodations/{id}", service.GetAllAccommodationsById).Methods("GET")
+	router.HandleFunc("/api/accommodations/myAccommodations/{username}", service.GetAllAccommodationsByUsername).Methods("GET")
 	router.HandleFunc("/api/accommodations/search_by_location/{locations}", service.GetAllAccommodationsByLocation).Methods("GET")
 	router.HandleFunc("/api/accommodations/search_by_noGuests/{noGuests}", service.GetAllAccommodationsByNoGuests).Methods("GET")
+	router.HandleFunc("/api/accommodations/get_all_acco_by_id/{id}", service.GetAllAccommodationsById).Methods("GET")
 
 	server := http.Server{
 		Addr:         ":" + config["port"],

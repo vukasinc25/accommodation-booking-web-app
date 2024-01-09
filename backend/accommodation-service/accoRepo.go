@@ -82,7 +82,7 @@ func (ar *AccoRepo) GetAll() (Accommodations, error) {
 	return accommodations, nil
 }
 
-func (ar *AccoRepo) GetAllById(id string) (Accommodations, error) {
+func (ar *AccoRepo) GetAllByUsername(username string) (Accommodations, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -91,7 +91,28 @@ func (ar *AccoRepo) GetAllById(id string) (Accommodations, error) {
 
 	var accommodations Accommodations
 	//objID, _ := primitive.ObjectIDFromHex(id)
-	accommoCursor, err := accommoCollection.Find(ctx, bson.D{{"username", id}})
+	accommoCursor, err := accommoCollection.Find(ctx, bson.D{{"username", username}})
+	if err != nil {
+		ar.logger.Println(err)
+		return nil, err
+	}
+	if err = accommoCursor.All(ctx, &accommodations); err != nil {
+		ar.logger.Println(err)
+		return nil, err
+	}
+	return accommodations, nil
+}
+
+func (ar *AccoRepo) GetAllById(id string) (Accommodations, error) {
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	accommoCollection := ar.getCollection()
+
+	var accommodations Accommodations
+	objID, _ := primitive.ObjectIDFromHex(id)
+	accommoCursor, err := accommoCollection.Find(ctx, bson.D{{"_id", objID}})
 	if err != nil {
 		ar.logger.Println(err)
 		return nil, err
