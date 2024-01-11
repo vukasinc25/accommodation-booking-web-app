@@ -38,11 +38,13 @@ func main() {
 	router := mux.NewRouter()
 	router.StrictSlash(true)
 
+	config := loadConfig()
+
 	//Initialize the logger we are going to use, with prefix and datetime for every log
 	logger := log.New(os.Stdout, "[product-api] ", log.LstdFlags)
 
 	// NoSQL: Initialize Product Repository store
-	store, err := New(logger)
+	store, err := New(logger, config["conn_reservation_service_address"])
 	if err != nil {
 		logger.Fatal(err)
 	}
@@ -56,8 +58,17 @@ func main() {
 	getUserInfoByUserId.HandleFunc("/api/prof/user", service.GetUserById)
 	getUserInfoByUserId.Use(service.MiddlewareRoleCheck(authClient, authBreaker))
 	router.Methods(http.MethodPatch).Subrouter()
+	getAllHostGrades := router.Methods(http.MethodGet).Subrouter()
+	getAllHostGrades.HandleFunc("/api/prof/hostGrades/{id}", service.GetAllHostGrades) // treba authorisation
+	// getAllHostGrades.Use(service.MiddlewareRoleCheck00(authClient, authBreaker))
+	createHostGrade := router.Methods(http.MethodPost).Subrouter()
+	createHostGrade.HandleFunc("/api/prof/hostGrade", service.CreateHostGrade) // treba authorisation
+	createHostGrade.Use(service.MiddlewareRoleCheck0(authClient, authBreaker))
+	deleteHostGrade := router.Methods(http.MethodDelete).Subrouter()
+	deleteHostGrade.HandleFunc("/api/prof/hostGrade/{id}", service.DeleteHostGrade) // treba authorisation
+	deleteHostGrade.Use(service.MiddlewareRoleCheck00(authClient, authBreaker))
 	router.HandleFunc("/api/prof/update", service.UpdateUser).Methods("PATCH")
-	// start servergo get -u github.com/gorilla/mux
+	router.HandleFunc("/api/prof/delete/{id}", service.DeleteUser).Methods("DELETE")
 
 	// srv := &http.Server{Addr: config["address"], Handler: router}
 	server := http.Server{
@@ -103,6 +114,6 @@ func loadConfig() map[string]string {
 	config["port"] = os.Getenv("PORT")
 	config["address"] = fmt.Sprintf(":%s", os.Getenv("PORT"))
 	config["mondo_db_uri"] = os.Getenv("MONGO_DB_URI")
-	// config["accomodation_service_address"] = fmt.Sprintf("http://%s:%s", os.Getenv("ACCOMMODATIONS_SERVICE_HOST"), os.Getenv("ACCOMMODATIONS_SERVICE_PORT"))
+	config["conn_reservation_service_address"] = fmt.Sprintf("http://%s:%s", os.Getenv("RESERVATION_SERVICE_HOST"), os.Getenv("RESERVATION_SERVICE_PORT"))
 	return config
 }

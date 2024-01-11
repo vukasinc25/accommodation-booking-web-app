@@ -13,6 +13,7 @@ import {
   ValidationErrors,
   Validators,
 } from '@angular/forms';
+import { ProfServiceService } from 'src/app/service/prof.service.service';
 
 @Component({
   selector: 'app-accommo-info',
@@ -20,15 +21,33 @@ import {
   styleUrls: ['./accommo-info.component.css'],
 })
 export class AccommoInfoComponent implements OnInit {
+  grades: any[] = [];
+  accommodationGrades: any[] = [];
+  form: FormGroup;
   accommodationForm!: FormGroup;
+  formAccommodation!: FormGroup;
   constructor(
     private fb: FormBuilder,
     private route: ActivatedRoute,
     private router: Router,
+    private profService: ProfServiceService,
     private accommodationService: AccommodationService,
     private authService: AuthService,
     private reservationService: ReservationService
-  ) {}
+  ) {
+    this.form = this.fb.group({
+      grade: [
+        null,
+        [Validators.required, Validators.min(1), Validators.max(5)],
+      ],
+    });
+    this.formAccommodation = this.fb.group({
+      grade: [
+        null,
+        [Validators.required, Validators.min(1), Validators.max(5)],
+      ],
+    });
+  }
 
   role: string = '';
   username: string = '';
@@ -38,6 +57,7 @@ export class AccommoInfoComponent implements OnInit {
   id: number = 0;
   reservationId: string = '';
   accommodation: Accommodation = {};
+  hostId: string = '';
   dateList: ResDateRange[] = [];
   blackDateList: DisabledDateRange[] = [];
   isDataEmpty = false;
@@ -81,7 +101,30 @@ export class AccommoInfoComponent implements OnInit {
       .getAvailabelDatesForAccomodation(this.id)
       .subscribe({
         next: (data) => {
+          console.log(data);
           this.reservationId = data[0].reservationId;
+          this.hostId = data[0].userId;
+          console.log('HostId1:', this.hostId);
+          this.profService.getAllHostGrades(this.hostId).subscribe({
+            next: (data) => {
+              console.log(data);
+              this.grades = data;
+            },
+            error: (err) => {
+              alert(err.error.message);
+            },
+          });
+          this.accommodationService
+            .getAllAccommodationGrades(this.id)
+            .subscribe({
+              next: (data) => {
+                console.log(data);
+                this.accommodationGrades = data;
+              },
+              error: (err) => {
+                alert(err.error.message);
+              },
+            });
           this.startDate = new NgbDate(
             new Date(data[0].startDate).getFullYear(),
             new Date(data[0].startDate).getUTCMonth() + 1,
@@ -209,6 +252,20 @@ export class AccommoInfoComponent implements OnInit {
     );
   }
 
+  submitGrade() {
+    this.profService.gradeHost(this.hostId, this.form.value.grade).subscribe({
+      next: (data) => {
+        alert('Host graded');
+        this.form.reset();
+        this.ngOnInit();
+      },
+      error: (err) => {
+        alert(err.error.message);
+        this.form.reset();
+      },
+    });
+  }
+
   reserveDates() {
     this.reservationService
       .createReservation(
@@ -224,6 +281,43 @@ export class AccommoInfoComponent implements OnInit {
         },
         error: (err) => {
           console.log(err.error.message);
+          alert(err.error.message);
+          this.ngOnInit();
+        },
+      });
+  }
+  deleteHostGrade(id: any) {
+    this.profService.deleteHostGrades(id).subscribe({
+      next: (data) => {
+        alert('Grade deleted');
+        this.ngOnInit();
+      },
+      error: (err) => {
+        alert(err.error.message);
+      },
+    });
+  }
+  deleteAccommodationGrade(id: any) {
+    this.accommodationService.deleteAccommodationGrade(id).subscribe({
+      next: (data) => {
+        alert('Accommodation deleted');
+        this.ngOnInit();
+      },
+      error: (err) => {
+        alert(err.error.message);
+      },
+    });
+  }
+
+  submitAccommodationGrade() {
+    this.accommodationService
+      .gradeAccommodation(this.id, this.formAccommodation.value.grade)
+      .subscribe({
+        next: (data) => {
+          alert('Accommodation graded');
+          this.ngOnInit();
+        },
+        error: (err) => {
           alert(err.error.message);
         },
       });

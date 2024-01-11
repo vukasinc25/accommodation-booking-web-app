@@ -133,6 +133,9 @@ func (rh *reservationHandler) getAllReservationsByUser(res http.ResponseWriter, 
 	////userId := vars["id"]
 	requestId, err := decodeIdBody(req.Body)
 	reservationsByUser, err := rh.repo.GetReservationsByUser(requestId.UserId)
+	// vars := mux.Vars(req)
+	// userId := vars["id"]
+	// reservationsByUser, err := rh.repo.GetReservationsByUser(userId)
 	if err != nil {
 		rh.logger.Println("Database exception: ", err)
 		sendErrorWithMessage(res, "Error in getting reservation", http.StatusBadRequest)
@@ -177,6 +180,135 @@ func (rh *reservationHandler) GetAllReservationsByUserId(res http.ResponseWriter
 		sendErrorWithMessage(res, "Unable to convert to json", http.StatusBadRequest)
 		return
 	}
+}
+
+func (rh *reservationHandler) GetAllReservationsDatesByHostId(res http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	hostId := vars["id"]
+	log.Println("Usli u GetReservationsDatesByHostId met")
+
+	reservationsDatesByHostId, err := rh.repo.GetReservationsDatesByHostId(hostId)
+	if err != nil {
+		rh.logger.Print("Database exception: ", err)
+		sendErrorWithMessage1(res, "Error when getting reservations", http.StatusBadRequest)
+		return
+	}
+
+	if reservationsDatesByHostId == nil {
+		sendErrorWithMessage1(res, "There is no availability dates for that accommodation", http.StatusBadRequest)
+		return
+	}
+
+	var activeReservations = false
+	var counterIsThereAnyReservations = 0
+	for _, element := range reservationsDatesByHostId {
+		log.Println("Reservation:", element)
+		reservationsByAccomodationIdFromReservationsByUserTable, err := rh.repo.GetReservationsDatesByAccomodationId(element.AccoId)
+		if err != nil {
+			log.Println("Cant get reservations by accommodation:", err)
+			sendErrorWithMessage1(res, "Cant get reservations by accommodationId for host", http.StatusInternalServerError)
+			return
+		}
+
+		var isDatePassedd = false
+		if len(reservationsByAccomodationIdFromReservationsByUserTable) != 0 {
+			counterIsThereAnyReservations++
+			for _, element1 := range reservationsByAccomodationIdFromReservationsByUserTable {
+				log.Println("Reservation by AccoId:", element1)
+				response, err := rh.repo.isDatePassed(element1.EndAccomodationDate)
+				if err != nil {
+					counterIsThereAnyReservations = 0
+					log.Println("Error in isDatePassed metod:", err)
+					sendErrorWithMessage1(res, "Error in isDatePassed metod", http.StatusInternalServerError)
+					return
+				}
+				log.Println("Response:", response)
+				isDatePassedd = response
+				if !response {
+					break
+				}
+			}
+		}
+
+		activeReservations = isDatePassedd
+		log.Println("Active:", activeReservations)
+		if !isDatePassedd {
+			break
+		}
+
+	}
+
+	if counterIsThereAnyReservations == 0 {
+		log.Println("No reservations")
+		sendErrorWithMessage1(res, "There is not reservations for hosts accommodations", http.StatusBadRequest)
+		return
+	}
+	log.Println("Active2:", activeReservations)
+	if !activeReservations {
+		counterIsThereAnyReservations = 0
+		sendErrorWithMessage1(res, "There is active reservations for accommodations of this host", http.StatusOK)
+		return
+	} else {
+		counterIsThereAnyReservations = 0
+		sendErrorWithMessage1(res, "There is no active reservations for accommodations of this host", http.StatusOK)
+		return
+	}
+}
+
+func (rh *reservationHandler) GetAllReservationsForUserIdByHostId(res http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	userId := vars["userId"]
+	hostId := vars["hostId"]
+	log.Println("Usli u GetReservationsDatesByHostId met")
+
+	reservationsDatesByHostId, err := rh.repo.GetReservationsDatesByHostId(hostId)
+	if err != nil {
+		rh.logger.Print("Database exception: ", err)
+		sendErrorWithMessage1(res, "Error when getting reservations", http.StatusBadRequest)
+		return
+	}
+
+	if reservationsDatesByHostId == nil {
+		sendErrorWithMessage1(res, "There is no accommodation for that host", http.StatusBadRequest)
+		return
+	}
+
+	var isThereSomePreviousReservations = false
+	var counterIsThereAnyReservations = 0
+	for _, element := range reservationsDatesByHostId {
+		log.Println("Reservation:", element)
+		reservationsByUserId, err := rh.repo.GetReservationsByUser(userId)
+		if err != nil {
+			log.Println("Cant get reservations by user:", err)
+			sendErrorWithMessage1(res, "Cant get reservations by userId for userId", http.StatusInternalServerError)
+			return
+		}
+
+		if len(reservationsByUserId) != 0 {
+			counterIsThereAnyReservations++
+			for _, element1 := range reservationsByUserId {
+				log.Println("Reservation by AccoId:", element1)
+				if element.AccoId == element1.AccoId {
+					isThereSomePreviousReservations = true
+					break
+				}
+			}
+		}
+	}
+	if counterIsThereAnyReservations == 0 {
+		log.Println("No reservations")
+		sendErrorWithMessage1(res, "There is no reservations for hosts accommodations", http.StatusBadRequest)
+		return
+	}
+
+	if isThereSomePreviousReservations == true {
+		counterIsThereAnyReservations = 0
+		log.Println("There is some reservtions for this user")
+		sendErrorWithMessage1(res, "There is some reservtions for this user", http.StatusOK)
+		return
+	}
+	counterIsThereAnyReservations = 0
+	sendErrorWithMessage1(res, "There is no reservations for this user", http.StatusBadRequest)
 }
 
 func (rh *reservationHandler) CreateReservationDateForDate(res http.ResponseWriter, req *http.Request) {
@@ -238,7 +370,10 @@ func (rh *reservationHandler) CreateReservationForUser(res http.ResponseWriter, 
 	err = rh.repo.InsertReservationByUser(reservationUser)
 	if err != nil {
 		rh.logger.Print("Database exception: ", err)
-		if strings.Contains(err.Error(), "Dates are already reserved for that accommodation") {
+		if strings.Contains(err.Error(), "Cant reserve in past") {
+			sendErrorWithMessage(res, "Cant reserve in past", http.StatusBadRequest)
+			return
+		} else if strings.Contains(err.Error(), "Dates are already reserved for that accommodation") {
 			sendErrorWithMessage(res, "Dates are already reserved for that accommodation", http.StatusBadRequest)
 		} else {
 			sendErrorWithMessage(res, "Cant create reservation", http.StatusBadRequest)
@@ -611,6 +746,12 @@ func decodeReservationByUserBody(r io.Reader) (*ReservationByUser, error) {
 	}
 
 	return &rt, nil
+}
+
+func sendErrorWithMessage1(w http.ResponseWriter, message string, statusCode int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(message))
+	w.WriteHeader(statusCode)
 }
 
 func sendErrorWithMessage(w http.ResponseWriter, message string, statusCode int) {

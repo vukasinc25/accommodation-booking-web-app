@@ -43,7 +43,7 @@ func main() {
 	}
 
 	// NoSQL: Initialize auth Repository store
-	store, err := New(timeoutContext, storeLogger, config["conn_service_address"])
+	store, err := New(timeoutContext, storeLogger, config["conn_service_address"], config["conn_reservation_service_address"], config["conn_accommodation_service_address"])
 	if err != nil {
 		logger.Fatal(err)
 	}
@@ -81,6 +81,8 @@ func main() {
 	router.HandleFunc("/api/users/sendforgottemail/{email}", service.sendForgottenPasswordEmail).Methods("POST") // nije  // for sending forgotten password email
 	router.HandleFunc("/api/users/changeForgottenPassword", service.changeForgottenPassword).Methods("POST")     // nije      // treba da se prosledi body sa newPassword, confirmPassword, code
 	authRoutes.HandleFunc("/api/users/update", service.UpdateUser).Methods("PATCH")
+	authRoutes.HandleFunc("/api/users/changePassword", service.ChangePassword).Methods("PATCH")
+	authRoutes.HandleFunc("/api/users/delete", service.DeleteUser).Methods("DELETE")
 
 	// Configure the HTTP server
 	server := http.Server{
@@ -128,5 +130,7 @@ func main() {
 func loadConfig() map[string]string {
 	config := make(map[string]string)
 	config["conn_service_address"] = fmt.Sprintf("http://%s:%s", os.Getenv("PROF_SERVICE_HOST"), os.Getenv("PROF_SERVICE_PORT"))
+	config["conn_reservation_service_address"] = fmt.Sprintf("http://%s:%s", os.Getenv("RESERVATION_SERVICE_HOST"), os.Getenv("RESERVATION_SERVICE_PORT"))
+	config["conn_accommodation_service_address"] = fmt.Sprintf("http://%s:%s", os.Getenv("ACCOMMODATION_SERVICE_HOST"), os.Getenv("ACCOMMODATION_SERVICE_PORT"))
 	return config
 }

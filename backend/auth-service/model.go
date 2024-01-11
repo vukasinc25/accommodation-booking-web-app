@@ -7,6 +7,7 @@ import (
 
 	"github.com/asaskevich/govalidator"
 	"github.com/go-playground/validator/v10"
+	"github.com/gocql/gocql"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -84,6 +85,24 @@ type SiteVerifyRequest struct {
 	RecaptchaResponse string `json:"g-recaptcha-response"`
 }
 
+type NewPassword struct {
+	OldPassword     string `bson:"oldPassword,omitempty" json:"oldPassword" validate:"required"`
+	NewPassword     string `bson:"newPassword,omitempty" json:"newPassword" validate:"required,newPassword"`
+	ConfirmPassword string `bson:"confirmPassword,omitempty" json:"confirmPassword" validate:"required"`
+}
+
+type ReservationByAccommodation struct {
+	AccoId               string     `json:"accoId"`
+	ReservationId        gocql.UUID `json:"reservationId"`
+	HostId               string     `json:"userId"`
+	NumberPeople         int        `json:"numberPeople"`
+	PriceByPeople        int        `json:"priceByPeople"`
+	PriceByAccommodation int        `json:"priceByAccommodation"`
+	StartDate            time.Time  `json:"startDate"`
+	EndDate              time.Time  `json:"endDate"`
+	IsDeleted            bool       `json:"isDeleted"`
+}
+
 type ForgottenPassword struct {
 	NewPassword     string `bson:"newPassword,omitempty" json:"newPassword" validate:"required,newPassword"`
 	ConfirmPassword string `bson:"confirmPassword,omitempty" json:"confirmPassword" validate:"required"`
@@ -109,8 +128,37 @@ type ForgottenPasswordEmail struct {
 	ExpiredAt  time.Time          `bson:"expiredAt,omitempty" json:"expiredAt" validate:"required"`
 }
 
+type Reservation struct {
+	ReservationId  string    `json:"reservationId" validate:"required"`
+	AccoId         string    `json:"accoId" validate:"required"`
+	Price          int       `json:"price" validate:"required"`
+	StartDate      time.Time `json:"startDate" validate:"required"`
+	NumberOfPeople int       `json:"numberOfPeople"`
+	EndDate        time.Time `json:"endDate" validate:"required"`
+}
+
+type Reservations []*Reservation
+type ReservationsByAccommodation []*ReservationByAccommodation
+
 type ReqToken struct {
 	Token string `json:"token"`
+}
+
+func ValidateNewPassword(newPassword NewPassword) error {
+	validate := validator.New()
+
+	// Register custom validation tag for password complexity
+	validate.RegisterValidation("newPassword", func(fl validator.FieldLevel) bool {
+		password := fl.Field().String()
+
+		return len(password) >= 8 &&
+			strings.ContainsAny(password, "ABCDEFGHIJKLMNOPQRSTUVWXYZ") &&
+			strings.ContainsAny(password, "abcdefghijklmnopqrstuvwxyz") &&
+			strings.ContainsAny(password, "0123456789") &&
+			regexp.MustCompile(`[^a-zA-Z0-9]`).MatchString(password)
+	})
+
+	return validate.Struct(newPassword)
 }
 
 func ValidateUser(user User) error {

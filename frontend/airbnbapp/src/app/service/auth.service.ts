@@ -99,6 +99,13 @@ export class AuthService {
     else this.setRole('');
   }
 
+  deleteUser(): Observable<any> {
+    return this.http.delete('/api/users/delete', {
+      headers: this.headers,
+      responseType: 'json',
+    });
+  }
+
   changeForgottenPassword(
     newPassword: string,
     confirmPassword: string,
@@ -119,6 +126,25 @@ export class AuthService {
     return this.http.post(
       `${'/api/users/sendforgottemail/'}${email}`,
       {},
+      {
+        headers: this.headers,
+        responseType: 'json',
+      }
+    );
+  }
+
+  changePasswod(
+    oldPassword: any,
+    newPassword: any,
+    confirmPassword: any
+  ): Observable<any> {
+    return this.http.patch(
+      '/api/users/changePassword',
+      {
+        oldPassword: oldPassword,
+        newPassword: newPassword,
+        confirmPassword: confirmPassword,
+      },
       {
         headers: this.headers,
         responseType: 'json',

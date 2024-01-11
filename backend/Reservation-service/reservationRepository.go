@@ -143,8 +143,17 @@ func (rs *ReservationRepo) GetReservationsByAcco(acco_id string) (ReservationsBy
 }
 
 func (rs *ReservationRepo) InsertReservationByAcco(resAcco *ReservationByAccommodation) error {
+	overlap, err := rs.CheckOverlap1(resAcco.AccoId, resAcco.StartDate, resAcco.EndDate)
+	if err != nil {
+		return err
+	}
+
+	if overlap {
+		return errors.New("overlap detected: Cannot insert overlapping date range")
+	}
+
 	reservationId, _ := gocql.RandomUUID()
-	err := rs.session.Query(
+	err = rs.session.Query(
 		`INSERT INTO reservations_by_acco (reservation_id, acco_id, host_id, numberPeople, priceByPeople, priceByAcoommodation,
 			startDate, endDate, isDeleted) VALUES 
 		(?, ?, ?, ?, ?, ?, ?, ?, ?);`,
@@ -155,6 +164,27 @@ func (rs *ReservationRepo) InsertReservationByAcco(resAcco *ReservationByAccommo
 		return err
 	}
 	return nil
+}
+
+func (rs *ReservationRepo) GetReservationsDatesByHostId(host_id string) (ReservationsByAccommodation, error) {
+	scanner := rs.session.Query(`SELECT * FROM reservations_by_acco WHERE host_id = ? AND isDeleted = false ALLOW FILTERING;`,
+		host_id).Iter().Scanner() // lista
+	var reservations ReservationsByAccommodation
+	for scanner.Next() {
+		var res ReservationByAccommodation
+		err := scanner.Scan(&res.ReservationId, &res.AccoId, &res.StartDate, &res.EndDate, &res.HostId, &res.IsDeleted, &res.NumberPeople, &res.PriceByAccommodation, &res.PriceByPeople)
+		if err != nil {
+			rs.logger.Println("Cant 1", err)
+			return nil, err
+		}
+		reservations = append(reservations, &res)
+	}
+	if err := scanner.Err(); err != nil {
+		rs.logger.Println("Cant 2", err)
+		return nil, err
+	}
+	log.Println(reservations)
+	return reservations, nil
 }
 
 // RESERVATION DATE FOR ACCO
@@ -270,6 +300,16 @@ func (rs *ReservationRepo) GetReservationsByUser(user_id string) (ReservationsBy
 
 func (rs *ReservationRepo) InsertReservationByUser(resUser *ReservationByUser) error {
 	log.Println("Usli u metodu")
+
+	response, err := rs.isDatePassed(resUser.StartDate)
+	if err != nil {
+		// log.Println("e")
+	}
+
+	if response {
+		return errors.New("Cant reserve in past")
+	}
+
 	overlap, err := rs.CheckOverlap(resUser.AccoId, resUser.StartDate, resUser.EndDate)
 	if err != nil {
 		return err
@@ -348,6 +388,23 @@ func (rs *ReservationRepo) CheckOverlap(accommodationID string, beginDate, endDa
 
 	return count > 0, nil
 }
+func (rs *ReservationRepo) CheckOverlap1(accommodationID string, beginDate, endDate time.Time) (bool, error) {
+	var count int
+	err := rs.session.Query(
+		`SELECT COUNT(*) FROM reservations_by_acco
+         WHERE acco_id = ? 
+         AND startDate <= ? AND endDate >= ? AND isDeleted = false ALLOW FILTERING`,
+		accommodationID, endDate, beginDate).Scan(&count)
+
+	if err != nil {
+		rs.logger.Println(err)
+		return false, err
+	}
+
+	log.Println("Count: ", count)
+
+	return count > 0, nil
+}
 
 func (rs *ReservationRepo) UpdateReservationByUser(reservationByUser *ReservationByUser) error {
 	overlap, err := rs.CheckTable(reservationByUser.UserId, reservationByUser.ReservationId, reservationByUser.AccoId, reservationByUser.StartDate, reservationByUser.EndDate)
@@ -361,7 +418,7 @@ func (rs *ReservationRepo) UpdateReservationByUser(reservationByUser *Reservatio
 		return errors.New("Cant find reservation")
 	}
 
-	passed, err := isDatePassed(reservationByUser.StartDate)
+	passed, err := rs.isDatePassed(reservationByUser.StartDate)
 	if err != nil {
 		log.Println("Error:", err)
 		return err
@@ -406,7 +463,7 @@ func (rs *ReservationRepo) GetDistinctIds(idColumnName string, tableName string)
 	return ids, nil
 }
 
-func isDatePassed(dateStr time.Time) (bool, error) {
+func (rs *ReservationRepo) isDatePassed(dateStr time.Time) (bool, error) {
 	currentDate := time.Now()
 	return dateStr.Before(currentDate), nil
 }

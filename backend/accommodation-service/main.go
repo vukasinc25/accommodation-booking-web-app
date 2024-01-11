@@ -41,7 +41,7 @@ func main() {
 	logger := log.New(os.Stdout, "[accommo-api] ", log.LstdFlags)
 	storeLogger := log.New(os.Stdout, "[accommo-store] ", log.LstdFlags)
 	//pub := InitPubSub()
-	store, err := New(timeoutContext, storeLogger)
+	store, err := New(timeoutContext, storeLogger, config["conn_reservation_service_address"])
 	if err != nil {
 		logger.Fatal(err)
 	}
@@ -68,6 +68,17 @@ func main() {
 	router.HandleFunc("/api/accommodations/search_by_location/{locations}", service.GetAllAccommodationsByLocation).Methods("GET")
 	router.HandleFunc("/api/accommodations/search_by_noGuests/{noGuests}", service.GetAllAccommodationsByNoGuests).Methods("GET")
 	router.HandleFunc("/api/accommodations/get_all_acco_by_id/{id}", service.GetAllAccommodationsById).Methods("GET")
+	router.HandleFunc("/api/accommodations/delete/{username}", service.DeleteAccommodation).Methods("DELETE")
+	createAccommodationGrade := router.Methods(http.MethodPost).Subrouter()
+	createAccommodationGrade.HandleFunc("/api/accommodations/accommodationGrade", service.GradeAccommodation) // treba authorisation
+	createAccommodationGrade.Use(service.MiddlewareRoleCheck00(authClient, authBreaker))
+	// router.HandleFunc("/api/accommodations/accommodationGrade", service.GradeAccommodation).Methods("POST")
+	getAllAccommodationGrades := router.Methods(http.MethodGet).Subrouter()
+	getAllAccommodationGrades.HandleFunc("/api/accommodations/accommodationGrades/{id}", service.GetAllAccommodationGrades)
+	getAllAccommodationGrades.Use(service.MiddlewareRoleCheck(authClient, authBreaker))
+	deleteAccommodationGrade := router.Methods(http.MethodDelete).Subrouter()
+	deleteAccommodationGrade.HandleFunc("/api/accommodations/deleteAccommodationGrade/{id}", service.DeleteAccommodationGrade)
+	deleteAccommodationGrade.Use(service.MiddlewareRoleCheck00(authClient, authBreaker))
 
 	server := http.Server{
 		Addr:         ":" + config["port"],
@@ -107,5 +118,6 @@ func loadConfig() map[string]string {
 	config["host"] = os.Getenv("HOST")
 	config["port"] = os.Getenv("PORT")
 	config["address"] = fmt.Sprintf(":%s", os.Getenv("PORT"))
+	config["conn_reservation_service_address"] = fmt.Sprintf("http://%s:%s", os.Getenv("RESERVATION_SERVICE_HOST"), os.Getenv("RESERVATION_SERVICE_PORT"))
 	return config
 }

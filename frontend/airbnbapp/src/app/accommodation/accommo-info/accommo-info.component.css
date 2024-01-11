@@ -19,3 +19,26 @@
 .custom-day.disabled {
   color: grey;
 }
+
+form {
+  margin-top: 20px;
+}
+
+label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: bold;
+}
+
+input {
+  width: auto;
+  padding: 8px;
+  margin-bottom: 16px;
+}
+
+button {
+  padding: 10px 20px;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+}

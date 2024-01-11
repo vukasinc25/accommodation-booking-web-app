@@ -15,20 +15,20 @@ const (
 )
 
 type User struct {
-	ID        string   `bson:"_id,omitempty" json:"userId" required:"true"`
-	Username  string   `bson:"username,omitempty" json:"username" required:"true"`
-	Email     string   `bson:"email,omitempty" json:"email" required:"true"`
+	ID        string   `bson:"_id,omitempty" json:"userId"`
+	Username  string   `bson:"username,omitempty" json:"username"`
+	Email     string   `bson:"email,omitempty" json:"email"`
 	Role      Role     `bson:"role,omitempty" json:"role" `
-	FirstName string   `bson:"firstname,omitempty" json:"firstname" required:"true"`
-	LastName  string   `bson:"lastname,omitempty" json:"lastname" required:"true"`
+	FirstName string   `bson:"firstname,omitempty" json:"firstname"`
+	LastName  string   `bson:"lastname,omitempty" json:"lastname"`
 	Location  Location `bson:"location,omitempty,inline" json:"location"`
 }
 
 type Location struct {
-	Country      string `bson:"country,omitempty" json:"country" required:"true"`
-	City         string `bson:"city,omitempty" json:"city" required:"true"`
-	StreetName   string `bson:"streetName,omitempty" json:"streetName" required:"true"`
-	StreetNumber string `bson:"streetNumber,omitempty" json:"streetNumber" required:"true"`
+	Country      string `bson:"country,omitempty" json:"country"`
+	City         string `bson:"city,omitempty" json:"city"`
+	StreetName   string `bson:"streetName,omitempty" json:"streetName"`
+	StreetNumber string `bson:"streetNumber,omitempty" json:"streetNumber"`
 }
 
 type ResponseUser struct {
@@ -50,6 +50,14 @@ type VerifyEmail struct {
 	ExpiredAt  time.Time          `bson:"expiredAt,omitempty" json:"expiredAt" validate:"required"`
 }
 
+type HostGrade struct {
+	ID        string `bson:"id,omitempty" json:"id"`
+	UserId    string `bson:"userId,omitempty" json:"userId"`
+	HostId    string `bson:"hostId,omitempty" json:"hostId"`
+	CreatedAt string `bson:"createdAt,omitempty" json:"createdAt"`
+	Grade     int    `bson:"grate,omitempty" json:"grade"`
+	// IsDeleted    bool      `bson:"isUsed" json:"isUsed" validate:"required"`
+}
 type ReqToken struct {
 	Token string `json:"token"`
 }
@@ -91,6 +99,23 @@ func ValidateUser(user *User) error {
 
 	if user.Location.StreetNumber == "" {
 		return errors.New("streetNumber is required")
+	}
+
+	return nil
+}
+
+func ValidateHostGrade(hostGrade *HostGrade) error {
+	if hostGrade.UserId == "" {
+		return errors.New("userId is required")
+	}
+	if hostGrade.HostId == "" {
+		return errors.New("hostId is required")
+	}
+	if hostGrade.Grade == 0 {
+		return errors.New("grade is required")
+	}
+	if hostGrade.Grade <= 0 || hostGrade.Grade > 5 {
+		return errors.New("grade must be in the range of 1 to 5")
 	}
 
 	return nil

@@ -90,6 +90,12 @@ func main() {
 	postReservationDateByDate := router.Methods(http.MethodPost).Subrouter()
 	postReservationDateByDate.HandleFunc("/api/reservations/date_for_date", reservationHandler.CreateReservationDateForDate)
 
+	getReservatinsDatesByHostId := router.Methods(http.MethodGet).Subrouter()
+	getReservatinsDatesByHostId.HandleFunc("/api/reservations/for_host_id/{id}", reservationHandler.GetAllReservationsDatesByHostId)
+
+	getReservatinsForUserByHostId := router.Methods(http.MethodGet).Subrouter()
+	getReservatinsForUserByHostId.HandleFunc("/api/reservations/by_user_for_host_id/{userId}/{hostId}", reservationHandler.GetAllReservationsForUserIdByHostId)
+
 	cors := gorillaHandlers.CORS(gorillaHandlers.AllowedOrigins([]string{"*"}))
 
 	server := http.Server{

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"io/ioutil"
 	"log"
 	"mime"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/sony/gobreaker"
+	"github.com/thanhpk/randstr"
 )
 
 type userHandler struct {
@@ -183,6 +185,70 @@ func (rh *userHandler) MiddlewareRoleCheck0(client *http.Client, breaker *gobrea
 	}
 }
 
+func (rh *userHandler) MiddlewareRoleCheck00(client *http.Client, breaker *gobreaker.CircuitBreaker) mux.MiddlewareFunc {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+			defer cancel()
+
+			reqURL := "http://auth-service:8000/api/users/auth"
+
+			authorizationHeader := r.Header.Get("authorization")
+			fields := strings.Fields(authorizationHeader)
+
+			if len(fields) == 0 {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+
+			accessToken := fields[1]
+
+			var token ReqToken
+			token.Token = accessToken
+
+			jsonToken, _ := json.Marshal(token)
+
+			cbResp, err := breaker.Execute(func() (interface{}, error) {
+				req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, bytes.NewBuffer(jsonToken))
+				if err != nil {
+					return nil, err
+				}
+				return client.Do(req)
+			})
+			if err != nil {
+				rh.logger.Println(err)
+				sendErrorWithMessage(w, "Service is not working", http.StatusInternalServerError)
+				return
+			}
+
+			resp := cbResp.(*http.Response)
+			resBody, err := io.ReadAll(resp.Body)
+			rh.logger.Println("User Id:", string(resBody))
+			if resp.StatusCode != http.StatusOK {
+				rh.logger.Println("Error in auth response " + strconv.Itoa(resp.StatusCode))
+				rh.logger.Println("status " + resp.Status)
+				w.WriteHeader(resp.StatusCode)
+				return
+			}
+
+			userID := string(resBody)
+			ctx = context.WithValue(ctx, "userId", userID)
+
+			newReq, err := http.NewRequestWithContext(ctx, r.Method, r.URL.String(), nil)
+			if err != nil {
+				rh.logger.Println("Error creating new request:", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			newReq.Header = r.Header
+
+			newReq.Header.Set("Content-Type", "application/json")
+
+			next.ServeHTTP(w, newReq)
+		})
+	}
+}
+
 func (uh *userHandler) createUser(w http.ResponseWriter, req *http.Request) {
 	log.Println("Usli u CreateUser")
 	contentType := req.Header.Get("Content-Type")
@@ -239,6 +305,20 @@ func (uh *userHandler) getAllUsers(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func (uh *userHandler) DeleteUser(res http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	id := vars["id"]
+
+	err := uh.db.Delete(id)
+	if err != nil {
+		log.Println("Unable to delete product.", err)
+		sendErrorWithMessage(res, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	sendErrorWithMessage(res, "User succesfully deleted", http.StatusOK)
+}
+
 func decodeBody(r io.Reader) (*User, error) {
 	dec := json.NewDecoder(r)
 	dec.DisallowUnknownFields()
@@ -262,6 +342,111 @@ func renderJSON(w http.ResponseWriter, v interface{}) {
 	w.Write(js)
 }
 
+func (uh *userHandler) CreateHostGrade(res http.ResponseWriter, req *http.Request) {
+	log.Println(req.Body)
+	hostGrade, err := decodeHostGradeBody(req.Body)
+	if err != nil {
+		log.Println("Cant decode body")
+		sendErrorWithMessage1(res, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	currentTime := time.Now()
+	formattedTime := currentTime.Format("2006-01-02 15:04:05")
+	hostGrade.CreatedAt = formattedTime
+	hostGrade.ID = randstr.String(20)
+	log.Println("HostGrade:", hostGrade)
+
+	response, err := uh.db.GetAllReservatinsForUserByHostId(hostGrade.UserId, hostGrade.HostId)
+	if err != nil {
+		log.Println("Error in method GetAllReservatinsForUserByHostId", err)
+		sendErrorWithMessage1(res, "Error in getting reservations for user", http.StatusBadRequest)
+		return
+	}
+
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		log.Println("Error in reading response body")
+		sendErrorWithMessage(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if strings.Contains(string(body), "There is no active reservations for accommodations of this host") {
+		sendErrorWithMessage(res, "There is no active reservations for accommodations of this host", http.StatusBadRequest)
+		return
+	} else if strings.Contains(string(body), "There is no reservations for hosts accommodations") {
+		sendErrorWithMessage(res, "There is no reservations for hosts accommodations", http.StatusBadRequest)
+		return
+	} else if strings.Contains(string(body), "There is some reservtions for this user") {
+		err = uh.db.CreateHostGrade(hostGrade)
+		if err != nil {
+			log.Println("HostGrade lavor")
+			sendErrorWithMessage1(res, "Lavor when tryed to save HostGrade", http.StatusBadRequest)
+			return
+		}
+
+		sendErrorWithMessage1(res, "Host grade is succesfully created", http.StatusOK)
+		return
+	} else if strings.Contains(string(body), "There is not reservations for hosts accommodations") {
+		sendErrorWithMessage1(res, "There is not reservations for hosts accommodations", http.StatusBadRequest)
+		return
+	} else {
+		sendErrorWithMessage1(res, string(body), http.StatusOK)
+		return
+	}
+}
+
+func (uh *userHandler) DeleteHostGrade(res http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	id := vars["id"]
+
+	userId, ok := req.Context().Value("userId").(string)
+	if !ok {
+		log.Println("Error retrieving hostId from context")
+		sendErrorWithMessage1(res, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	err := uh.db.DeleteHostGrade(id, userId)
+	if err != nil {
+		log.Print("DeleteHost lavor")
+		sendErrorWithMessage1(res, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	sendErrorWithMessage1(res, "Host grade succesfully deleted", http.StatusOK)
+}
+
+func (uh *userHandler) GetAllHostGrades(res http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	id := vars["id"]
+	// hostId, ok := req.Context().Value("hostId").(string)
+	// if !ok {
+	// 	log.Println("Error retrieving hostId from context")
+	// 	sendErrorWithMessage1(res, "Internal Server Error", http.StatusInternalServerError)
+	// 	return
+	// }
+
+	// log.Println("HostId", hostId)
+	// log.Println("HostId")
+
+	log.Println("Usli u GetAllHostGrades")
+	hostGrades, err := uh.db.GetAllHostGradesByHostId(id)
+	if err != nil {
+		log.Println("GetAllHostGrades lavor")
+		sendErrorWithMessage1(res, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if hostGrades == nil {
+		sendErrorWithMessage1(res, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	e := json.NewEncoder(res)
+	e.Encode(hostGrades)
+
+}
 func decodeUserInfoBody(r io.Reader) (*User, error) {
 	dec := json.NewDecoder(r)
 	dec.DisallowUnknownFields()
@@ -273,6 +458,23 @@ func decodeUserInfoBody(r io.Reader) (*User, error) {
 	}
 
 	if err := ValidateUser(&rt); err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	return &rt, nil
+}
+
+func decodeHostGradeBody(r io.Reader) (*HostGrade, error) {
+	dec := json.NewDecoder(r)
+	dec.DisallowUnknownFields()
+
+	var rt HostGrade
+	if err := dec.Decode(&rt); err != nil {
+		log.Println("Lavor", r)
+		return nil, err
+	}
+
+	if err := ValidateHostGrade(&rt); err != nil {
 		log.Println(err)
 		return nil, err
 	}
@@ -291,7 +493,6 @@ func (u *ResponseUser) ToJSON(w io.Writer) error {
 	e := json.NewEncoder(w)
 	return e.Encode(u)
 }
-
 func (uh *userHandler) UpdateUser(res http.ResponseWriter, req *http.Request) {
 	log.Println("Usli u Update")
 	log.Println(req.Body)

@@ -19,13 +19,15 @@ import (
 
 // UserRepo is a repository for MongoDB operations related to User.
 type UserRepo struct {
-	cli                 *mongo.Client
-	logger              *log.Logger
-	prof_service_string string
+	cli                          *mongo.Client
+	logger                       *log.Logger
+	prof_service_string          string
+	reservation_service_string   string
+	accommodation_service_string string
 }
 
 // New creates a new UserRepo instance.
-func New(ctx context.Context, logger *log.Logger, conn_address_string string) (*UserRepo, error) {
+func New(ctx context.Context, logger *log.Logger, conn_address_string string, conn_reservation_service_address string, conn_accommodation_service_address string) (*UserRepo, error) {
 	dbURI := os.Getenv("MONGO_DB_URI")
 
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(dbURI))
@@ -34,9 +36,11 @@ func New(ctx context.Context, logger *log.Logger, conn_address_string string) (*
 	}
 
 	return &UserRepo{
-		cli:                 client,
-		logger:              logger,
-		prof_service_string: conn_address_string,
+		cli:                          client,
+		logger:                       logger,
+		prof_service_string:          conn_address_string,
+		reservation_service_string:   conn_reservation_service_address,
+		accommodation_service_string: conn_accommodation_service_address,
 	}, nil
 }
 
@@ -137,6 +141,45 @@ func (uh *UserRepo) GetAll() (Users, error) {
 		return nil, err
 	}
 	return users, nil
+}
+
+func (uh *UserRepo) GetAllReservatinsDatesByHostId(hostId string) (*http.Response, error) {
+	url := uh.reservation_service_string + "/api/reservations/for_host_id/" + hostId
+
+	log.Println("Url", url)
+
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	httpResp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	return httpResp, nil
+}
+
+func (uh *UserRepo) GetAllReservatinsForUser(token string) (*http.Response, error) {
+	url := uh.reservation_service_string + "/api/reservations/by_user"
+
+	log.Println("Url", url)
+
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	httpResp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	return httpResp, nil
 }
 
 // GetByUsername retrieves a user by username from the MongoDB collection.
@@ -253,6 +296,43 @@ func (uh *UserRepo) IsVerificationEmailActive(code string) (bool, error) {
 	return currentTime.Before(verificationEmail.ExpiredAt), nil
 }
 
+func (uh *UserRepo) DeleteUser(username string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	patientsCollection, err := uh.getCollection()
+	if err != nil {
+		log.Println("Error in geting collection", err)
+		return err
+	}
+	filter := bson.M{"username": username}
+	result, err := patientsCollection.DeleteOne(ctx, filter)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	log.Printf("Documents deleted: %v\n", result.DeletedCount)
+	return nil
+}
+
+func (uh *UserRepo) DeleteUserInProfService(id string) (*http.Response, error) {
+	url := uh.prof_service_string + "/api/prof/delete/" + id
+
+	log.Println("Url", url)
+
+	req, err := http.NewRequest(http.MethodDelete, url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	httpResp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	return httpResp, nil
+}
+
 func (uh *UserRepo) IsForgottenPasswordEmailActive(code string) (bool, error) {
 	verificationEmail, err := uh.GetForgottenPasswordEmailByCode(code)
 	if err != nil {
@@ -275,6 +355,25 @@ func (uh *UserRepo) GetVerificationEmailByUsername(username string) (*VerifyEmai
 		return nil, err
 	}
 	return &verifycationEmail, nil
+}
+
+func (uh *UserRepo) DeleteAccommdation(username string) (*http.Response, error) {
+	url := uh.accommodation_service_string + "/api/accommodations/delete/" + username
+
+	log.Println("Url", url)
+
+	req, err := http.NewRequest(http.MethodDelete, url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	httpResp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	return httpResp, nil
 }
 
 func (uh *UserRepo) GetAllVerificationEmailsByEmail(email string) ([]VerifyEmail, error) { // needs to check if email is validate if is not than returns [] and message to user that this is not valida email

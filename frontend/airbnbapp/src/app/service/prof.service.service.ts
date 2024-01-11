@@ -40,4 +40,33 @@ export class ProfServiceService {
       }
     );
   }
+
+  getAllHostGrades(id: any): Observable<any> {
+    return this.http.get(`${'/api/prof/hostGrades/'}${id}`, {
+      headers: this.headers,
+      responseType: 'json',
+    });
+  }
+
+  deleteHostGrades(id: any): Observable<any> {
+    return this.http.delete(`${'/api/prof/hostGrade/'}${id}`, {
+      headers: this.headers,
+      responseType: 'json',
+    });
+  }
+
+  gradeHost(id: any, grade: any): Observable<any> {
+    console.log(id);
+    return this.http.post(
+      `/api/prof/hostGrade`,
+      {
+        hostId: id,
+        grade: grade,
+      },
+      {
+        headers: this.headers,
+        responseType: 'json',
+      }
+    );
+  }
 }

@@ -104,39 +104,158 @@
       </form>
     </div>
 
-    <div *ngIf="role == 'GUEST' && startDate != null">
-      <p>Reservations:</p>
+    <div *ngIf="role == 'GUEST' && startDate != null" class="container">
+      <div class="row">
+        <!-- Left column for Reservations -->
+        <div class="col-md-6">
+          <div>
+            <p>Reservations:</p>
 
-      <ngb-datepicker
-        #dp
-        (dateSelect)="onDateSelection($event)"
-        [dayTemplate]="t"
-        outsideDays="hidden"
-        [markDisabled]="isDisabled"
-        [minDate]="startDate!"
-        [maxDate]="endDate!"
-      >
-      </ngb-datepicker>
+            <ngb-datepicker
+              #dp
+              (dateSelect)="onDateSelection($event)"
+              [dayTemplate]="t"
+              outsideDays="hidden"
+              [markDisabled]="isDisabled"
+              [minDate]="startDate!"
+              [maxDate]="endDate!"
+            >
+            </ngb-datepicker>
 
-      <ng-template #t let-date let-focused="focused">
-        <span
-          class="custom-day"
-          [class.focused]="focused"
-          [class.range]="isRange(date)"
-          [class.faded]="isHovered(date) || isInside(date)"
-          [class.disabled]="isDisabled(date)"
-          (mouseenter)="hoveredDate = date"
-          (mouseleave)="hoveredDate = null"
-        >
-          {{ date.day }}
-        </span>
-      </ng-template>
+            <ng-template #t let-date let-focused="focused">
+              <span
+                class="custom-day"
+                [class.focused]="focused"
+                [class.range]="isRange(date)"
+                [class.faded]="isHovered(date) || isInside(date)"
+                [class.disabled]="isDisabled(date)"
+                (mouseenter)="hoveredDate = date"
+                (mouseleave)="hoveredDate = null"
+              >
+                {{ date.day }}
+              </span>
+            </ng-template>
 
-      <button class="btn btn-primary" (click)="reserveDates()">
-        Reserve Dates
-      </button>
-      <p>from: {{ fromDate | json }}</p>
-      <p>to: {{ toDate | json }}</p>
+            <br />
+            <br />
+            <p>from: {{ fromDate | json }}</p>
+            <p>to: {{ toDate | json }}</p>
+            <button class="btn btn-primary" (click)="reserveDates()">
+              Reserve Dates
+            </button>
+          </div>
+        </div>
+
+        <!-- Right column for Host Grading Form -->
+        <div class="col-md-6">
+          <div>
+            <h2>Grade Host</h2>
+            <form [formGroup]="form" (ngSubmit)="submitGrade()">
+              <label for="grade">Grade (1-5):</label>
+              <input
+                type="number"
+                id="grade"
+                name="grade"
+                min="1"
+                max="5"
+                formControlName="grade"
+                required
+              />
+              <br />
+              <button
+                type="submit"
+                class="btn btn-primary mt-3"
+                [disabled]="!form.valid"
+              >
+                Submit Grade
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
+</div>
+<div class="container mt-4">
+  <div>
+    <h2>Grade Accommodation</h2>
+    <form
+      [formGroup]="formAccommodation"
+      (ngSubmit)="submitAccommodationGrade()"
+    >
+      <label for="grade">Grade (1-5):</label>
+      <input
+        type="number"
+        id="grade"
+        name="grade"
+        min="1"
+        max="5"
+        formControlName="grade"
+        required
+      />
+      <br />
+      <button
+        type="submit"
+        class="btn btn-primary mt-3"
+        [disabled]="!formAccommodation.valid"
+      >
+        Submit Grade
+      </button>
+    </form>
+  </div>
+</div>
+<div class="container mt-4">
+  <h2>Host Grades</h2>
+  <table class="table">
+    <thead>
+      <tr>
+        <th scope="col">User ID</th>
+        <th scope="col">Creation Date</th>
+        <th scope="col">Grade</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let hostGrade of grades">
+        <td>{{ hostGrade.userId }}</td>
+        <td>{{ hostGrade.createdAt }}</td>
+        <td>{{ hostGrade.grade }}</td>
+        <div *ngIf="role == 'GUEST'">
+          <button
+            class="btn btn-danger"
+            (click)="deleteHostGrade(hostGrade.id)"
+          >
+            Delete
+          </button>
+        </div>
+      </tr>
+    </tbody>
+  </table>
+</div>
+<br />
+<div class="container mt-4">
+  <h2>Accommodation Grades</h2>
+  <table class="table">
+    <thead>
+      <tr>
+        <th scope="col">User ID</th>
+        <th scope="col">Creation Date</th>
+        <th scope="col">Grade</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let accommodationGrade of accommodationGrades">
+        <td>{{ accommodationGrade.userId }}</td>
+        <td>{{ accommodationGrade.createdAt }}</td>
+        <td>{{ accommodationGrade.grade }}</td>
+        <div *ngIf="role == 'GUEST'">
+          <button
+            class="btn btn-danger"
+            (click)="deleteAccommodationGrade(accommodationGrade.id)"
+          >
+            Delete
+          </button>
+        </div>
+      </tr>
+    </tbody>
+  </table>
 </div>
