@@ -285,7 +285,7 @@ func (ar *AccoRepo) CreateAverageRating(id string) error {
 	objID, _ := primitive.ObjectIDFromHex(id)
 	filter := bson.M{"_id": objID}
 	update := bson.M{"$set": bson.M{
-		"averageRating": float64(averageRating),
+		"averageGrade": float64(averageRating),
 	}}
 	result, err := accommodationCollection.UpdateOne(ctx, filter, update)
 	log.Printf("Documents matched: %v\n", result.MatchedCount)
@@ -302,14 +302,17 @@ func (ar *AccoRepo) CreateAverageRating(id string) error {
 func (ar *AccoRepo) Insert(accommodation *Accommodation) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	accommodationCollection := ar.getCollection()
+	accommodationCollection, err := ar.getCollection1()
+	if err != nil {
+		return errors.New("error in getting accommodation collection")
+	}
 
 	result, err := accommodationCollection.InsertOne(ctx, &accommodation)
 	if err != nil {
-		ar.logger.Println(err)
+		log.Println("Error when tryed to insert accommodation: ", err)
 		return err
 	}
-	ar.logger.Printf("Documents ID: %v\n", result.InsertedID)
+	log.Printf("Documents ID: %v\n", result.InsertedID)
 	return nil
 }
 
@@ -352,10 +355,48 @@ func (ar *AccoRepo) GetAllAccommodationGrades(id string) (*AccommodationGrades, 
 	return &accommodationGrades, nil
 }
 
+func (ar *AccoRepo) InsertAccommodationImg(id string, images []string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	accommodationCollection := ar.getCollection()
+	objID, _ := primitive.ObjectIDFromHex(id)
+	filter := bson.M{"_id": objID}
+	update := bson.M{"$set": bson.M{
+		"images": images,
+	}}
+	result, err := accommodationCollection.UpdateOne(ctx, filter, update)
+	log.Printf("Documents matched: %v\n", result.MatchedCount)
+	log.Printf("Documents updated: %v\n", result.ModifiedCount)
+
+	if err != nil {
+		log.Println("Error ovde:", err)
+		return err
+	}
+
+	return nil
+}
+
+func (ar *AccoRepo) getCollection1() (*mongo.Collection, error) {
+	accommodationDatabase := ar.cli.Database("mongoDemo")
+	accommodationCollection := accommodationDatabase.Collection("accommodations")
+	name := mongo.IndexModel{
+		Keys:    bson.D{{Key: "name", Value: 1}},
+		Options: options.Index().SetUnique(true),
+	}
+
+	_, err := accommodationCollection.Indexes().CreateOne(context.TODO(), name)
+	if err != nil {
+		log.Println("Error in creatingOne unique name index")
+		return nil, err
+	}
+	return accommodationCollection, nil
+}
+
 func (ar *AccoRepo) getCollection() *mongo.Collection {
-	patientDatabase := ar.cli.Database("mongoDemo")
-	patientsCollection := patientDatabase.Collection("accommodations")
-	return patientsCollection
+	accommodationDatabase := ar.cli.Database("mongoDemo")
+	accommodationCollection := accommodationDatabase.Collection("accommodations")
+	return accommodationCollection
 }
 
 func (ar *AccoRepo) CreateGrade(accommodatioGrade *AccommodationGrade, token string) error {

@@ -15,18 +15,20 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/thanhpk/randstr"
+	"github.com/vukasinc25/fst-airbnb/handlers"
 )
 
 type KeyProduct struct{}
 
 type AccoHandler struct {
-	logger *log.Logger
-	db     *AccoRepo
+	logger         *log.Logger
+	db             *AccoRepo
+	storageHandler *handlers.StorageHandler
 }
 
-func NewAccoHandler(l *log.Logger, r *AccoRepo) *AccoHandler {
+func NewAccoHandler(l *log.Logger, r *AccoRepo, sh *handlers.StorageHandler) *AccoHandler {
 
-	return &AccoHandler{l, r}
+	return &AccoHandler{l, r, sh}
 }
 
 func (ah *AccoHandler) createAccommodation(rw http.ResponseWriter, req *http.Request) {
@@ -36,8 +38,15 @@ func (ah *AccoHandler) createAccommodation(rw http.ResponseWriter, req *http.Req
 	accommodation.AverageGrade = 0
 	err := ah.db.Insert(accommodation)
 	if err != nil {
-		rw.WriteHeader(http.StatusBadRequest)
+		log.Println("error:1", err.Error())
+		if strings.Contains(err.Error(), "duplicate key") {
+			sendErrorWithMessage(rw, "accommodation with that name already exists", http.StatusBadRequest)
+			return
+		}
+		sendErrorWithMessage(rw, "", http.StatusBadRequest)
+		return
 	}
+	// ah.storageHandler.WriteFileToStorage(rw, req)
 	rw.WriteHeader(http.StatusCreated)
 
 }
@@ -182,7 +191,7 @@ func (rh *AccoHandler) MiddlewareRoleCheck00(client *http.Client, breaker *gobre
 			fields := strings.Fields(authorizationHeader)
 
 			if len(fields) == 0 {
-				w.WriteHeader(http.StatusUnauthorized)
+				sendErrorWithMessage(w, "", http.StatusUnauthorized)
 				return
 			}
 
@@ -212,7 +221,7 @@ func (rh *AccoHandler) MiddlewareRoleCheck00(client *http.Client, breaker *gobre
 			if resp.StatusCode != http.StatusOK {
 				rh.logger.Println("Error in auth response " + strconv.Itoa(resp.StatusCode))
 				rh.logger.Println("status " + resp.Status)
-				w.WriteHeader(resp.StatusCode)
+				sendErrorWithMessage(w, "Lavor", resp.StatusCode)
 				return
 			}
 
@@ -223,7 +232,7 @@ func (rh *AccoHandler) MiddlewareRoleCheck00(client *http.Client, breaker *gobre
 			newReq, err := http.NewRequestWithContext(ctx, r.Method, r.URL.String(), r.Body)
 			if err != nil {
 				rh.logger.Println("Error creating new request:", err)
-				w.WriteHeader(http.StatusInternalServerError)
+				sendErrorWithMessage(w, "Error creating new request:"+err.Error(), http.StatusInternalServerError)
 				return
 			}
 			newReq.Header = r.Header
@@ -359,7 +368,7 @@ func (ah *AccoHandler) MiddlewareRoleCheck(client *http.Client, breaker *gobreak
 			if resp.StatusCode != http.StatusOK {
 				ah.logger.Println("Error in auth response " + strconv.Itoa(resp.StatusCode))
 				ah.logger.Println("status " + resp.Status)
-				w.WriteHeader(http.StatusInternalServerError)
+				w.WriteHeader(resp.StatusCode)
 				return
 			}
 			ah.logger.Println(resp)

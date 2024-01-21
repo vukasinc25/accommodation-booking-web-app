@@ -8,13 +8,101 @@
       }}
     </p>
 
-    <div class="d-flex justify-content-center">
-      <img class="w-75 h-75" src="../../assets/temp.jpg" alt="" />
+    <!-- <div class="d-flex justify-content-center">
+      <img
+        style="width: 1400px; height: 600px"
+        [src]="accommodationImage"
+        alt="IMAGES"
+      />
+    </div> -->
+
+    <!-- <div class="container">
+      <div class="row">
+        <div class="col-md-6">
+          <div class="image-wrapper">
+            <img class="big-image" [src]="accommodationImages[0]" alt="" />
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="image-wrapper">
+                <img
+                  class="small-image"
+                  [src]="accommodationImages[1]"
+                  alt=""
+                />
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="image-wrapper">
+                <img
+                  class="small-image"
+                  [src]="accommodationImages[2]"
+                  alt=""
+                />
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-6">
+              <div class="image-wrapper">
+                <img
+                  class="small-image"
+                  [src]="accommodationImages[3]"
+                  alt=""
+                />
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="image-wrapper">
+                <img
+                  class="small-image"
+                  [src]="accommodationImages[4]"
+                  alt=""
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div> -->
+    <div class="row">
+      <div class="container1">
+        <div class="image-container">
+          <div class="big-image">
+            <img [src]="accommodationImages[0]" alt="Big Image" />
+          </div>
+
+          <div class="small-images">
+            <img
+              class="small-image"
+              [src]="accommodationImages[1]"
+              alt="Small Image 1"
+            />
+            <img
+              class="small-image"
+              [src]="accommodationImages[2]"
+              alt="Small Image 2"
+            />
+            <img
+              class="small-image"
+              [src]="accommodationImages[3]"
+              alt="Small Image 3"
+            />
+            <img
+              class="small-image"
+              [src]="accommodationImages[4]"
+              alt="Small Image 4"
+            />
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- <p class="mt-3 fw-bold">Descrpition:</p>  -->
 
-    <div class="row mt-5">
+    <div class="row mt-5" style="margin-top: 20px">
       <div class="col">
         <p class="fw-bold">Amenities:</p>
       </div>
@@ -176,7 +264,7 @@
     </div>
   </div>
 </div>
-<div class="container mt-4">
+<div *ngIf="role == 'GUEST' && startDate != null" class="container mt-4">
   <div>
     <h2>Grade Accommodation</h2>
     <form

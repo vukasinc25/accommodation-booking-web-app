@@ -1,9 +1,12 @@
-package images
+package storage
 
 import (
+	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
+	"path"
 
 	"github.com/colinmarc/hdfs/v2"
 )
@@ -30,6 +33,8 @@ func New(logger *log.Logger) (*FileStorage, error) {
 		return nil, err
 	}
 
+	// client.SetInt("dfs.replication", 1)
+
 	// Return storage handler with logger and HDFS client
 	return &FileStorage{
 		client: client,
@@ -37,9 +42,13 @@ func New(logger *log.Logger) (*FileStorage, error) {
 	}, nil
 }
 
-func (fs *FileStorage) Close() {
-	// Close all underlying connections to the HDFS server
-	fs.client.Close()
+func (fs *FileStorage) Close() error {
+	if err := fs.client.Close(); err != nil {
+		// Log the error or handle it in a way that makes sense for your application
+		log.Println("error closing HDFS client: %w", err)
+		return errors.New("error closing HDFS client")
+	}
+	return nil
 }
 
 func (fs *FileStorage) CreateDirectories() error {
@@ -113,6 +122,8 @@ func (fs *FileStorage) WriteFile(fileContent string, fileName string) error {
 		return err
 	}
 
+	defer file.Close() // Ensure file is closed when the function exits
+
 	// Write content
 	// Create byte array from string file content
 	fileContentByteArray := []byte(fileContent)
@@ -124,39 +135,79 @@ func (fs *FileStorage) WriteFile(fileContent string, fileName string) error {
 		return err
 	}
 
-	// CLOSE FILE WHEN ALL WRITING IS DONE
 	// Ensuring all changes are flushed to HDFS
-	// defer file.Close() can be used at the begining of the method to ensure closing is not forgotten
-	_ = file.Close()
+	if err := file.Flush(); err != nil {
+		fs.logger.Println("Error flushing file on HDFS:", err)
+		return err
+	}
+
 	return nil
 }
 
+// func (fs *FileStorage) ReadFile(fileName string, isCopied bool) (string, error) {
+// 	var filePath string
+// 	if isCopied {
+// 		filePath = hdfsCopyDir + fileName
+// 	} else {
+// 		filePath = hdfsWriteDir + fileName
+// 	}
+
+// 	// Open file for reading
+// 	file, err := fs.client.Open(filePath)
+// 	if err != nil {
+// 		fs.logger.Println("Error in opening file for reding on HDFS:", err)
+// 		return "", err
+// 	}
+
+// 	// Read file content
+// 	buffer := make([]byte, 1024)
+// 	n, err := file.Read(buffer)
+// 	if err != nil {
+// 		fs.logger.Println("Error in reading file on HDFS:", err)
+// 		return "", err
+// 	}
+
+// 	// Convert number of read bytes into string
+// 	fileContent := string(buffer[:n])
+// 	return fileContent, nil
+// }
+
 func (fs *FileStorage) ReadFile(fileName string, isCopied bool) (string, error) {
-	var filePath string
+	var dirPath string
 	if isCopied {
-		filePath = hdfsCopyDir + fileName
+		dirPath = hdfsCopyDir
 	} else {
-		filePath = hdfsWriteDir + fileName
+		dirPath = hdfsWriteDir
 	}
 
-	// Open file for reading
+	filePath := path.Join(dirPath, fileName)
+
+	// log.Println("File Path:", filePath)
+
 	file, err := fs.client.Open(filePath)
 	if err != nil {
-		fs.logger.Println("Error in opening file for reding on HDFS:", err)
+		fs.logger.Printf("Error opening file %s for reading on HDFS: %v\n", fileName, err)
 		return "", err
 	}
+	defer file.Close()
+	// log.Println("File:", file)
+	// fileStat := file.Stat()
+	// if err != nil {
+	// 	fs.logger.Printf("Error getting file stat for %s: %v\n", fileName, err)
+	// 	return "", err
+	// }
 
-	// Read file content
-	buffer := make([]byte, 1024)
-	n, err := file.Read(buffer)
+	// fs.logger.Printf("File size for %s: %d\n", fileName, fileStat.Size())
+
+	fileContent, err := ioutil.ReadAll(file)
 	if err != nil {
-		fs.logger.Println("Error in reading file on HDFS:", err)
+		fs.logger.Printf("Error reading file %s on HDFS: %v\n", fileName, err)
 		return "", err
 	}
 
-	// Convert number of read bytes into string
-	fileContent := string(buffer[:n])
-	return fileContent, nil
+	log.Println("FileContent:", "valjda nije prazan")
+
+	return string(fileContent), nil
 }
 
 // TODO NoSQL: add method that returns file content as byte array when content is not human readable (images, video,...)

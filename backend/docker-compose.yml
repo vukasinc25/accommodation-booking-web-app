@@ -36,9 +36,9 @@ services:
       PROF_DB_PORT: ${PROF_DB_PORT}
       RESERVATION_SERVICE_HOST: ${RESERVATION_SERVICE_HOST}
       RESERVATION_SERVICE_PORT: ${RESERVATION_SERVICE_PORT}
-    depends_on:
-      consul:
-        condition: service_healthy
+    # depends_on:
+    # consul:
+    #   condition: service_healthy
     networks:
       - network
 
@@ -55,8 +55,21 @@ services:
       MONGO_DB_URI: ${MONGO_DB_URI}
       RESERVATION_SERVICE_HOST: ${RESERVATION_SERVICE_HOST}
       RESERVATION_SERVICE_PORT: ${RESERVATION_SERVICE_PORT}
+      HDFS_URI: ${HDFS_URI}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
     depends_on:
       mongo:
+        condition: service_healthy
+      namenode:
+        condition: service_healthy
+      datanode1:
+        condition: service_healthy
+      datanode2:
+        condition: service_healthy
+      datanode3:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - network
@@ -187,6 +200,24 @@ services:
     networks:
       - network
 
+    # NoSQL: Redis
+  redis:
+    image: redis
+    restart: always
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    command: "redis-server --save 20 1 --loglevel warning"
+    volumes:
+      # <docker_volume_name>:<database_specific_data_location>
+      - redis_data:/data
+    networks:
+      - network
+
   namenode:
     image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
     container_name: namenode
@@ -207,6 +238,31 @@ services:
     container_name: datanode1
     volumes:
       - hadoop_datanode1:/hadoop/dfs/data
+      - ./hdfs-site.xml:/usr/local/hadoop/etc/hadoop/hdfs-site.xml
+    environment:
+      SERVICE_PRECONDITION: "namenode:9870"
+    env_file:
+      - ./.env
+    networks:
+      - network
+
+  datanode2:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: datanode2
+    volumes:
+      - hadoop_datanode2:/hadoop/dfs/data
+    environment:
+      SERVICE_PRECONDITION: "namenode:9870"
+    env_file:
+      - ./.env
+    networks:
+      - network
+
+  datanode3:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: datanode3
+    volumes:
+      - hadoop_datanode3:/hadoop/dfs/data
     environment:
       SERVICE_PRECONDITION: "namenode:9870"
     env_file:
@@ -219,8 +275,11 @@ volumes:
   mongo_express_data:
   cass_store:
   cosnul_store:
+  redis_data:
   hadoop_namenode:
   hadoop_datanode1:
+  hadoop_datanode2:
+  hadoop_datanode3:
 
 networks:
   network:

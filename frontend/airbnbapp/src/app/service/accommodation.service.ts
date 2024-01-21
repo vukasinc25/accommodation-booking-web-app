@@ -12,6 +12,7 @@ export class AccommodationService {
   constructor(private http: HttpClient, private router: Router) {}
 
   private headers = new HttpHeaders({ 'Content-Type': 'application/json' });
+  private header = new HttpHeaders({ 'Content-Type': 'multipart/form-data' });
 
   getById(id: any): Observable<any> {
     return this.http.get('/api/accommodations/' + id, {
@@ -73,6 +74,13 @@ export class AccommodationService {
     );
   }
 
+  getAccommodationImage(image: string): Observable<any> {
+    return this.http.get('/api/accommodations/read/' + image, {
+      headers: this.header,
+      responseType: 'blob',
+    });
+  }
+
   getAllByNoGuests(noGuests: string): Observable<any> {
     return this.http.get('/api/accommodations/search_by_noGuests/' + noGuests, {
       headers: this.headers,
@@ -80,7 +88,7 @@ export class AccommodationService {
     });
   }
 
-  insert(accommodation: Accommodation): Observable<any> {
+  insert(accommodation: Accommodation, imageNames: any): Observable<any> {
     return this.http.post(
       '/api/accommodations/create',
       {
@@ -96,8 +104,22 @@ export class AccommodationService {
         maxGuests: accommodation.maxGuests,
         username: accommodation.username,
         // price: accommodation.price,
+        images: imageNames,
       },
       { headers: this.headers, responseType: 'json' }
     );
+  }
+
+  createImages(images: any): Observable<any> {
+    const formData: FormData = new FormData();
+
+    images.forEach((file: File) => {
+      formData.append('files', file, file.name);
+    });
+
+    return this.http.post('/api/accommodations/write', formData, {
+      headers: this.header,
+      responseType: 'json',
+    });
   }
 }

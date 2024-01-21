@@ -65,6 +65,7 @@ export class AccommoInfoComponent implements OnInit {
   hoveredDate: NgbDate | null = null;
   fromDate: NgbDate | null = null;
   toDate: NgbDate | null = null;
+  accommodationImages: any[string] = [];
 
   fromDisDate: NgbDate | null = null;
   toDisDate: NgbDate | null = null;
@@ -86,6 +87,27 @@ export class AccommoInfoComponent implements OnInit {
     this.accommodationService.getById(this.id).subscribe({
       next: (data) => {
         this.accommodation = data;
+        console.log(this.accommodation);
+        for (const image of data.images) {
+          console.log(image);
+          this.accommodationService.getAccommodationImage(image).subscribe(
+            (blob: Blob) => {
+              console.log('Blob:', blob);
+              const reader = new FileReader();
+              reader.onloadend = () => {
+                const dataUrl = reader.result as string;
+                // Now 'dataUrl' contains the data URL representation of the image
+                // You can use 'dataUrl' as needed in your application
+                this.accommodationImages.push(dataUrl);
+                // console.log(dataUrl);
+              };
+              reader.readAsDataURL(blob);
+            },
+            (error) => {
+              console.error('Error fetching image:', error);
+            }
+          );
+        }
         // console.log(this.accommodation._id);
         // console.log(data);
       },

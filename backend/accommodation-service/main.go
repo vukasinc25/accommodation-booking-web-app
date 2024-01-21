@@ -10,6 +10,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/vukasinc25/fst-airbnb/cache"
+	"github.com/vukasinc25/fst-airbnb/handlers"
+	"github.com/vukasinc25/fst-airbnb/storage"
+
 	gorillaHandlers "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/sony/gobreaker"
@@ -40,6 +44,8 @@ func main() {
 
 	logger := log.New(os.Stdout, "[accommo-api] ", log.LstdFlags)
 	storeLogger := log.New(os.Stdout, "[accommo-store] ", log.LstdFlags)
+	storageLogger := log.New(os.Stdout, "[file-storage] ", log.LstdFlags)
+	loggerCache := log.New(os.Stdout, "[redis-cache] ", log.LstdFlags)
 	//pub := InitPubSub()
 	store, err := New(timeoutContext, storeLogger, config["conn_reservation_service_address"])
 	if err != nil {
@@ -49,11 +55,34 @@ func main() {
 
 	store.Ping()
 
+	// NoSQL: Initialize File Storage store
+	imageStore, err := storage.New(storageLogger)
+	if err != nil {
+		logger.Fatal(err)
+	}
+
+	// Close connection to HDFS on shutdown
+	defer func() {
+		if err := imageStore.Close(); err != nil {
+			log.Println("Error closing image store:", err)
+		}
+	}()
+
+	// Create directory tree on HDFS
+	_ = imageStore.CreateDirectories()
+
+	prCache := cache.New(loggerCache)
+	// Test connection
+	prCache.Ping()
+
+	//Initialize the handler and inject said logger
+	storageHandler := handlers.NewStorageHandler(logger, imageStore, prCache)
+
 	router := mux.NewRouter()
 	//router.StrictSlash(true)
 	cors := gorillaHandlers.CORS(gorillaHandlers.AllowedOrigins([]string{"*"}))
 
-	service := NewAccoHandler(logger, store)
+	service := NewAccoHandler(logger, store, storageHandler)
 
 	router.Use(service.MiddlewareContentTypeSet)
 
@@ -80,12 +109,20 @@ func main() {
 	deleteAccommodationGrade.HandleFunc("/api/accommodations/deleteAccommodationGrade/{id}", service.DeleteAccommodationGrade)
 	deleteAccommodationGrade.Use(service.MiddlewareRoleCheck00(authClient, authBreaker))
 
+	router.HandleFunc("/api/accommodations/copy", storageHandler.CopyFileToStorage).Methods("POST")
+
+	router.HandleFunc("/api/accommodations/write", storageHandler.WriteFileToStorage).Methods("POST")
+
+	getAccommodationImage := router.Methods(http.MethodGet).Subrouter()
+	getAccommodationImage.HandleFunc("/api/accommodations/read/{fileName}", storageHandler.ReadFileFromStorage)
+	getAccommodationImage.Use(storageHandler.MiddlewareCacheHit)
+
 	server := http.Server{
 		Addr:         ":" + config["port"],
 		Handler:      cors(router),
 		IdleTimeout:  120 * time.Second,
-		ReadTimeout:  1 * time.Second,
-		WriteTimeout: 1 * time.Second,
+		ReadTimeout:  120 * time.Second,
+		WriteTimeout: 120 * time.Second,
 	}
 
 	logger.Println("Server listening on port", config["port"])

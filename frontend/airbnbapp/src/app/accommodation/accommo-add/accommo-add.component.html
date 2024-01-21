@@ -1,8 +1,7 @@
 <div class="container d-flex justify-content-center mt-5">
-  <form class="w-50" [formGroup]="form" (ngSubmit)="submit()">
+  <form class="w-50" [formGroup]="form" (ngSubmit)="submit()" *ngIf="form">
     <fieldset>
       <legend>Create Accommodation:</legend>
-
       <input
         type="text"
         class="form-control mb-2"
@@ -88,8 +87,40 @@
         formControlName="price"
       /> -->
 
+      <div>
+        <input
+          type="file"
+          id="file"
+          (change)="onFileChange($event)"
+          accept="image/*"
+          multiple
+          formControlName="images"
+        />
+        <p [textContent]="errorMessage" style="color: red"></p>
+
+        <div class="image-container">
+          <div *ngFor="let image of imageUrls; let i = index">
+            <div class="image-wrapper">
+              <img
+                [src]="image"
+                alt="Uploaded Image"
+                class="small-image"
+                *ngIf="image"
+              />
+              <div *ngIf="!image" class="small-image">
+                <span>Upload Image</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="d-flex justify-content-end">
-        <button type="submit" class="btn btn-primary" [disabled]="!form.valid">
+        <button
+          type="submit"
+          class="btn btn-primary"
+          [disabled]="!form.valid || imageCount !== 5"
+        >
           Create
         </button>
       </div>
