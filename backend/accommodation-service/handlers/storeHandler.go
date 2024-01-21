@@ -37,61 +37,6 @@ func (s *StorageHandler) CopyFileToStorage(rw http.ResponseWriter, h *http.Reque
 	}
 }
 
-// func (s *StorageHandler) WriteFileToStorage(rw http.ResponseWriter, h *http.Request) {
-// 	fileName := h.FormValue("fileName")
-
-// 	// NoSQL TODO: expand method so that it accepts file from request
-// 	fileContent := "Hola Mundo!"
-
-// 	err := s.store.WriteFile(fileContent, fileName)
-
-// 	if err != nil {
-// 		http.Error(rw, "File storage exception", http.StatusInternalServerError)
-// 		s.logger.Println("File storage exception: ", err)
-// 	}
-// }
-
-// func (s *StorageHandler) WriteFileToStorage(rw http.ResponseWriter, h *http.Request) {
-// 	log.Println("Usli u WriteFileToStorage")
-// 	// Parse the form data, including the uploaded file
-// 	err := h.ParseMultipartForm(10 << 20) // 10 MB max file size
-// 	if err != nil {
-// 		http.Error(rw, "Unable to parse form", http.StatusBadRequest)
-// 		s.logger.Println("Error parsing form:", err)
-// 		return
-// 	}
-
-// 	// Get the file from the form data
-// 	file, handler, err := h.FormFile("file")
-// 	if err != nil {
-// 		http.Error(rw, "Unable to get file from form", http.StatusBadRequest)
-// 		s.logger.Println("Error getting file from form:", err)
-// 		return
-// 	}
-// 	defer file.Close()
-
-// 	// Use the file name from the form or generate one
-// 	fileName := handler.Filename
-
-// 	// Read the file content
-// 	fileContent, err := ioutil.ReadAll(file)
-// 	if err != nil {
-// 		http.Error(rw, "Unable to read file content", http.StatusInternalServerError)
-// 		s.logger.Println("Error reading file content:", err)
-// 		return
-// 	}
-
-// 	// Write the file to HDFS
-// 	err = s.store.WriteFile(string(fileContent), fileName)
-// 	if err != nil {
-// 		http.Error(rw, "File storage exception", http.StatusInternalServerError)
-// 		s.logger.Println("File storage exception:", err)
-// 		return
-// 	}
-
-// 	rw.WriteHeader(http.StatusCreated)
-// }
-
 func (s *StorageHandler) WriteFileToStorage(rw http.ResponseWriter, h *http.Request) {
 	log.Println("Usli u WriteFilesToStorage")
 	// Parse the form data, including the uploaded files
