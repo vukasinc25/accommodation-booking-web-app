@@ -74,6 +74,23 @@ services:
     networks:
       - network
 
+  notification-service:
+    build:
+      context: .
+      dockerfile: ./notification-service/Dockerfile
+    restart: always
+    image: notification-service
+    hostname: notification-service
+    environment:
+      HOST: ${NOTIFICATION_SERVICE_HOST}
+      PORT: ${NOTIFICATION_SERVICE_PORT}
+      MONGO_DB_URI: ${MONGO_DB_URI}
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - network
+
   reservation-service:
     build:
       context: .
@@ -180,7 +197,7 @@ services:
     networks:
       - network
 
-  # NoSQL: Consul
+#   NoSQL: Consul
   consul:
     image: hashicorp/consul:latest
     ports:

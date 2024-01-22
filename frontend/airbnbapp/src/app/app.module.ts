@@ -28,6 +28,8 @@ import { ReservationsComponent } from './reservations/reservations.component';
 //FA
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 
+import { NotificationComponent } from './notification/notification.component';
+
 @NgModule({
   declarations: [
     AppComponent,
@@ -45,6 +47,7 @@ import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
     MyAccommoComponent,
     AccommoListComponent,
     ReservationsComponent,
+    NotificationComponent,
   ],
   imports: [
     BrowserModule,

@@ -13,7 +13,9 @@ import {
   ValidationErrors,
   Validators,
 } from '@angular/forms';
-import { ProfServiceService } from 'src/app/service/prof.service.service';
+import { ProfServiceService } from '../../service/prof.service.service';
+import { NotificationService } from '../../service/notification.service';
+import { Notification1 } from '../../model/notification';
 
 @Component({
   selector: 'app-accommo-info',
@@ -33,7 +35,8 @@ export class AccommoInfoComponent implements OnInit {
     private profService: ProfServiceService,
     private accommodationService: AccommodationService,
     private authService: AuthService,
-    private reservationService: ReservationService
+    private reservationService: ReservationService,
+    private notificationService: NotificationService
   ) {
     this.form = this.fb.group({
       grade: [
@@ -69,6 +72,11 @@ export class AccommoInfoComponent implements OnInit {
 
   fromDisDate: NgbDate | null = null;
   toDisDate: NgbDate | null = null;
+
+  notification: Notification1 = {
+    hostId: '',
+    description: ''
+  };
 
   ngOnInit(): void {
     this.accommodationForm = this.fb.group({
@@ -286,6 +294,8 @@ export class AccommoInfoComponent implements OnInit {
         this.form.reset();
       },
     });
+
+    this.createNotification('One of your guests gave a review on you!')
   }
 
   reserveDates() {
@@ -307,6 +317,8 @@ export class AccommoInfoComponent implements OnInit {
           this.ngOnInit();
         },
       });
+
+      this.createNotification('One of your accommodations just got reserved!')
   }
   deleteHostGrade(id: any) {
     this.profService.deleteHostGrades(id).subscribe({
@@ -318,6 +330,8 @@ export class AccommoInfoComponent implements OnInit {
         alert(err.error.message);
       },
     });
+
+    this.createNotification('One of your guests deleted their review on you!')
   }
   deleteAccommodationGrade(id: any) {
     this.accommodationService.deleteAccommodationGrade(id).subscribe({
@@ -329,6 +343,7 @@ export class AccommoInfoComponent implements OnInit {
         alert(err.error.message);
       },
     });
+    this.createNotification('One of your guests deleted their review on one of your accommodations!')
   }
 
   submitAccommodationGrade() {
@@ -343,7 +358,23 @@ export class AccommoInfoComponent implements OnInit {
           alert(err.error.message);
         },
       });
+
+     this.createNotification('One of your guests left a review on one of your accommodations!')
   }
+
+  createNotification(description: string){
+    this.notification.hostId = this.hostId;
+    this.notification.description = description
+    this.notificationService.createNotification(this.notification).subscribe({
+      next: (data) => {
+        alert('Notification Sent')
+      },
+      error: (err) => {
+        alert(err.error.message)
+      }
+    })
+  }
+
   onSubmit() {
     console.log(this.accommodation._id, this.accommodationForm.value);
     this.reservationService

@@ -13,6 +13,7 @@ import { AccommoInfoComponent } from './accommodation/accommo-info/accommo-info.
 import { VerifyEmailComponent } from './auth/verify-email/verify-email.component';
 import { MyAccommoComponent } from './accommodation/my-accommo/my-accommo.component';
 import { ReservationsComponent } from './reservations/reservations.component';
+import { NotificationComponent } from './notification/notification.component';
 
 const routes: Routes = [
   {
@@ -58,11 +59,13 @@ const routes: Routes = [
     component: VerifyEmailComponent,
   },
   { path: 'reset-password', component: ResetPasswordComponent },
+  { path: 'notifications', component: NotificationComponent },
   {
     path: '**',
     redirectTo: '',
     pathMatch: 'full',
   },
+
 ];
 
 @NgModule({
