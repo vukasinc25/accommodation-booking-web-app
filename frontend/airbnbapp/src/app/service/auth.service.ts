@@ -81,6 +81,12 @@ export class AuthService {
     this.roleSubject.next(value);
   }
 
+  getUserId(): string {
+    let token = localStorage.getItem('jwt');  
+    if (token != null) return this.jwt.decodeToken(token).id;
+    else return '';
+  }
+
   getUsername(): string {
     let token = localStorage.getItem('jwt');
     if (token != null) return this.jwt.decodeToken(token).username;

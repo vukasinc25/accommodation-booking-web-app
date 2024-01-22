@@ -16,9 +16,7 @@
       <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
         <div class="navbar-nav">
           <a class="nav-link" routerLink="/">Home</a>
-          <a *ngIf="isLoggedin" class="nav-link" routerLink="/profile"
-            >Profile</a
-          >
+          <a *ngIf="isLoggedin" class="nav-link" routerLink="/profile" >Profile</a>
           <a
             *ngIf="isLoggedin && userRole == 'GUEST'"
             class="nav-link"
@@ -29,13 +27,15 @@
             *ngIf="isLoggedin && userRole == 'HOST'"
             class="nav-link"
             routerLink="/accommodations/myAccommodations"
-            >My Accommodations</a
-          >
-          <a *ngIf="!isLoggedin" class="nav-link" routerLink="/register"
-            >Register</a
-          >
+            >My Accommodations</a>
+          <a *ngIf="!isLoggedin" class="nav-link" routerLink="/register">Register</a>
           <a *ngIf="!isLoggedin" class="nav-link" routerLink="/login">Log in</a>
-          <!-- <a class="nav-link"><fa-icon [icon]="faMagnifyingGlass"></fa-icon> Search</a> -->
+          <a
+            *ngIf="isLoggedin && userRole == 'HOST'"
+            class="nav-link"
+            routerLink="/notifications"
+            (click) = "aaa()"
+            >Notifications</a>
         </div>
       </div>
     </div>
