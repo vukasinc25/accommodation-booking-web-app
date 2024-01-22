@@ -1,11 +1,13 @@
-module notification-service
+module github.com/vukasinc25/fst-airbnb
 
 go 1.21.1
 
 require (
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
+	github.com/jordan-wright/email v4.0.1-0.20210109023952-943e75fe5223+incompatible
 	github.com/sony/gobreaker v0.5.0
+	github.com/thanhpk/randstr v1.0.6
 	go.mongodb.org/mongo-driver v1.13.1
 )
 

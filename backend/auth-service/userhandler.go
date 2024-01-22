@@ -326,7 +326,7 @@ func (uh *UserHandler) sendForgottenPasswordEmail(w http.ResponseWriter, req *ht
 			return
 		}
 
-		sendErrorWithMessage(w, "Please check emial for verification code", http.StatusOK)
+		sendErrorWithMessage(w, "Please check your email for the verification code", http.StatusOK)
 	} else {
 		sendErrorWithMessage(w, "No valid verification emails found for the given email 2", http.StatusBadRequest)
 		return

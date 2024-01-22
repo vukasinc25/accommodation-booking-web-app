@@ -3,7 +3,11 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
+	"fmt"
+	"github.com/thanhpk/randstr"
+	"github.com/vukasinc25/fst-airbnb/mail"
 	"io"
 	"log"
 	"net/http"
@@ -38,6 +42,23 @@ func (nh *NotificationHandler) createNotification(rw http.ResponseWriter, req *h
 	}
 	rw.WriteHeader(http.StatusCreated)
 
+	if err == nil {
+		log.Println("Usli u slanje notf maila")
+		content := `
+				<h1>AirBnb New notification</h1>
+				<h2>You just received a new notification</h2>
+				<h3>Login to see it</h3>`
+		subject := "AirBnB New Notification"
+		email := "vukasincadjenovic@gmail.com"
+		err := nh.sendEmail(content, subject, email)
+		if err != nil {
+			nh.logger.Println("Notification email was not sent")
+			return
+		}
+	} else {
+		nh.logger.Println("Error")
+		return
+	}
 }
 
 func (nh *NotificationHandler) GetNotificationById(w http.ResponseWriter, req *http.Request) {
@@ -120,6 +141,37 @@ func (nh *NotificationHandler) DeleteNotification(res http.ResponseWriter, req *
 		return
 	}
 	sendErrorWithMessage1(res, "User succesfully deleted", http.StatusOK)
+}
+
+func (nh *NotificationHandler) sendEmail(contentStr string, subjectStr string, email string) error {
+	log.Println("SendEmail()")
+
+	randomCode := randstr.String(20)
+
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: true,
+	}
+
+	log.Println(tlsConfig)
+
+	sender := mail.NewGmailSender("Air Bnb", "mobilneaplikcijesit@gmail.com", "esrqtcomedzeapdr", tlsConfig) //postavi recoveri password
+	subject := subjectStr
+	content := fmt.Sprintf(contentStr, randomCode)
+	to := []string{email}
+	attachFiles := []string{}
+	log.Println("Pre SendEmail(subject, content, to, nil, nil, attachFiles)")
+	err := sender.SendEmail(subject, content, to, nil, nil, attachFiles)
+	if err != nil {
+		// http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Println("Cant send email")
+		return err
+	}
+
+	return nil
+
+	// w.WriteHeader(http.StatusCreated)
+	// message := "Poslat je mail na moblineaplikacijesit@gmail.com"
+	// renderJSON(w, message)
 }
 
 func (nh *NotificationHandler) MiddlewareRoleCheck00(client *http.Client, breaker *gobreaker.CircuitBreaker) mux.MiddlewareFunc {
