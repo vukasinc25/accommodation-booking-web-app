@@ -23,24 +23,24 @@ services:
     networks:
       - network
 
-#  prof-service:
-#    image: prof-service
-#    hostname: prof-service
-#    build:
-#      context: .
-#      dockerfile: ./prof-service/Dockerfile
-#    restart: always
-#    environment:
-#      PORT: ${PROF_SERVICE_PORT}
-#      PROF_DB: ${PROF_DB}
-#      PROF_DB_PORT: ${PROF_DB_PORT}
-#      RESERVATION_SERVICE_HOST: ${RESERVATION_SERVICE_HOST}
-#      RESERVATION_SERVICE_PORT: ${RESERVATION_SERVICE_PORT}
-#    depends_on:
-#      consul:
-#        condition: service_healthy
-#    networks:
-#      - network
+  prof-service:
+    image: prof-service
+    hostname: prof-service
+    build:
+      context: .
+      dockerfile: ./prof-service/Dockerfile
+    restart: always
+    environment:
+      PORT: ${PROF_SERVICE_PORT}
+      PROF_DB: ${PROF_DB}
+      PROF_DB_PORT: ${PROF_DB_PORT}
+      RESERVATION_SERVICE_HOST: ${RESERVATION_SERVICE_HOST}
+      RESERVATION_SERVICE_PORT: ${RESERVATION_SERVICE_PORT}
+    depends_on:
+      consul:
+        condition: service_healthy
+    networks:
+      - network
 
   accommodation-service:
     image: accommodation-service
@@ -108,7 +108,7 @@ services:
     depends_on:
       - auth-service
       - accommodation-service
-#      - prof-service
+      - prof-service
       - reservation-service
     networks:
       - network
@@ -184,25 +184,25 @@ services:
     networks:
       - network
 
-  # NoSQL: Consul
-#  consul:
-#    image: hashicorp/consul:latest
-#    ports:
-#      - "8500:8500"
-#      - "8600:8600/tcp"
-#      - "8600:8600/udp"
-#    healthcheck:
-#      test: ["CMD", "consul", "members"]
-#      interval: 10s
-#      timeout: 10s
-#      retries: 10
-#    command: "agent -server -ui -node=server-1 -bootstrap-expect=1 -client=0.0.0.0"
-#    volumes:
-#      # NoSQL
-#      # <path_to_where_to_store_data_on_host_machine>:<database_specific_data_location>
-#      - ./cosnul_store:/consul/data
-#    networks:
-#      - network
+#   NoSQL: Consul
+  consul:
+    image: hashicorp/consul:latest
+    ports:
+      - "8500:8500"
+      - "8600:8600/tcp"
+      - "8600:8600/udp"
+    healthcheck:
+      test: ["CMD", "consul", "members"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    command: "agent -server -ui -node=server-1 -bootstrap-expect=1 -client=0.0.0.0"
+    volumes:
+      # NoSQL
+      # <path_to_where_to_store_data_on_host_machine>:<database_specific_data_location>
+      - ./cosnul_store:/consul/data
+    networks:
+      - network
 
   namenode:
     image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
