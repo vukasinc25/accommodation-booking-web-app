@@ -23,9 +23,14 @@ go.work
 #Moje
 .idea
 .DS_Store
+.consul_store
+consul_store
+consul_store/
+.consul_store/
 backend/cosnul_store/raft/raft.db
 backend/cosnul_store/
 backend/cosnul_store/raft/
 .backend/cosnul_store/raft/raft.db
 .backend/cosnul_store/
 .backend/cosnul_store/raft/
+
