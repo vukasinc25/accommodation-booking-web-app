@@ -131,6 +131,7 @@ func (rh *reservationHandler) GetAllReservationsDatesByDate(res http.ResponseWri
 }
 
 func (rh *reservationHandler) getAllReservationsByUser(res http.ResponseWriter, req *http.Request) {
+<<<<<<< Updated upstream
 	//vars := mux.Vars(req)
 	////userId := vars["id"]
 	requestId, err := decodeIdBody(req.Body)
@@ -138,6 +139,11 @@ func (rh *reservationHandler) getAllReservationsByUser(res http.ResponseWriter, 
 	// vars := mux.Vars(req)
 	// userId := vars["id"]
 	// reservationsByUser, err := rh.repo.GetReservationsByUser(userId)
+=======
+	vars := mux.Vars(req)
+	userId := vars["id"]
+	reservationsByUser, err := rh.repo.GetReservationsByUser(userId)
+>>>>>>> Stashed changes
 	if err != nil {
 		rh.logger.Println("Database exception: ", err)
 		sendErrorWithMessage(res, "Error in getting reservation", http.StatusBadRequest)
@@ -187,7 +193,11 @@ func (rh *reservationHandler) GetAllReservationsByUserId(res http.ResponseWriter
 func (rh *reservationHandler) GetAllReservationsDatesByHostId(res http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	hostId := vars["id"]
+<<<<<<< Updated upstream
 	rh.logger.Println("Usli u GetReservationsDatesByHostId met")
+=======
+	log.Println("Usli u GetReservationsDatesByHostId met")
+>>>>>>> Stashed changes
 
 	reservationsDatesByHostId, err := rh.repo.GetReservationsDatesByHostId(hostId)
 	if err != nil {
@@ -204,10 +214,17 @@ func (rh *reservationHandler) GetAllReservationsDatesByHostId(res http.ResponseW
 	var activeReservations = false
 	var counterIsThereAnyReservations = 0
 	for _, element := range reservationsDatesByHostId {
+<<<<<<< Updated upstream
 		rh.logger.Println("Reservation:", element)
 		reservationsByAccomodationIdFromReservationsByUserTable, err := rh.repo.GetReservationsDatesByAccomodationId(element.AccoId)
 		if err != nil {
 			rh.logger.Println("Cant get reservations by accommodation:", err)
+=======
+		log.Println("Reservation:", element)
+		reservationsByAccomodationIdFromReservationsByUserTable, err := rh.repo.GetReservationsDatesByAccomodationId(element.AccoId)
+		if err != nil {
+			log.Println("Cant get reservations by accommodation:", err)
+>>>>>>> Stashed changes
 			sendErrorWithMessage1(res, "Cant get reservations by accommodationId for host", http.StatusInternalServerError)
 			return
 		}
@@ -216,6 +233,7 @@ func (rh *reservationHandler) GetAllReservationsDatesByHostId(res http.ResponseW
 		if len(reservationsByAccomodationIdFromReservationsByUserTable) != 0 {
 			counterIsThereAnyReservations++
 			for _, element1 := range reservationsByAccomodationIdFromReservationsByUserTable {
+<<<<<<< Updated upstream
 				rh.logger.Println("Reservation by AccoId:", element1)
 				response, err := rh.repo.isDatePassed(element1.EndAccomodationDate)
 				if err != nil {
@@ -225,6 +243,17 @@ func (rh *reservationHandler) GetAllReservationsDatesByHostId(res http.ResponseW
 					return
 				}
 				rh.logger.Println("Response:", response)
+=======
+				log.Println("Reservation by AccoId:", element1)
+				response, err := rh.repo.isDatePassed(element1.EndAccomodationDate)
+				if err != nil {
+					counterIsThereAnyReservations = 0
+					log.Println("Error in isDatePassed metod:", err)
+					sendErrorWithMessage1(res, "Error in isDatePassed metod", http.StatusInternalServerError)
+					return
+				}
+				log.Println("Response:", response)
+>>>>>>> Stashed changes
 				isDatePassedd = response
 				if !response {
 					break
@@ -233,7 +262,11 @@ func (rh *reservationHandler) GetAllReservationsDatesByHostId(res http.ResponseW
 		}
 
 		activeReservations = isDatePassedd
+<<<<<<< Updated upstream
 		rh.logger.Println("Active:", activeReservations)
+=======
+		log.Println("Active:", activeReservations)
+>>>>>>> Stashed changes
 		if !isDatePassedd {
 			break
 		}
@@ -241,11 +274,19 @@ func (rh *reservationHandler) GetAllReservationsDatesByHostId(res http.ResponseW
 	}
 
 	if counterIsThereAnyReservations == 0 {
+<<<<<<< Updated upstream
 		rh.logger.Println("No reservations")
 		sendErrorWithMessage1(res, "There is not reservations for hosts accommodations", http.StatusBadRequest)
 		return
 	}
 	rh.logger.Println("Active2:", activeReservations)
+=======
+		log.Println("No reservations")
+		sendErrorWithMessage1(res, "There is not reservations for hosts accommodations", http.StatusBadRequest)
+		return
+	}
+	log.Println("Active2:", activeReservations)
+>>>>>>> Stashed changes
 	if !activeReservations {
 		counterIsThereAnyReservations = 0
 		sendErrorWithMessage1(res, "There is active reservations for accommodations of this host", http.StatusOK)
@@ -261,7 +302,11 @@ func (rh *reservationHandler) GetAllReservationsForUserIdByHostId(res http.Respo
 	vars := mux.Vars(req)
 	userId := vars["userId"]
 	hostId := vars["hostId"]
+<<<<<<< Updated upstream
 	rh.logger.Println("Usli u GetReservationsDatesByHostId met")
+=======
+	log.Println("Usli u GetReservationsDatesByHostId met")
+>>>>>>> Stashed changes
 
 	reservationsDatesByHostId, err := rh.repo.GetReservationsDatesByHostId(hostId)
 	if err != nil {
@@ -278,10 +323,17 @@ func (rh *reservationHandler) GetAllReservationsForUserIdByHostId(res http.Respo
 	var isThereSomePreviousReservations = false
 	var counterIsThereAnyReservations = 0
 	for _, element := range reservationsDatesByHostId {
+<<<<<<< Updated upstream
 		rh.logger.Println("Reservation:", element)
 		reservationsByUserId, err := rh.repo.GetReservationsByUser(userId)
 		if err != nil {
 			rh.logger.Println("Cant get reservations by user:", err)
+=======
+		log.Println("Reservation:", element)
+		reservationsByUserId, err := rh.repo.GetReservationsByUser(userId)
+		if err != nil {
+			log.Println("Cant get reservations by user:", err)
+>>>>>>> Stashed changes
 			sendErrorWithMessage1(res, "Cant get reservations by userId for userId", http.StatusInternalServerError)
 			return
 		}
@@ -289,7 +341,11 @@ func (rh *reservationHandler) GetAllReservationsForUserIdByHostId(res http.Respo
 		if len(reservationsByUserId) != 0 {
 			counterIsThereAnyReservations++
 			for _, element1 := range reservationsByUserId {
+<<<<<<< Updated upstream
 				rh.logger.Println("Reservation by AccoId:", element1)
+=======
+				log.Println("Reservation by AccoId:", element1)
+>>>>>>> Stashed changes
 				if element.AccoId == element1.AccoId {
 					isThereSomePreviousReservations = true
 					break
@@ -298,14 +354,22 @@ func (rh *reservationHandler) GetAllReservationsForUserIdByHostId(res http.Respo
 		}
 	}
 	if counterIsThereAnyReservations == 0 {
+<<<<<<< Updated upstream
 		rh.logger.Println("No reservations")
+=======
+		log.Println("No reservations")
+>>>>>>> Stashed changes
 		sendErrorWithMessage1(res, "There is no reservations for hosts accommodations", http.StatusBadRequest)
 		return
 	}
 
 	if isThereSomePreviousReservations == true {
 		counterIsThereAnyReservations = 0
+<<<<<<< Updated upstream
 		rh.logger.Println("There is some reservtions for this user")
+=======
+		log.Println("There is some reservtions for this user")
+>>>>>>> Stashed changes
 		sendErrorWithMessage1(res, "There is some reservtions for this user", http.StatusOK)
 		return
 	}

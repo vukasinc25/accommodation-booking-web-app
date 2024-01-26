@@ -71,7 +71,11 @@ func main() {
 	}
 
 	// NoSQL: Initialize auth Repository store
+<<<<<<< Updated upstream
 	store, err := New(timeoutContext, logger, config["conn_service_address"], config["conn_reservation_service_address"], config["conn_accommodation_service_address"])
+=======
+	store, err := New(timeoutContext, storeLogger, config["conn_service_address"], config["conn_reservation_service_address"], config["conn_accommodation_service_address"])
+>>>>>>> Stashed changes
 	if err != nil {
 		logger.Fatal(err)
 	}

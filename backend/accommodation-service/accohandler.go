@@ -15,9 +15,13 @@ import (
 	"github.com/sony/gobreaker"
 
 	"github.com/gorilla/mux"
+<<<<<<< Updated upstream
 	log "github.com/sirupsen/logrus"
 	"github.com/thanhpk/randstr"
 	"github.com/vukasinc25/fst-airbnb/handlers"
+=======
+	"github.com/thanhpk/randstr"
+>>>>>>> Stashed changes
 )
 
 type KeyProduct struct{}
@@ -150,17 +154,30 @@ func (ah *AccoHandler) DeleteAccommodationGrade(res http.ResponseWriter, req *ht
 
 	userId, ok := req.Context().Value("userId").(string)
 	if !ok {
+<<<<<<< Updated upstream
 		ah.logger.Println("Error retrieving userId from context")
+=======
+		log.Println("Error retrieving userId from context")
+>>>>>>> Stashed changes
 		sendErrorWithMessage1(res, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
+<<<<<<< Updated upstream
 	ah.logger.Println("UserId:", userId)
 	ah.logger.Println("AccommodationGradeId:", id)
 
 	err := ah.db.DeleteAccommodationGrade(userId, id)
 	if err != nil {
 		ah.logger.Println("Error2:", err)
+=======
+	log.Println("UserId:", userId)
+	log.Println("AccommodationGradeId:", id)
+
+	err := ah.db.DeleteAccommodationGrade(userId, id)
+	if err != nil {
+		log.Println("Error2:", err)
+>>>>>>> Stashed changes
 		sendErrorWithMessage(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -174,14 +191,22 @@ func (ah *AccoHandler) DeleteAccommodation(res http.ResponseWriter, req *http.Re
 
 	err := ah.db.Delete(username)
 	if err != nil {
+<<<<<<< Updated upstream
 		ah.logger.Println("Error when tried to delete accommodation:", err)
+=======
+		log.Println("Error when tried to delete accommodation:", err)
+>>>>>>> Stashed changes
 		sendErrorWithMessage1(res, "Error when tried to delete accommodation", http.StatusInternalServerError)
 		return
 	}
 	sendErrorWithMessage1(res, "User succesfully deleted", http.StatusOK)
 }
 
+<<<<<<< Updated upstream
 func (ah *AccoHandler) MiddlewareRoleCheck00(client *http.Client, breaker *gobreaker.CircuitBreaker) mux.MiddlewareFunc {
+=======
+func (rh *AccoHandler) MiddlewareRoleCheck00(client *http.Client, breaker *gobreaker.CircuitBreaker) mux.MiddlewareFunc {
+>>>>>>> Stashed changes
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
@@ -193,7 +218,11 @@ func (ah *AccoHandler) MiddlewareRoleCheck00(client *http.Client, breaker *gobre
 			fields := strings.Fields(authorizationHeader)
 
 			if len(fields) == 0 {
+<<<<<<< Updated upstream
 				sendErrorWithMessage(w, "", http.StatusUnauthorized)
+=======
+				w.WriteHeader(http.StatusUnauthorized)
+>>>>>>> Stashed changes
 				return
 			}
 
@@ -212,18 +241,30 @@ func (ah *AccoHandler) MiddlewareRoleCheck00(client *http.Client, breaker *gobre
 				return client.Do(req)
 			})
 			if err != nil {
+<<<<<<< Updated upstream
 				ah.logger.Println(err)
+=======
+				rh.logger.Println(err)
+>>>>>>> Stashed changes
 				sendErrorWithMessage(w, "Service is not working", http.StatusInternalServerError)
 				return
 			}
 
 			resp := cbResp.(*http.Response)
 			resBody, err := io.ReadAll(resp.Body)
+<<<<<<< Updated upstream
 			ah.logger.Println("User Id:", string(resBody))
 			if resp.StatusCode != http.StatusOK {
 				ah.logger.Println("Error in auth response " + strconv.Itoa(resp.StatusCode))
 				ah.logger.Println("status " + resp.Status)
 				sendErrorWithMessage(w, "Lavor", resp.StatusCode)
+=======
+			rh.logger.Println("User Id:", string(resBody))
+			if resp.StatusCode != http.StatusOK {
+				rh.logger.Println("Error in auth response " + strconv.Itoa(resp.StatusCode))
+				rh.logger.Println("status " + resp.Status)
+				w.WriteHeader(resp.StatusCode)
+>>>>>>> Stashed changes
 				return
 			}
 
@@ -233,16 +274,26 @@ func (ah *AccoHandler) MiddlewareRoleCheck00(client *http.Client, breaker *gobre
 
 			newReq, err := http.NewRequestWithContext(ctx, r.Method, r.URL.String(), r.Body)
 			if err != nil {
+<<<<<<< Updated upstream
 				ah.logger.Println("Error creating new request:", err)
 				sendErrorWithMessage(w, "Error creating new request:"+err.Error(), http.StatusInternalServerError)
+=======
+				rh.logger.Println("Error creating new request:", err)
+				w.WriteHeader(http.StatusInternalServerError)
+>>>>>>> Stashed changes
 				return
 			}
 			newReq.Header = r.Header
 
 			newReq.Header.Set("Content-Type", "application/json")
 
+<<<<<<< Updated upstream
 			ah.logger.Println("Token:", token)
 			ah.logger.Println("AccessToken:", accessToken)
+=======
+			log.Println("Token:", token)
+			log.Println("AccessToken:", accessToken)
+>>>>>>> Stashed changes
 
 			next.ServeHTTP(w, newReq)
 		})
@@ -255,14 +306,22 @@ func (ah *AccoHandler) GetAllAccommodationGrades(res http.ResponseWriter, req *h
 
 	accommodationGrades, err := ah.db.GetAllAccommodationGrades(accommodationId)
 	if err != nil {
+<<<<<<< Updated upstream
 		ah.logger.Println("Error1:", err.Error())
+=======
+		log.Println("Error1:", err.Error())
+>>>>>>> Stashed changes
 		sendErrorWithMessage(res, "Error in GetAllAccommodationGrades method", http.StatusInternalServerError)
 		return
 	}
 
 	err = accommodationGrades.ToJSON(res)
 	if err != nil {
+<<<<<<< Updated upstream
 		ah.logger.Println("Unable to convert to json :", err)
+=======
+		log.Println("Unable to convert to json :", err)
+>>>>>>> Stashed changes
 		sendErrorWithMessage(res, "Unable to convert to json", http.StatusInternalServerError)
 		return
 	}
@@ -381,18 +440,30 @@ func (ah *AccoHandler) MiddlewareRoleCheck(client *http.Client, breaker *gobreak
 }
 
 func (ah *AccoHandler) GradeAccommodation(res http.ResponseWriter, req *http.Request) {
+<<<<<<< Updated upstream
 	ah.logger.Println("Request Body:", req.Body)
 	accommodationGrade, err := decodeAccommodatioGradeBody(req.Body)
 	if err != nil {
 		ah.logger.Println("Cant decode body")
+=======
+	log.Println("Request Body:", req.Body)
+	accommodationGrade, err := decodeAccommodatioGradeBody(req.Body)
+	if err != nil {
+		log.Println("Cant decode body")
+>>>>>>> Stashed changes
 		sendErrorWithMessage(res, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	userId, ok := req.Context().Value("userId").(string)
 	if !ok {
+<<<<<<< Updated upstream
 		ah.logger.Println("Error retrieving userId from context")
 		sendErrorWithMessage(res, "Internal Server Error", http.StatusInternalServerError)
+=======
+		log.Println("Error retrieving userId from context")
+		sendErrorWithMessage1(res, "Internal Server Error", http.StatusInternalServerError)
+>>>>>>> Stashed changes
 		return
 	}
 
@@ -401,18 +472,31 @@ func (ah *AccoHandler) GradeAccommodation(res http.ResponseWriter, req *http.Req
 	accommodationGrade.CreatedAt = formattedTime
 	accommodationGrade.ID = randstr.String(20)
 	accommodationGrade.UserId = strings.Trim(userId, `"`)
+<<<<<<< Updated upstream
 	ah.logger.Println("HostGrade:", accommodationGrade)
 
 	tocken, ok := req.Context().Value("accessToken").(string)
 	if !ok {
 		ah.logger.Println("Error retrieving tocken from context", err)
 		sendErrorWithMessage(res, "", http.StatusInternalServerError)
+=======
+	log.Println("HostGrade:", accommodationGrade)
+
+	tocken, ok := req.Context().Value("accessToken").(string)
+	if !ok {
+		log.Println("Error retrieving tocken from context")
+		sendErrorWithMessage1(res, "", http.StatusInternalServerError)
+>>>>>>> Stashed changes
 		return
 	}
 
 	err = ah.db.CreateGrade(accommodationGrade, tocken)
 	if err != nil {
+<<<<<<< Updated upstream
 		ah.logger.Println("Error in inserting accommodation grade", err)
+=======
+		log.Println("Error in inserting accommodation grade")
+>>>>>>> Stashed changes
 		sendErrorWithMessage(res, err.Error(), http.StatusInternalServerError)
 		return
 	}

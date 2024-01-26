@@ -74,6 +74,7 @@ export class AccommodationService {
     );
   }
 
+<<<<<<< Updated upstream
   getAccommodationImage(image: string): Observable<any> {
     return this.http.get('/api/accommodations/read/' + image, {
       headers: this.header,
@@ -81,6 +82,8 @@ export class AccommodationService {
     });
   }
 
+=======
+>>>>>>> Stashed changes
   getAllByNoGuests(noGuests: string): Observable<any> {
     return this.http.get('/api/accommodations/search_by_noGuests/' + noGuests, {
       headers: this.headers,

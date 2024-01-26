@@ -13,9 +13,13 @@ import {
   ValidationErrors,
   Validators,
 } from '@angular/forms';
+<<<<<<< Updated upstream
 import { ProfServiceService } from '../../service/prof.service.service';
 import { NotificationService } from '../../service/notification.service';
 import { Notification1 } from '../../model/notification';
+=======
+import { ProfServiceService } from 'src/app/service/prof.service.service';
+>>>>>>> Stashed changes
 
 @Component({
   selector: 'app-accommo-info',
@@ -35,8 +39,12 @@ export class AccommoInfoComponent implements OnInit {
     private profService: ProfServiceService,
     private accommodationService: AccommodationService,
     private authService: AuthService,
+<<<<<<< Updated upstream
     private reservationService: ReservationService,
     private notificationService: NotificationService
+=======
+    private reservationService: ReservationService
+>>>>>>> Stashed changes
   ) {
     this.form = this.fb.group({
       grade: [
@@ -295,8 +303,11 @@ export class AccommoInfoComponent implements OnInit {
         this.form.reset();
       },
     });
+<<<<<<< Updated upstream
 
     this.createNotification('One of your guests gave a review on you!')
+=======
+>>>>>>> Stashed changes
   }
 
   reserveDates() {
@@ -315,7 +326,47 @@ export class AccommoInfoComponent implements OnInit {
         error: (err) => {
           console.log(err.error.message);
           alert(err.error.message);
+<<<<<<< Updated upstream
           // this.ngOnInit();
+=======
+          this.ngOnInit();
+        },
+      });
+  }
+  deleteHostGrade(id: any) {
+    this.profService.deleteHostGrades(id).subscribe({
+      next: (data) => {
+        alert('Grade deleted');
+        this.ngOnInit();
+      },
+      error: (err) => {
+        alert(err.error.message);
+      },
+    });
+  }
+  deleteAccommodationGrade(id: any) {
+    this.accommodationService.deleteAccommodationGrade(id).subscribe({
+      next: (data) => {
+        alert('Accommodation deleted');
+        this.ngOnInit();
+      },
+      error: (err) => {
+        alert(err.error.message);
+      },
+    });
+  }
+
+  submitAccommodationGrade() {
+    this.accommodationService
+      .gradeAccommodation(this.id, this.formAccommodation.value.grade)
+      .subscribe({
+        next: (data) => {
+          alert('Accommodation graded');
+          this.ngOnInit();
+        },
+        error: (err) => {
+          alert(err.error.message);
+>>>>>>> Stashed changes
         },
       });
 

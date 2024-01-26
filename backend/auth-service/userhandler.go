@@ -393,7 +393,11 @@ func (uh *UserHandler) ChangePassword(res http.ResponseWriter, req *http.Request
 
 	user, err := uh.db.GetByUsername(authPayload.Username)
 	if err != nil {
+<<<<<<< Updated upstream
 		uh.logger.Println("Error in getting user by username", err)
+=======
+		log.Println("Error in getting user by username", err)
+>>>>>>> Stashed changes
 		sendErrorWithMessage(res, "Cant get user by username", http.StatusBadRequest)
 		return
 	}
@@ -409,14 +413,22 @@ func (uh *UserHandler) ChangePassword(res http.ResponseWriter, req *http.Request
 		return
 	}
 
+<<<<<<< Updated upstream
 	uh.logger.Println("Not hashed Password: %w", newPassword.NewPassword)
+=======
+	log.Println("Not hashed Password: %w", newPassword.NewPassword)
+>>>>>>> Stashed changes
 	// Hash the password before storing
 	hashedPassword, err := HashPassword(newPassword.NewPassword)
 	if err != nil {
 		sendErrorWithMessage(res, "Hash: "+err.Error(), http.StatusInternalServerError)
 	}
 
+<<<<<<< Updated upstream
 	uh.logger.Println("Hashed Password: %w", hashedPassword)
+=======
+	log.Println("Hashed Password: %w", hashedPassword)
+>>>>>>> Stashed changes
 
 	userA := UserA{
 		Email:    user.Email,
@@ -424,7 +436,11 @@ func (uh *UserHandler) ChangePassword(res http.ResponseWriter, req *http.Request
 	}
 	err = uh.db.UpdateUsersPassword(&userA)
 	if err != nil {
+<<<<<<< Updated upstream
 		uh.logger.Println("Error in uodating password", err)
+=======
+		log.Println("Error in uodating password", err)
+>>>>>>> Stashed changes
 		sendErrorWithMessage(res, "Cant update password", http.StatusInternalServerError)
 		return
 	}
@@ -798,24 +814,40 @@ func (uh *UserHandler) DeleteUser(res http.ResponseWriter, req *http.Request) {
 	if authPayload.Role == "GUEST" {
 		response, err := uh.db.GetAllReservatinsForUser(token)
 		if err != nil {
+<<<<<<< Updated upstream
 			uh.logger.Println("Error in getting reservations by user:", err)
+=======
+			log.Println("Error in getting reservations by user:", err)
+>>>>>>> Stashed changes
 			sendErrorWithMessage(res, "Ovde:"+err.Error(), http.StatusInternalServerError)
 			return
 		}
 
 		body, err := ioutil.ReadAll(response.Body)
 		if err != nil {
+<<<<<<< Updated upstream
 			uh.logger.Println("Error in reading response body")
+=======
+			log.Println("Error in reading response body")
+>>>>>>> Stashed changes
 			sendErrorWithMessage(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
+<<<<<<< Updated upstream
 		uh.logger.Println("Response", body)
+=======
+		log.Println("Response", body)
+>>>>>>> Stashed changes
 
 		if len(body) == 0 {
 			err = uh.db.DeleteUser(authPayload.Username)
 			if err != nil {
+<<<<<<< Updated upstream
 				uh.logger.Println("Can't delete user", err)
+=======
+				log.Println("Can't delete user", err)
+>>>>>>> Stashed changes
 				sendErrorWithMessage(res, "Can't delete user", http.StatusBadRequest)
 				return
 			}
@@ -826,17 +858,28 @@ func (uh *UserHandler) DeleteUser(res http.ResponseWriter, req *http.Request) {
 		var reservations Reservations
 		err = json.Unmarshal(body, &reservations)
 		if err != nil {
+<<<<<<< Updated upstream
 			uh.logger.Println("Error in unmarshaling reservation")
+=======
+			log.Println("Error in unmarshaling reservation")
+>>>>>>> Stashed changes
 			sendErrorWithMessage(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
 		var isDatePassedd = false
 		for _, element := range reservations {
+<<<<<<< Updated upstream
 			uh.logger.Println("Reservation:", element)
 			response, err := isDatePassed(element.EndDate)
 			if err != nil {
 				uh.logger.Println("Error in isDatePassed:", err)
+=======
+			log.Println("Reservation:", element)
+			response, err := isDatePassed(element.EndDate)
+			if err != nil {
+				log.Println("Error in isDatePassed:", err)
+>>>>>>> Stashed changes
 				sendErrorWithMessage(res, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -846,26 +889,42 @@ func (uh *UserHandler) DeleteUser(res http.ResponseWriter, req *http.Request) {
 			}
 		}
 
+<<<<<<< Updated upstream
 		uh.logger.Println(isDatePassedd)
+=======
+		log.Println(isDatePassedd)
+>>>>>>> Stashed changes
 
 		if isDatePassedd {
 			responseProf, err := uh.db.DeleteUserInProfService(authPayload.ID.Hex())
 			if err != nil {
+<<<<<<< Updated upstream
 				uh.logger.Println("Can't delete user", err)
+=======
+				log.Println("Can't delete user", err)
+>>>>>>> Stashed changes
 				sendErrorWithMessage(res, "Can't delete user", http.StatusBadRequest)
 				return
 			}
 
 			bodyProf, err := ioutil.ReadAll(responseProf.Body)
 			if err != nil {
+<<<<<<< Updated upstream
 				uh.logger.Println("Error in reading response body")
+=======
+				log.Println("Error in reading response body")
+>>>>>>> Stashed changes
 				sendErrorWithMessage(res, err.Error(), http.StatusInternalServerError)
 				return
 			}
 			if string(bodyProf) == "User succesfully deleted" {
 				err = uh.db.DeleteUser(authPayload.Username)
 				if err != nil {
+<<<<<<< Updated upstream
 					uh.logger.Println("Can't delete user", err)
+=======
+					log.Println("Can't delete user", err)
+>>>>>>> Stashed changes
 					sendErrorWithMessage(res, "Can't delete user", http.StatusBadRequest)
 					return
 				}
@@ -881,14 +940,22 @@ func (uh *UserHandler) DeleteUser(res http.ResponseWriter, req *http.Request) {
 	} else {
 		response, err := uh.db.GetAllReservatinsDatesByHostId(authPayload.ID.Hex())
 		if err != nil {
+<<<<<<< Updated upstream
 			uh.logger.Println("Error in getting reservations by user:", err)
+=======
+			log.Println("Error in getting reservations by user:", err)
+>>>>>>> Stashed changes
 			sendErrorWithMessage(res, "Ovde:"+err.Error(), http.StatusInternalServerError)
 			return
 		}
 
 		body, err := ioutil.ReadAll(response.Body)
 		if err != nil {
+<<<<<<< Updated upstream
 			uh.logger.Println("Error in reading response body")
+=======
+			log.Println("Error in reading response body")
+>>>>>>> Stashed changes
 			sendErrorWithMessage(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -896,37 +963,61 @@ func (uh *UserHandler) DeleteUser(res http.ResponseWriter, req *http.Request) {
 		if strings.Contains(string(body), "There is no active reservations for accommodations of this host") {
 			deletedAcco, err := uh.db.DeleteAccommdation(authPayload.Username)
 			if err != nil {
+<<<<<<< Updated upstream
 				uh.logger.Println("Error when tried to delete accommodation in DeleteAccommdation", err)
+=======
+				log.Println("Error when tried to delete accommodation in DeleteAccommdation", err)
+>>>>>>> Stashed changes
 				sendErrorWithMessage(res, "Error when tried to delete accommodation in DeleteAccommdation", http.StatusInternalServerError)
 				return
 			}
 
 			body, err := ioutil.ReadAll(deletedAcco.Body)
 			if err != nil {
+<<<<<<< Updated upstream
 				uh.logger.Println("Error in reading response body")
+=======
+				log.Println("Error in reading response body")
+>>>>>>> Stashed changes
 				sendErrorWithMessage(res, err.Error(), http.StatusInternalServerError)
 				return
 			}
 
+<<<<<<< Updated upstream
 			uh.logger.Println("Body:", string(body))
 
 			responseProf, err := uh.db.DeleteUserInProfService(authPayload.ID.Hex())
 			if err != nil {
 				uh.logger.Println("Can't delete user", err)
+=======
+			log.Println("Body:", string(body))
+
+			responseProf, err := uh.db.DeleteUserInProfService(authPayload.ID.Hex())
+			if err != nil {
+				log.Println("Can't delete user", err)
+>>>>>>> Stashed changes
 				sendErrorWithMessage(res, "Can't delete user", http.StatusBadRequest)
 				return
 			}
 
 			bodyProf, err := ioutil.ReadAll(responseProf.Body)
 			if err != nil {
+<<<<<<< Updated upstream
 				uh.logger.Println("Error in reading response body")
+=======
+				log.Println("Error in reading response body")
+>>>>>>> Stashed changes
 				sendErrorWithMessage(res, err.Error(), http.StatusInternalServerError)
 				return
 			}
 			if string(bodyProf) == "User succesfully deleted" {
 				err = uh.db.DeleteUser(authPayload.Username)
 				if err != nil {
+<<<<<<< Updated upstream
 					uh.logger.Println("Can't delete user", err)
+=======
+					log.Println("Can't delete user", err)
+>>>>>>> Stashed changes
 					sendErrorWithMessage(res, "Can't delete user", http.StatusBadRequest)
 					return
 				}
@@ -942,37 +1033,61 @@ func (uh *UserHandler) DeleteUser(res http.ResponseWriter, req *http.Request) {
 		} else if strings.Contains(string(body), "There is no availability dates for that accommodation") {
 			deletedAcco, err := uh.db.DeleteAccommdation(authPayload.Username)
 			if err != nil {
+<<<<<<< Updated upstream
 				uh.logger.Println("Error when tried to delete accommodation in DeleteAccommdation", err)
+=======
+				log.Println("Error when tried to delete accommodation in DeleteAccommdation", err)
+>>>>>>> Stashed changes
 				sendErrorWithMessage(res, "Error when tried to delete accommodation in DeleteAccommdation", http.StatusInternalServerError)
 				return
 			}
 
 			body, err := ioutil.ReadAll(deletedAcco.Body)
 			if err != nil {
+<<<<<<< Updated upstream
 				uh.logger.Println("Error in reading response body")
+=======
+				log.Println("Error in reading response body")
+>>>>>>> Stashed changes
 				sendErrorWithMessage(res, err.Error(), http.StatusInternalServerError)
 				return
 			}
 
+<<<<<<< Updated upstream
 			uh.logger.Println("Body:", string(body))
 
 			responseProf, err := uh.db.DeleteUserInProfService(authPayload.ID.Hex())
 			if err != nil {
 				uh.logger.Println("Can't delete user", err)
+=======
+			log.Println("Body:", string(body))
+
+			responseProf, err := uh.db.DeleteUserInProfService(authPayload.ID.Hex())
+			if err != nil {
+				log.Println("Can't delete user", err)
+>>>>>>> Stashed changes
 				sendErrorWithMessage(res, "Can't delete user", http.StatusBadRequest)
 				return
 			}
 
 			bodyProf, err := ioutil.ReadAll(responseProf.Body)
 			if err != nil {
+<<<<<<< Updated upstream
 				uh.logger.Println("Error in reading response body")
+=======
+				log.Println("Error in reading response body")
+>>>>>>> Stashed changes
 				sendErrorWithMessage(res, err.Error(), http.StatusInternalServerError)
 				return
 			}
 			if string(bodyProf) == "User succesfully deleted" {
 				err = uh.db.DeleteUser(authPayload.Username)
 				if err != nil {
+<<<<<<< Updated upstream
 					uh.logger.Println("Can't delete user", err)
+=======
+					log.Println("Can't delete user", err)
+>>>>>>> Stashed changes
 					sendErrorWithMessage(res, "Can't delete user", http.StatusBadRequest)
 					return
 				}
@@ -985,37 +1100,61 @@ func (uh *UserHandler) DeleteUser(res http.ResponseWriter, req *http.Request) {
 		} else if strings.Contains(string(body), "There is not reservations for hosts accommodations") {
 			deletedAcco, err := uh.db.DeleteAccommdation(authPayload.Username)
 			if err != nil {
+<<<<<<< Updated upstream
 				uh.logger.Println("Error when tried to delete accommodation in DeleteAccommdation", err)
+=======
+				log.Println("Error when tried to delete accommodation in DeleteAccommdation", err)
+>>>>>>> Stashed changes
 				sendErrorWithMessage(res, "Error when tried to delete accommodation in DeleteAccommdation", http.StatusInternalServerError)
 				return
 			}
 
 			body, err := ioutil.ReadAll(deletedAcco.Body)
 			if err != nil {
+<<<<<<< Updated upstream
 				uh.logger.Println("Error in reading response body")
+=======
+				log.Println("Error in reading response body")
+>>>>>>> Stashed changes
 				sendErrorWithMessage(res, err.Error(), http.StatusInternalServerError)
 				return
 			}
 
+<<<<<<< Updated upstream
 			uh.logger.Println("Body:", string(body))
 
 			responseProf, err := uh.db.DeleteUserInProfService(authPayload.ID.Hex())
 			if err != nil {
 				uh.logger.Println("Can't delete user", err)
+=======
+			log.Println("Body:", string(body))
+
+			responseProf, err := uh.db.DeleteUserInProfService(authPayload.ID.Hex())
+			if err != nil {
+				log.Println("Can't delete user", err)
+>>>>>>> Stashed changes
 				sendErrorWithMessage(res, "Can't delete user", http.StatusBadRequest)
 				return
 			}
 
 			bodyProf, err := ioutil.ReadAll(responseProf.Body)
 			if err != nil {
+<<<<<<< Updated upstream
 				uh.logger.Println("Error in reading response body")
+=======
+				log.Println("Error in reading response body")
+>>>>>>> Stashed changes
 				sendErrorWithMessage(res, err.Error(), http.StatusInternalServerError)
 				return
 			}
 			if string(bodyProf) == "User succesfully deleted" {
 				err = uh.db.DeleteUser(authPayload.Username)
 				if err != nil {
+<<<<<<< Updated upstream
 					uh.logger.Println("Can't delete user", err)
+=======
+					log.Println("Can't delete user", err)
+>>>>>>> Stashed changes
 					sendErrorWithMessage(res, "Can't delete user", http.StatusBadRequest)
 					return
 				}

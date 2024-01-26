@@ -27,7 +27,10 @@ require (
 	github.com/klauspost/compress v1.17.0 // indirect
 	github.com/leodido/go-urn v1.2.4 // indirect
 	github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe // indirect
+<<<<<<< Updated upstream
 	github.com/natefinch/lumberjack v2.0.0+incompatible // indirect
+=======
+>>>>>>> Stashed changes
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/stretchr/testify v1.8.4 // indirect
@@ -40,5 +43,8 @@ require (
 	golang.org/x/sys v0.12.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
+<<<<<<< Updated upstream
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
+=======
+>>>>>>> Stashed changes
 )
