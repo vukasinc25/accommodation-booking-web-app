@@ -37,7 +37,7 @@ export class ReservationService {
       },
       { headers: this.headers, responseType: 'json' }
     );
-  }
+  } // kreiranje rezervacije za korisnika
 
   getReservations(id: any): Observable<any> {
     return this.http.get('/api/reservations/dates_by_acco_id/' + id, {
@@ -68,7 +68,7 @@ export class ReservationService {
       headers: this.headers,
       responseType: 'json',
     });
-  }
+  } // dobavljanje perioda dostupnosti
 
   formatNgbDate(date: NgbDate): string {
     if (date) {
@@ -92,13 +92,19 @@ export class ReservationService {
       headers: this.headers,
       responseType: 'json',
     });
-  }
+  } // dobijanje cele rezervacije po id usera
 
-  getAllReservationDatesByDate(startDate: string, endDate: string): Observable<any>{
-    return this.http.get('/api/reservations/search_by_date/' + startDate + '/' + endDate, {
-      headers: this.headers,
-      responseType: 'json',
-    });
+  getAllReservationDatesByDate(
+    startDate: string,
+    endDate: string
+  ): Observable<any> {
+    return this.http.get(
+      '/api/reservations/search_by_date/' + startDate + '/' + endDate,
+      {
+        headers: this.headers,
+        responseType: 'json',
+      }
+    );
   }
 
   cancelReservationsByUserId(reservation: any): Observable<any> {

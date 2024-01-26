@@ -5,7 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
+
+	// "log"
 	"net/http"
 	"os"
 	"strconv"
@@ -14,6 +15,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
+	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"

@@ -3,11 +3,13 @@ package main
 import (
 	"errors"
 	"fmt"
-	"log"
+
+	// "log"
 	"os"
 	"time"
 
 	"github.com/gocql/gocql"
+	log "github.com/sirupsen/logrus"
 )
 
 type ReservationRepo struct {
@@ -77,7 +79,7 @@ func (rs *ReservationRepo) CloseSession() {
 func (rs *ReservationRepo) CreateTables() {
 	//RESERVATION BY ACCO
 	err := rs.session.Query(
-		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s 
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s
 						(reservation_id UUID, acco_id text, host_id text, numberPeople int, priceByPeople int, priceByAcoommodation int,
 						startDate date, endDate date, isDeleted boolean,
 						PRIMARY KEY ((reservation_id, acco_id), startDate))
@@ -86,24 +88,66 @@ func (rs *ReservationRepo) CreateTables() {
 	if err != nil {
 		rs.logger.Println(err)
 	}
+	err = rs.session.Query(
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s 
+						(reservation_id UUID, acco_id text, host_id text, numberPeople int, priceByPeople int, priceByAcoommodation int,
+						startDate date, endDate date,
+						PRIMARY KEY ((acco_id), reservation_id, startDate))
+						WITH CLUSTERING ORDER BY (reservation_id ASC, startDate DESC)`,
+			"reservations_by_acco1")).Exec()
+	if err != nil {
+		rs.logger.Println(err)
+	}
+
+	err = rs.session.Query(
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s 
+						(reservation_id UUID, acco_id text, host_id text, numberPeople int, priceByPeople int, priceByAcoommodation int,
+						startDate date, endDate date,
+						PRIMARY KEY ((host_id), reservation_id, startDate))
+						WITH CLUSTERING ORDER BY (reservation_id ASC, startDate DESC)`,
+			"reservations_by_acco2")).Exec()
+	if err != nil {
+		rs.logger.Println(err)
+	}
 
 	//RESERVATION BY GUEST
 	err = rs.session.Query(
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s 
 					(user_id text, reservation_id text, acco_id text, price int, 
-						begin_reservation_date date, numberOfPeople int, end_reservation_date date, isDeleted boolean,
-					PRIMARY KEY ((user_id, reservation_id, acco_id, begin_reservation_date, end_reservation_date), price))
-					WITH CLUSTERING ORDER BY (price ASC)`,
+						begin_reservation_date date, numberOfPeople int, end_reservation_date date,
+					PRIMARY KEY ((user_id), reservation_id, acco_id, begin_reservation_date, end_reservation_date, price))
+					WITH CLUSTERING ORDER BY (reservation_id ASC, acco_id ASC, begin_reservation_date ASC, end_reservation_date ASC, price ASC)`,
 			"reservations_by_user")).Exec()
 	if err != nil {
 		rs.logger.Println(err)
 	}
+	// err = rs.session.Query(
+	// 	fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s
+	// 				(user_id text, reservation_id text, acco_id text, price int,
+	// 					begin_reservation_date date, numberOfPeople int, end_reservation_date date, isDeleted boolean,
+	// 				PRIMARY KEY ((user_id, reservation_id, acco_id, begin_reservation_date, end_reservation_date), price))
+	// 				WITH CLUSTERING ORDER BY (price ASC)`,
+	// 		"reservations_by_user")).Exec()
+	// if err != nil {
+	// 	rs.logger.Println(err)
+	// }
+
+	// err = rs.session.Query(
+	// 	fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s
+	// 				(user_id text, reservation_id text, acco_id text, price int,
+	// 					begin_reservation_date date, numberOfPeople int, end_reservation_date date,
+	// 				PRIMARY KEY ((user_id), reservation_id, acco_id, begin_reservation_date, end_reservation_date, price))
+	// 				WITH CLUSTERING ORDER BY (reservation_id ASC, acco_id ASC, begin_reservation_date ASC, end_reservation_date ASC, price ASC)`,
+	// 		"reservations_test1")).Exec()
+	// if err != nil {
+	// 	rs.logger.Println(err)
+	// }
 
 	//FIND RESERVATION DATES FOR ACCO
 	err = rs.session.Query(
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s 
-					(id UUID, accommodation_id text, begin_reservation_date date, end_reservation_date date,
-					PRIMARY KEY (accommodation_id, id))`,
+					(accommodation_id text, begin_reservation_date date, end_reservation_date date,
+					PRIMARY KEY (accommodation_id, begin_reservation_date, end_reservation_date))`,
 			"reservations_dates_by_acco_id")).Exec()
 	if err != nil {
 		rs.logger.Println(err)
@@ -122,12 +166,12 @@ func (rs *ReservationRepo) CreateTables() {
 
 // -------Reservation By Accommodation-------//
 func (rs *ReservationRepo) GetReservationsByAcco(acco_id string) (ReservationsByAccommodation, error) {
-	scanner := rs.session.Query(`SELECT * FROM reservations_by_acco WHERE acco_id = ? AND isDeleted = false ALLOW FILTERING;`,
+	scanner := rs.session.Query(`SELECT reservation_id, acco_id, startDate, endDate, host_id, numberPeople, priceByAcoommodation, priceByPeople FROM reservations_by_acco1 WHERE acco_id = ?;`,
 		acco_id).Iter().Scanner() // lista
 	var reservations ReservationsByAccommodation
 	for scanner.Next() {
 		var res ReservationByAccommodation
-		err := scanner.Scan(&res.ReservationId, &res.AccoId, &res.StartDate, &res.EndDate, &res.HostId, &res.IsDeleted, &res.NumberPeople, &res.PriceByAccommodation, &res.PriceByPeople)
+		err := scanner.Scan(&res.ReservationId, &res.AccoId, &res.StartDate, &res.EndDate, &res.HostId, &res.NumberPeople, &res.PriceByAccommodation, &res.PriceByPeople)
 		if err != nil {
 			rs.logger.Println("Cant 1", err)
 			return nil, err
@@ -154,11 +198,21 @@ func (rs *ReservationRepo) InsertReservationByAcco(resAcco *ReservationByAccommo
 
 	reservationId, _ := gocql.RandomUUID()
 	err = rs.session.Query(
-		`INSERT INTO reservations_by_acco (reservation_id, acco_id, host_id, numberPeople, priceByPeople, priceByAcoommodation,
-			startDate, endDate, isDeleted) VALUES 
-		(?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+		`INSERT INTO reservations_by_acco1 (reservation_id, acco_id, host_id, numberPeople, priceByPeople, priceByAcoommodation,
+			startDate, endDate) VALUES 
+		(?, ?, ?, ?, ?, ?, ?, ?);`,
 		reservationId, resAcco.AccoId, resAcco.HostId, resAcco.NumberPeople, resAcco.PriceByPeople, resAcco.PriceByAccommodation,
-		resAcco.StartDate, resAcco.EndDate, false).Exec()
+		resAcco.StartDate, resAcco.EndDate).Exec()
+	if err != nil {
+		rs.logger.Println(err)
+		return err
+	}
+	err = rs.session.Query(
+		`INSERT INTO reservations_by_acco2 (reservation_id, acco_id, host_id, numberPeople, priceByPeople, priceByAcoommodation,
+			startDate, endDate) VALUES 
+		(?, ?, ?, ?, ?, ?, ?, ?);`,
+		reservationId, resAcco.AccoId, resAcco.HostId, resAcco.NumberPeople, resAcco.PriceByPeople, resAcco.PriceByAccommodation,
+		resAcco.StartDate, resAcco.EndDate).Exec()
 	if err != nil {
 		rs.logger.Println(err)
 		return err
@@ -167,12 +221,12 @@ func (rs *ReservationRepo) InsertReservationByAcco(resAcco *ReservationByAccommo
 }
 
 func (rs *ReservationRepo) GetReservationsDatesByHostId(host_id string) (ReservationsByAccommodation, error) {
-	scanner := rs.session.Query(`SELECT * FROM reservations_by_acco WHERE host_id = ? AND isDeleted = false ALLOW FILTERING;`,
+	scanner := rs.session.Query(`SELECT reservation_id, acco_id, startDate, endDate, host_id, numberPeople, priceByAcoommodation, priceByPeople FROM reservations_by_acco2 WHERE host_id = ?;`,
 		host_id).Iter().Scanner() // lista
 	var reservations ReservationsByAccommodation
 	for scanner.Next() {
 		var res ReservationByAccommodation
-		err := scanner.Scan(&res.ReservationId, &res.AccoId, &res.StartDate, &res.EndDate, &res.HostId, &res.IsDeleted, &res.NumberPeople, &res.PriceByAccommodation, &res.PriceByPeople)
+		err := scanner.Scan(&res.ReservationId, &res.AccoId, &res.StartDate, &res.EndDate, &res.HostId, &res.NumberPeople, &res.PriceByAccommodation, &res.PriceByPeople)
 		if err != nil {
 			rs.logger.Println("Cant 1", err)
 			return nil, err
@@ -190,8 +244,8 @@ func (rs *ReservationRepo) GetReservationsDatesByHostId(host_id string) (Reserva
 // RESERVATION DATE FOR ACCO
 func (rs *ReservationRepo) GetReservationsDatesByAccomodationId(acco_id string) (ReservationDatesByAccomodationId, error) {
 	scanner := rs.session.Query(`SELECT begin_reservation_date, end_reservation_date
-    FROM reservations_by_user
-    WHERE acco_id = ? and isDeleted = false ALLOW FILTERING`,
+    FROM reservations_dates_by_acco_id
+    WHERE accommodation_id = ?;`, // teba videi da li ce trebati isDeleted
 		acco_id).Iter().Scanner()
 
 	var dates ReservationDatesByAccomodationId
@@ -214,26 +268,26 @@ func (rs *ReservationRepo) GetReservationsDatesByAccomodationId(acco_id string) 
 func (rs *ReservationRepo) InsertReservationDateForAccomodation(resDate *ReservationDateByDate) error { // -----------------------
 	log.Println("Usli u Insert")
 
-	overlap, err := rs.CheckOverlap(resDate.AccoId, resDate.BeginAccomodationDate, resDate.EndAccomodationDate)
-	if err != nil {
-		return err
-	}
+	// overlap, err := rs.CheckOverlap(resDate.AccoId, resDate.BeginAccomodationDate, resDate.EndAccomodationDate)
+	// if err != nil {
+	// 	return err
+	// }
 
-	if overlap {
-		return errors.New("overlap detected: Cannot insert overlapping date range")
-	}
+	// if overlap {
+	// 	return errors.New("overlap detected: Cannot insert overlapping date range")
+	// }
 
-	id, _ := gocql.RandomUUID()
+	// id, _ := gocql.RandomUUID()
 
-	err = rs.session.Query(
-		`INSERT INTO reservations_dates_by_accomodation_id (id, accommodation_id, begin_reservation_date, end_reservation_date) 
-		VALUES (?, ?, ?, ?);`,
-		id, resDate.AccoId, resDate.BeginAccomodationDate, resDate.EndAccomodationDate).Exec()
-	if err != nil {
-		rs.logger.Println(err)
-		return err
-	}
-	log.Println("Insert prosao")
+	// err = rs.session.Query(
+	// 	`INSERT INTO reservations_dates_by_acco_id (id, accommodation_id, begin_reservation_date, end_reservation_date)
+	// 	VALUES (?, ?, ?, ?);`,
+	// 	id, resDate.AccoId, resDate.BeginAccomodationDate, resDate.EndAccomodationDate).Exec()
+	// if err != nil {
+	// 	rs.logger.Println(err)
+	// 	return err
+	// }
+	// log.Println("Insert prosao")
 	return nil
 }
 
@@ -277,7 +331,7 @@ func (rs *ReservationRepo) InsertReservationDateByDate(resDate *ReservationDateB
 func (rs *ReservationRepo) GetReservationsByUser(user_id string) (ReservationsByUser, error) {
 	scanner := rs.session.Query(`SELECT reservation_id, acco_id, price, 
 	begin_reservation_date, numberOfPeople, end_reservation_date
-	FROM reservations_by_user WHERE user_id = ? AND isDeleted = false ALLOW FILTERING;`,
+	FROM reservations_by_user WHERE user_id = ?;`,
 		user_id).Iter().Scanner()
 
 	var reservations ReservationsByUser
@@ -321,10 +375,19 @@ func (rs *ReservationRepo) InsertReservationByUser(resUser *ReservationByUser) e
 
 	err = rs.session.Query(
 		`INSERT INTO reservations_by_user (user_id, reservation_id, acco_id, price, 
-			begin_reservation_date, numberOfPeople, end_reservation_date, isDeleted) 
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+			begin_reservation_date, numberOfPeople, end_reservation_date) 
+		VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		resUser.UserId, resUser.ReservationId, resUser.AccoId, 100,
-		resUser.StartDate, 2, resUser.EndDate, false).Exec()
+		resUser.StartDate, 2, resUser.EndDate).Exec()
+	if err != nil {
+		rs.logger.Println(err)
+		return err
+	}
+
+	err = rs.session.Query(
+		`INSERT INTO reservations_dates_by_acco_id (accommodation_id, begin_reservation_date, end_reservation_date) 
+		VALUES (?, ?, ?);`,
+		resUser.AccoId, resUser.StartDate, resUser.EndDate).Exec()
 	if err != nil {
 		rs.logger.Println(err)
 		return err
@@ -334,16 +397,21 @@ func (rs *ReservationRepo) InsertReservationByUser(resUser *ReservationByUser) e
 
 //--------------//
 
-func (rs *ReservationRepo) UpdateReservationByAcco(accoId string, reservationId string, price string) error {
-	// za Update je neophodno da pronadjemo vrednost po PRIMARNOM KLJUCU = PK + CK (ukljucuje sve kljuceve particije i klastera)
-	// u ovom slucaju: PK = smerId, CK = student_id, indeks
-	err := rs.session.Query(
-		`UPDATE reservations_by_acco SET isDeleted = 1 where acoo_id = ? and reservation_id = ?`,
-		accoId, reservationId).Exec()
-	if err != nil {
-		rs.logger.Println(err)
-		return err
-	}
+func (rs *ReservationRepo) UpdateReservationByAcco(accoId string, reservationId string, hostId string) error { // nije namesteno
+	// err := rs.session.Query(
+	// 	`DELETE FROM reservations_by_acco1 where acoo_id = ? and reservation_id = ?`, // delete
+	// 	accoId, reservationId).Exec()
+	// if err != nil {
+	// 	rs.logger.Println(err)
+	// 	return err
+	// }
+	// err = rs.session.Query(
+	// 	`DELETE FROM reservations_by_acco2 where host_id = ? and reservation_id = ?`, // delete
+	// 	hostId, reservationId).Exec()
+	// if err != nil {
+	// 	rs.logger.Println(err)
+	// 	return err
+	// }
 	return nil
 }
 
@@ -376,7 +444,7 @@ func (rs *ReservationRepo) CheckOverlap(accommodationID string, beginDate, endDa
 	err := rs.session.Query(
 		`SELECT COUNT(*) FROM reservations_by_user
          WHERE acco_id = ? 
-         AND begin_reservation_date <= ? AND end_reservation_date >= ? AND isDeleted = false ALLOW FILTERING`,
+         AND begin_reservation_date <= ? AND end_reservation_date >= ? ALLOW FILTERING`,
 		accommodationID, endDate, beginDate).Scan(&count)
 
 	if err != nil {
@@ -391,9 +459,9 @@ func (rs *ReservationRepo) CheckOverlap(accommodationID string, beginDate, endDa
 func (rs *ReservationRepo) CheckOverlap1(accommodationID string, beginDate, endDate time.Time) (bool, error) {
 	var count int
 	err := rs.session.Query(
-		`SELECT COUNT(*) FROM reservations_by_acco
+		`SELECT COUNT(*) FROM reservations_by_acco1
          WHERE acco_id = ? 
-         AND startDate <= ? AND endDate >= ? AND isDeleted = false ALLOW FILTERING`,
+         AND startDate <= ? AND endDate >= ? ALLOW FILTERING`,
 		accommodationID, endDate, beginDate).Scan(&count)
 
 	if err != nil {
@@ -431,8 +499,17 @@ func (rs *ReservationRepo) UpdateReservationByUser(reservationByUser *Reservatio
 	// treba da se postavi validacija da li je datum prosao ako jeste onda ne moze da otkaze rezervaciju
 
 	err = rs.session.Query(
-		`UPDATE reservations_by_user SET isDeleted = true where user_id = ? and reservation_id = ? and acco_id = ? and begin_reservation_date = ? and end_reservation_date = ? and price = ?`,
+		`DELETE from reservations_by_user where user_id = ? and reservation_id = ? and acco_id = ? and begin_reservation_date = ? and end_reservation_date = ? and price = ?`,
 		reservationByUser.UserId, reservationByUser.ReservationId, reservationByUser.AccoId, reservationByUser.StartDate, reservationByUser.EndDate, reservationByUser.Price).Exec()
+
+	if err != nil {
+		rs.logger.Println(err)
+		return err
+	}
+
+	err = rs.session.Query(
+		`DELETE from reservations_dates_by_acco_id where accommodation_id = ? and begin_reservation_date = ? and end_reservation_date = ?;`,
+		reservationByUser.AccoId, reservationByUser.StartDate, reservationByUser.EndDate).Exec()
 
 	if err != nil {
 		rs.logger.Println(err)

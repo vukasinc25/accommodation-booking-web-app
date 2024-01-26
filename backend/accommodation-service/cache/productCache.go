@@ -5,12 +5,14 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"log"
+
+	// "log"
 	"os"
 	"strings"
 	"time"
 
 	redis "github.com/go-redis/redis/v8"
+	log "github.com/sirupsen/logrus"
 )
 
 type ProductCache struct {

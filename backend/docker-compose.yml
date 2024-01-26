@@ -20,8 +20,13 @@ services:
     depends_on:
       mongo:
         condition: service_healthy
+    volumes:
+      - auth_log:/auth
     networks:
       - network
+    # volumes:
+    #   - ./auth-service/cert/auth-server.crt:/cert/auth-server.crt
+    #   - ./auth-service/cert/auth-server.key:/cert/auth-server.key
 
   prof-service:
     image: prof-service
@@ -36,11 +41,16 @@ services:
       PROF_DB_PORT: ${PROF_DB_PORT}
       RESERVATION_SERVICE_HOST: ${RESERVATION_SERVICE_HOST}
       RESERVATION_SERVICE_PORT: ${RESERVATION_SERVICE_PORT}
-    # depends_on:
-    # consul:
-    #   condition: service_healthy
+    depends_on:
+      consul:
+        condition: service_healthy
+    volumes:
+      - prof_log:/prof
     networks:
       - network
+    # volumes:
+    #   - ./prof-service/cert/prof-server.crt:/cert/prof-server.crt
+    #   - ./prof-service/cert/prof-server.key:/cert/prof-server.key
 
   accommodation-service:
     image: accommodation-service
@@ -71,6 +81,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    volumes:
+      - acco_log:/acco
     networks:
       - network
 
@@ -107,6 +119,8 @@ services:
     depends_on:
       cassandra:
         condition: service_healthy
+    volumes:
+      - res_log:/res
     networks:
       - network
 
@@ -297,6 +311,10 @@ volumes:
   hadoop_datanode1:
   hadoop_datanode2:
   hadoop_datanode3:
+  auth_log:
+  prof_log:
+  acco_log:
+  res_log:
 
 networks:
   network:

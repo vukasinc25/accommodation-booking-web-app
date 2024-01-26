@@ -200,6 +200,7 @@ export class AccommoInfoComponent implements OnInit {
       },
       error: (err) => {
         console.log(err);
+        alert(err.error.messa);
       },
     });
   }
@@ -314,7 +315,7 @@ export class AccommoInfoComponent implements OnInit {
         error: (err) => {
           console.log(err.error.message);
           alert(err.error.message);
-          this.ngOnInit();
+          // this.ngOnInit();
         },
       });
 

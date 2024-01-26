@@ -17,7 +17,6 @@ type ReservationByAccommodation struct {
 	PriceByAccommodation int        `json:"priceByAccommodation"`
 	StartDate            time.Time  `json:"startDate"`
 	EndDate              time.Time  `json:"endDate"`
-	IsDeleted            bool       `json:"isDeleted"`
 }
 
 type ReservationByUser struct {

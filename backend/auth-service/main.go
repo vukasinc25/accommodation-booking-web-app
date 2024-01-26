@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+
+	// "log"
+
 	"net/http"
 	"os"
 	"os/signal"
@@ -12,10 +14,36 @@ import (
 
 	gorillaHandlers "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+
+	lumberjack "github.com/natefinch/lumberjack"
+	log "github.com/sirupsen/logrus"
 	"github.com/vukasinc25/fst-airbnb/token"
 )
 
 func main() {
+
+	logger := log.New()
+
+	// Set up log rotation with Lumberjack
+	lumberjackLogger := &lumberjack.Logger{
+		Filename:   "/auth/file.log",
+		MaxSize:    10, // MB
+		MaxBackups: 3,
+		LocalTime:  true, // Use local time
+	}
+	logger.SetOutput(lumberjackLogger)
+
+	// Handle log rotation gracefully on program exit
+	defer func() {
+		if err := lumberjackLogger.Close(); err != nil {
+			log.Error("Error closing log file:", err)
+		}
+	}()
+
+	// ... (rest of your code)
+
+	// Example log statements
+	logger.Info("lavor1")
 
 	config := loadConfig()
 	// Read the port from the environment variable, default to "8000" if not set
@@ -33,8 +61,8 @@ func main() {
 	cors := gorillaHandlers.CORS(gorillaHandlers.AllowedOrigins([]string{"*"}))
 
 	// Initialize loggers with prefixes for different components
-	logger := log.New(os.Stdout, "[auth-api] ", log.LstdFlags)
-	storeLogger := log.New(os.Stdout, "[auth-store] ", log.LstdFlags)
+	// logger := log.New(os.Stdout, "[auth-api] ", log.LstdFlags)
+	// storeLogger := log.New(os.Stdout, "[auth-store] ", log.LstdFlags)
 
 	// Create a JWT token maker
 	tokenMaker, err := token.NewJWTMaker("12345678901234567890123456789012")
@@ -43,7 +71,7 @@ func main() {
 	}
 
 	// NoSQL: Initialize auth Repository store
-	store, err := New(timeoutContext, storeLogger, config["conn_service_address"], config["conn_reservation_service_address"], config["conn_accommodation_service_address"])
+	store, err := New(timeoutContext, logger, config["conn_service_address"], config["conn_reservation_service_address"], config["conn_accommodation_service_address"])
 	if err != nil {
 		logger.Fatal(err)
 	}
@@ -91,10 +119,11 @@ func main() {
 		IdleTimeout:  120 * time.Second,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
-		//TLSConfig: &tls.Config{
-		//	MinVersion:   tls.VersionTLS12,
-		//	CipherSuites: []uint16{tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384},
-		//},
+		// TLSConfig: &tls.Config{
+		// 	InsecureSkipVerify: true, // samo za testiranje
+		// MinVersion:         tls.VersionTLS12,
+		// CipherSuites:       []uint16{tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384},
+		// },
 	}
 
 	// Print a message indicating the server is listening
@@ -103,7 +132,7 @@ func main() {
 	// Start the HTTP server in a goroutine
 	go func() {
 		err := server.ListenAndServe()
-		//err := server.ListenAndServeTLS("cert/auth-server.crt", "cert/auth-server.key")
+		// err := server.ListenAndServeTLS("/cert/auth-server.crt", "/cert/auth-server.key")
 		if err != nil {
 			logger.Fatal(err)
 		}
@@ -134,3 +163,17 @@ func loadConfig() map[string]string {
 	config["conn_accommodation_service_address"] = fmt.Sprintf("http://%s:%s", os.Getenv("ACCOMMODATION_SERVICE_HOST"), os.Getenv("ACCOMMODATION_SERVICE_PORT"))
 	return config
 }
+
+// func logFile() {
+// 	logFilePath := "/app/logs/all-services.log" // Use an absolute path inside the container
+
+// 	logFile, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+// 	if err != nil {
+// 		log.Fatal("Error opening log file:", err)
+// 	}
+// 	defer logFile.Close()
+
+// 	log.SetOutput(logFile)
+
+// 	log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds | log.LUTC)
+// }

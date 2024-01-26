@@ -4,11 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
+
+	// "log"
 	"os"
 	"path"
 
 	"github.com/colinmarc/hdfs/v2"
+	log "github.com/sirupsen/logrus"
 )
 
 // NoSQL: FileStorage struct encapsulating HDFS client

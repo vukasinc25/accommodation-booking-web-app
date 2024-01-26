@@ -3,11 +3,13 @@ package handlers
 import (
 	"encoding/json"
 	"io/ioutil"
-	"log"
+
+	// "log"
 	"net/http"
 	"strings"
 
 	"github.com/gorilla/mux"
+	log "github.com/sirupsen/logrus"
 	"github.com/vukasinc25/fst-airbnb/cache"
 	"github.com/vukasinc25/fst-airbnb/storage"
 )

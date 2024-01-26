@@ -5,11 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+
+	// "log"
 	"net/http"
 	"os"
 	"time"
 
+	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -103,6 +105,7 @@ func (uh *UserRepo) Insert(newUser *User) (*http.Response, error) {
 		return nil, err
 	}
 
+	log.Println("Url:", url)
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(reqBody))
 	if err != nil {
 		return nil, err

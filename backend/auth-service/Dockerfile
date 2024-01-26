@@ -9,6 +9,7 @@ FROM alpine
 WORKDIR /usr/bin
 COPY --from=build_container /app/server .
 RUN mkdir cert
-COPY ./auth-service/cert ./cert
+COPY ./auth-service/cert/auth-server.crt /cert/auth-server.crt
+COPY ./auth-service/cert/auth-server.key /cert/auth-server.key
 EXPOSE 8000
 ENTRYPOINT ["server"]

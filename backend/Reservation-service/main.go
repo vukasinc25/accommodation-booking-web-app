@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"log"
+	// "log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -11,10 +11,35 @@ import (
 
 	gorillaHandlers "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	lumberjack "github.com/natefinch/lumberjack"
+	log "github.com/sirupsen/logrus"
 	"github.com/sony/gobreaker"
 )
 
 func main() {
+
+	logger := log.New()
+
+	// Set up log rotation with Lumberjack
+	lumberjackLogger := &lumberjack.Logger{
+		Filename:   "/res/file.log",
+		MaxSize:    10, // MB
+		MaxBackups: 3,
+		LocalTime:  true, // Use local time
+	}
+	logger.SetOutput(lumberjackLogger)
+
+	// Handle log rotation gracefully on program exit
+	defer func() {
+		if err := lumberjackLogger.Close(); err != nil {
+			log.Error("Error closing log file:", err)
+		}
+	}()
+
+	// ... (rest of your code)
+
+	// Example log statements
+	logger.Info("lavor1")
 
 	authClient := &http.Client{
 		Transport: &http.Transport{
@@ -40,10 +65,10 @@ func main() {
 	timeoutContext, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	logger := log.New(os.Stdout, "[reservation-api] ", log.LstdFlags)
-	storeLogger := log.New(os.Stdout, "[reservation-store] ", log.LstdFlags)
+	// logger := log.New(os.Stdout, "[reservation-api] ", log.LstdFlags)
+	// storeLogger := log.New(os.Stdout, "[reservation-store] ", log.LstdFlags)
 
-	store, err := New(storeLogger)
+	store, err := New(logger)
 	if err != nil {
 		logger.Fatal(err)
 	}
@@ -76,9 +101,9 @@ func main() {
 	postReservationForUser.HandleFunc("/api/reservations/for_acco", reservationHandler.CreateReservationForAcco)
 	postReservationForUser.Use(reservationHandler.MiddlewareRoleCheck(authClient, authBreaker))
 
-	postReservationDateByAccomodation := router.Methods(http.MethodPost).Subrouter()
-	postReservationDateByAccomodation.HandleFunc("/api/reservations/date_for_acoo", reservationHandler.CreateReservationDateForAccommodation)
-	postReservationDateByAccomodation.Use(reservationHandler.MiddlewareRoleCheck1(authClient, authBreaker))
+	// postReservationDateByAccomodation := router.Methods(http.MethodPost).Subrouter()
+	// postReservationDateByAccomodation.HandleFunc("/api/reservations/date_for_acoo", reservationHandler.CreateReservationDateForAccommodation)
+	// postReservationDateByAccomodation.Use(reservationHandler.MiddlewareRoleCheck1(authClient, authBreaker))
 
 	getReservationDatesByAccomodationId := router.Methods(http.MethodGet).Subrouter()
 	getReservationDatesByAccomodationId.HandleFunc("/api/reservations/dates_by_acco_id/{id}", reservationHandler.GetReservationDatesByAccommodationId)

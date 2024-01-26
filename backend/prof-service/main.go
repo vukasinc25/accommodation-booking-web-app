@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -11,10 +10,35 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	lumberjack "github.com/natefinch/lumberjack"
+	log "github.com/sirupsen/logrus"
 	"github.com/sony/gobreaker"
 )
 
 func main() {
+
+	logger := log.New()
+
+	// Set up log rotation with Lumberjack
+	lumberjackLogger := &lumberjack.Logger{
+		Filename:   "/prof/file.log",
+		MaxSize:    10, // MB
+		MaxBackups: 3,
+		LocalTime:  true, // Use local time
+	}
+	logger.SetOutput(lumberjackLogger)
+
+	// Handle log rotation gracefully on program exit
+	defer func() {
+		if err := lumberjackLogger.Close(); err != nil {
+			log.Error("Error closing log file:", err)
+		}
+	}()
+
+	// ... (rest of your code)
+
+	// Example log statements
+	logger.Info("lavor1")
 
 	authClient := &http.Client{
 		Transport: &http.Transport{
@@ -41,7 +65,17 @@ func main() {
 	config := loadConfig()
 
 	//Initialize the logger we are going to use, with prefix and datetime for every log
-	logger := log.New(os.Stdout, "[product-api] ", log.LstdFlags)
+	// logger := log.New(os.Stdout, "[product-api] ", log.LstdFlags)
+	// logger := log.New()
+
+	// lumberjackLogger := &lumberjack.Logger{
+	// 	Filename:   "/cert/misc.log",
+	// 	MaxSize:    10,
+	// 	MaxBackups: 3,
+	// 	MaxAge:     3,
+	// 	LocalTime:  true,
+	// }
+	// logger.SetOutput(lumberjackLogger)
 
 	// NoSQL: Initialize Product Repository store
 	store, err := New(logger, config["conn_reservation_service_address"])
@@ -71,42 +105,57 @@ func main() {
 	router.HandleFunc("/api/prof/delete/{id}", service.DeleteUser).Methods("DELETE")
 
 	// srv := &http.Server{Addr: config["address"], Handler: router}
-	server := http.Server{
+	server := &http.Server{
 		Addr:         ":" + "8000",
 		Handler:      router,
 		IdleTimeout:  120 * time.Second,
 		ReadTimeout:  120 * time.Second,
 		WriteTimeout: 120 * time.Second,
+		// TLSConfig: &tls.Config{
+		// InsecureSkipVerify: true, // samo za testiranje
+		// MinVersion:         tls.VersionTLS12,
+		// CipherSuites:       []uint16{tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384},
+		// },
 	}
 	go func() {
-		log.Println("server starting")
-		if err := server.ListenAndServe(); err != nil {
-			if err != http.ErrServerClosed {
-				log.Fatal(err)
-			}
+		logger.Info("lavor4")
+		err := server.ListenAndServe()
+		// err := server.ListenAndServeTLS("/cert/prof-server.crt", "/cert/prof-server.key")
+		if err != nil {
+			logger.Println("Error starting server", err)
+			// logMessage(fmt.Sprintf("Error starting server: %s", err), logrus.ErrorLevel)
 		}
 	}()
 
 	<-quit
 
-	log.Println("service shutting down ...")
+	// logMessage("Service shutting down...", logrus.InfoLevel)
+	logger.Println("Service shutting down...")
 
 	// gracefully stop server
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if err := server.Shutdown(ctx); err != nil {
-		log.Fatal(err)
+		// logMessage(fmt.Sprintf("Error shutting down server: %s", err), logrus.ErrorLevel)
+		logger.Println("Error shutting down server", err)
 	}
-	log.Println("server stopped")
+	// logMessage("Server stopped", logrus.InfoLevel)
+	logger.Println("Server stopped")
 
 }
 
-func handleErr(err error) {
-	if err != nil {
-		log.Fatalln(err)
-	}
-}
+//	func handleErr(err error) {
+//		if err != nil {
+//			logger.Fatalln(err)
+//		}
+//	}
+// func handleErr(err error) {
+// 	if err != nil {
+// 		// logMessage(fmt.Sprintf("Error: %s", err), logrus.ErrorLevel)
+// 		logger.Println(err.Error())
+// 	}
+// }
 
 func loadConfig() map[string]string {
 	config := make(map[string]string)

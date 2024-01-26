@@ -3,7 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+
+	// "log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -16,10 +17,35 @@ import (
 
 	gorillaHandlers "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	lumberjack "github.com/natefinch/lumberjack"
+	log "github.com/sirupsen/logrus"
 	"github.com/sony/gobreaker"
 )
 
 func main() {
+
+	logger := log.New()
+
+	// Set up log rotation with Lumberjack
+	lumberjackLogger := &lumberjack.Logger{
+		Filename:   "/acoo/file.log",
+		MaxSize:    10, // MB
+		MaxBackups: 3,
+		LocalTime:  true, // Use local time
+	}
+	logger.SetOutput(lumberjackLogger)
+
+	// Handle log rotation gracefully on program exit
+	defer func() {
+		if err := lumberjackLogger.Close(); err != nil {
+			log.Error("Error closing log file:", err)
+		}
+	}()
+
+	// ... (rest of your code)
+
+	// Example log statements
+	logger.Info("lavor1")
 
 	config := loadConfig()
 
@@ -42,12 +68,12 @@ func main() {
 	timeoutContext, cancel := context.WithTimeout(context.Background(), 50*time.Second)
 	defer cancel()
 
-	logger := log.New(os.Stdout, "[accommo-api] ", log.LstdFlags)
-	storeLogger := log.New(os.Stdout, "[accommo-store] ", log.LstdFlags)
-	storageLogger := log.New(os.Stdout, "[file-storage] ", log.LstdFlags)
-	loggerCache := log.New(os.Stdout, "[redis-cache] ", log.LstdFlags)
+	// logger := log.New(os.Stdout, "[accommo-api] ", log.LstdFlags)
+	// storeLogger := log.New(os.Stdout, "[accommo-store] ", log.LstdFlags)
+	// storageLogger := log.New(os.Stdout, "[file-storage] ", log.LstdFlags)
+	// loggerCache := log.New(os.Stdout, "[redis-cache] ", log.LstdFlags)
 	//pub := InitPubSub()
-	store, err := New(timeoutContext, storeLogger, config["conn_reservation_service_address"])
+	store, err := New(timeoutContext, logger, config["conn_reservation_service_address"])
 	if err != nil {
 		logger.Fatal(err)
 	}
@@ -56,7 +82,8 @@ func main() {
 	store.Ping()
 
 	// NoSQL: Initialize File Storage store
-	imageStore, err := storage.New(storageLogger)
+	// imageStore, err := storage.New(storageLogger)
+	imageStore, err := storage.New(logger)
 	if err != nil {
 		logger.Fatal(err)
 	}
@@ -71,7 +98,8 @@ func main() {
 	// Create directory tree on HDFS
 	_ = imageStore.CreateDirectories()
 
-	prCache := cache.New(loggerCache)
+	// prCache := cache.New(loggerCache)
+	prCache := cache.New(logger)
 	// Test connection
 	prCache.Ping()
 
