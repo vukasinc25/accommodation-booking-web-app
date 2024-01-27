@@ -4,12 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-<<<<<<< Updated upstream
-
-	// "log"
-=======
-	"log"
->>>>>>> Stashed changes
 	"net/http"
 	"strings"
 

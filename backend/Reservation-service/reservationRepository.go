@@ -198,15 +198,9 @@ func (rs *ReservationRepo) InsertReservationByAcco(resAcco *ReservationByAccommo
 
 	reservationId, _ := gocql.RandomUUID()
 	err = rs.session.Query(
-<<<<<<< Updated upstream
 		`INSERT INTO reservations_by_acco1 (reservation_id, acco_id, host_id, numberPeople, priceByPeople, priceByAcoommodation,
 			startDate, endDate) VALUES 
 		(?, ?, ?, ?, ?, ?, ?, ?);`,
-=======
-		`INSERT INTO reservations_by_acco (reservation_id, acco_id, host_id, numberPeople, priceByPeople, priceByAcoommodation,
-			startDate, endDate, isDeleted) VALUES 
-		(?, ?, ?, ?, ?, ?, ?, ?, ?);`,
->>>>>>> Stashed changes
 		reservationId, resAcco.AccoId, resAcco.HostId, resAcco.NumberPeople, resAcco.PriceByPeople, resAcco.PriceByAccommodation,
 		resAcco.StartDate, resAcco.EndDate).Exec()
 	if err != nil {
@@ -227,20 +221,12 @@ func (rs *ReservationRepo) InsertReservationByAcco(resAcco *ReservationByAccommo
 }
 
 func (rs *ReservationRepo) GetReservationsDatesByHostId(host_id string) (ReservationsByAccommodation, error) {
-<<<<<<< Updated upstream
 	scanner := rs.session.Query(`SELECT reservation_id, acco_id, startDate, endDate, host_id, numberPeople, priceByAcoommodation, priceByPeople FROM reservations_by_acco2 WHERE host_id = ?;`,
-=======
-	scanner := rs.session.Query(`SELECT * FROM reservations_by_acco WHERE host_id = ? AND isDeleted = false ALLOW FILTERING;`,
->>>>>>> Stashed changes
 		host_id).Iter().Scanner() // lista
 	var reservations ReservationsByAccommodation
 	for scanner.Next() {
 		var res ReservationByAccommodation
-<<<<<<< Updated upstream
 		err := scanner.Scan(&res.ReservationId, &res.AccoId, &res.StartDate, &res.EndDate, &res.HostId, &res.NumberPeople, &res.PriceByAccommodation, &res.PriceByPeople)
-=======
-		err := scanner.Scan(&res.ReservationId, &res.AccoId, &res.StartDate, &res.EndDate, &res.HostId, &res.IsDeleted, &res.NumberPeople, &res.PriceByAccommodation, &res.PriceByPeople)
->>>>>>> Stashed changes
 		if err != nil {
 			rs.logger.Println("Cant 1", err)
 			return nil, err
@@ -476,23 +462,6 @@ func (rs *ReservationRepo) CheckOverlap1(accommodationID string, beginDate, endD
 		`SELECT COUNT(*) FROM reservations_by_acco1
          WHERE acco_id = ? 
          AND startDate <= ? AND endDate >= ? ALLOW FILTERING`,
-		accommodationID, endDate, beginDate).Scan(&count)
-
-	if err != nil {
-		rs.logger.Println(err)
-		return false, err
-	}
-
-	log.Println("Count: ", count)
-
-	return count > 0, nil
-}
-func (rs *ReservationRepo) CheckOverlap1(accommodationID string, beginDate, endDate time.Time) (bool, error) {
-	var count int
-	err := rs.session.Query(
-		`SELECT COUNT(*) FROM reservations_by_acco
-         WHERE acco_id = ? 
-         AND startDate <= ? AND endDate >= ? AND isDeleted = false ALLOW FILTERING`,
 		accommodationID, endDate, beginDate).Scan(&count)
 
 	if err != nil {

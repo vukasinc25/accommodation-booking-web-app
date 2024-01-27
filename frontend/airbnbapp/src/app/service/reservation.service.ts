@@ -87,23 +87,6 @@ export class ReservationService {
     return value < 10 ? '0' + value : value.toString();
   }
 
-  formatNgbDate(date: NgbDate): string {
-    if (date) {
-      const formattedDate =
-        date.year +
-        '-' +
-        this.padZero(date.month) +
-        '-' +
-        this.padZero(date.day);
-      return formattedDate;
-    }
-    return '';
-  }
-
-  private padZero(value: number): string {
-    return value < 10 ? '0' + value : value.toString();
-  }
-
   getAllReservationsByUserId(): Observable<any> {
     return this.http.get(`/api/reservations/by_user`, {
       headers: this.headers,

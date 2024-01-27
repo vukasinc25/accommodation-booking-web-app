@@ -42,7 +42,7 @@ func (pc *ProductCache) Ping() {
 }
 
 func (pc *ProductCache) Post(image []byte, imageName string) error {
-	log.Println("Image:", image)
+	log.Println("Usli u Post")
 	key := strings.TrimSpace(imageName)
 
 	// Encode the image data to base64

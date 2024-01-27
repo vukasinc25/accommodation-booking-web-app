@@ -94,7 +94,7 @@ func main() {
 	router.Methods(http.MethodPatch).Subrouter()
 	getAllHostGrades := router.Methods(http.MethodGet).Subrouter()
 	getAllHostGrades.HandleFunc("/api/prof/hostGrades/{id}", service.GetAllHostGrades) // treba authorisation
-	// getAllHostGrades.Use(service.MiddlewareRoleCheck00(authClient, authBreaker))
+	getAllHostGrades.Use(service.MiddlewareRoleCheck00(authClient, authBreaker))
 	createHostGrade := router.Methods(http.MethodPost).Subrouter()
 	createHostGrade.HandleFunc("/api/prof/hostGrade", service.CreateHostGrade) // treba authorisation
 	createHostGrade.Use(service.MiddlewareRoleCheck0(authClient, authBreaker))

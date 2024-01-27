@@ -5,12 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-<<<<<<< Updated upstream
-
-	// "log"
-=======
-	"log"
->>>>>>> Stashed changes
 	"net/http"
 	"os"
 	"strconv"
@@ -115,7 +109,6 @@ func (ar *AccoRepo) GetAllByUsername(username string) (Accommodations, error) {
 	return accommodations, nil
 }
 
-<<<<<<< Updated upstream
 func (ar *AccoRepo) GetAllById(id string) (Accommodations, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -137,8 +130,6 @@ func (ar *AccoRepo) GetAllById(id string) (Accommodations, error) {
 	return accommodations, nil
 }
 
-=======
->>>>>>> Stashed changes
 func (ar *AccoRepo) Delete(username string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -294,11 +285,7 @@ func (ar *AccoRepo) CreateAverageRating(id string) error {
 	objID, _ := primitive.ObjectIDFromHex(id)
 	filter := bson.M{"_id": objID}
 	update := bson.M{"$set": bson.M{
-<<<<<<< Updated upstream
 		"averageGrade": float64(averageRating),
-=======
-		"averageRating": float64(averageRating),
->>>>>>> Stashed changes
 	}}
 	result, err := accommodationCollection.UpdateOne(ctx, filter, update)
 	log.Printf("Documents matched: %v\n", result.MatchedCount)
@@ -410,114 +397,6 @@ func (ar *AccoRepo) getCollection() *mongo.Collection {
 	accommodationDatabase := ar.cli.Database("mongoDemo")
 	accommodationCollection := accommodationDatabase.Collection("accommodations")
 	return accommodationCollection
-}
-
-func (ar *AccoRepo) CreateGrade(accommodatioGrade *AccommodationGrade, token string) error {
-	log.Println("Usli u CreateGrade")
-	response, err := ar.SendRequestToReservationService(token)
-	if err != nil {
-		log.Println("Error in SendRequestToReservationService method", err)
-		return err
-	}
-
-	var userReservations ReservationsByUser
-	if err := json.NewDecoder(response.Body).Decode(&userReservations); err != nil {
-		log.Println("Cant decode userReservatins", err)
-		return err
-	}
-
-	if userReservations == nil {
-		log.Println("userReservation are empty")
-		return errors.New("user with thid id dont have any reservations")
-	}
-
-	var bool = false
-	for _, reservation := range userReservations {
-		log.Println("Reservation:", reservation)
-		log.Println("Reservation.AccoId:", reservation.AccoId)
-		log.Println("Reservation.AccommodationId:", accommodatioGrade.AccommodationId)
-		if strings.TrimSpace(reservation.AccoId) == strings.TrimSpace(accommodatioGrade.AccommodationId) {
-			bool = true
-			break
-		}
-	}
-
-	if !bool {
-		log.Println("check if user have reservations for accommodation")
-		return errors.New("user dont have any reservations for this accommodation")
-	}
-	bool = false
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	accommodationCollection := ar.getCollectionForAccommodationGrade()
-
-	result, err := accommodationCollection.InsertOne(ctx, &accommodatioGrade)
-	if err != nil {
-		ar.logger.Println(err)
-		return err
-	}
-	ar.logger.Printf("Documents ID: %v\n", result.InsertedID)
-
-	err = ar.CreateAverageRating(accommodatioGrade.AccommodationId)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-
-	return nil
-}
-
-<<<<<<< Updated upstream
-func (ar *AccoRepo) getCollectionForAccommodationGrade() *mongo.Collection {
-	accommodationGradeDatabase := ar.cli.Database("mongoDemo")
-	accommodationGradeCollection := accommodationGradeDatabase.Collection("accommodationsGrades")
-	return accommodationGradeCollection
-=======
-func (ar *AccoRepo) SendRequestToReservationService(token string) (*http.Response, error) {
-	url := ar.reservation_service_address + "/api/reservations/by_user"
-
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("Content-Type", "application/json")
-
-	httpResp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	return httpResp, nil
-
-}
-
-func (ar *AccoRepo) GetAllAccommodationGrades(id string) (*AccommodationGrades, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	accommodationGradeCollection := ar.getCollectionForAccommodationGrade()
-
-	var accommodationGrades AccommodationGrades
-	accommodationGradeList, err := accommodationGradeCollection.Find(ctx, bson.M{"accommodationId": id})
-	log.Println(accommodationGradeList)
-	if err != nil {
-		ar.logger.Println(err)
-		return nil, err
-	}
-	if err = accommodationGradeList.All(ctx, &accommodationGrades); err != nil {
-		ar.logger.Println(err)
-		return nil, err
-	}
-	return &accommodationGrades, nil
-}
-
-func (ar *AccoRepo) getCollection() *mongo.Collection {
-	patientDatabase := ar.cli.Database("mongoDemo")
-	patientsCollection := patientDatabase.Collection("accommodations")
-	return patientsCollection
->>>>>>> Stashed changes
 }
 
 func (ar *AccoRepo) CreateGrade(accommodatioGrade *AccommodationGrade, token string) error {

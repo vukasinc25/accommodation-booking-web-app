@@ -73,11 +73,7 @@ func main() {
 	// storageLogger := log.New(os.Stdout, "[file-storage] ", log.LstdFlags)
 	// loggerCache := log.New(os.Stdout, "[redis-cache] ", log.LstdFlags)
 	//pub := InitPubSub()
-<<<<<<< Updated upstream
 	store, err := New(timeoutContext, logger, config["conn_reservation_service_address"])
-=======
-	store, err := New(timeoutContext, storeLogger, config["conn_reservation_service_address"])
->>>>>>> Stashed changes
 	if err != nil {
 		logger.Fatal(err)
 	}
@@ -128,10 +124,7 @@ func main() {
 	router.HandleFunc("/api/accommodations/myAccommodations/{username}", service.GetAllAccommodationsByUsername).Methods("GET")
 	router.HandleFunc("/api/accommodations/search_by_location/{locations}", service.GetAllAccommodationsByLocation).Methods("GET")
 	router.HandleFunc("/api/accommodations/search_by_noGuests/{noGuests}", service.GetAllAccommodationsByNoGuests).Methods("GET")
-<<<<<<< Updated upstream
 	router.HandleFunc("/api/accommodations/get_all_acco_by_id/{id}", service.GetAllAccommodationsById).Methods("GET")
-=======
->>>>>>> Stashed changes
 	router.HandleFunc("/api/accommodations/delete/{username}", service.DeleteAccommodation).Methods("DELETE")
 	createAccommodationGrade := router.Methods(http.MethodPost).Subrouter()
 	createAccommodationGrade.HandleFunc("/api/accommodations/accommodationGrade", service.GradeAccommodation) // treba authorisation
@@ -143,7 +136,6 @@ func main() {
 	deleteAccommodationGrade := router.Methods(http.MethodDelete).Subrouter()
 	deleteAccommodationGrade.HandleFunc("/api/accommodations/deleteAccommodationGrade/{id}", service.DeleteAccommodationGrade)
 	deleteAccommodationGrade.Use(service.MiddlewareRoleCheck00(authClient, authBreaker))
-<<<<<<< Updated upstream
 
 	router.HandleFunc("/api/accommodations/copy", storageHandler.CopyFileToStorage).Methods("POST")
 
@@ -152,8 +144,6 @@ func main() {
 	getAccommodationImage := router.Methods(http.MethodGet).Subrouter()
 	getAccommodationImage.HandleFunc("/api/accommodations/read/{fileName}", storageHandler.ReadFileFromStorage)
 	getAccommodationImage.Use(storageHandler.MiddlewareCacheHit)
-=======
->>>>>>> Stashed changes
 
 	server := http.Server{
 		Addr:         ":" + config["port"],

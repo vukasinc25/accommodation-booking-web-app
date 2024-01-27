@@ -10,12 +10,15 @@ require (
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
 	github.com/jordan-wright/email v4.0.1-0.20210109023952-943e75fe5223+incompatible
+	github.com/natefinch/lumberjack v2.0.0+incompatible
+	github.com/sirupsen/logrus v1.9.3
 	github.com/thanhpk/randstr v1.0.6
 	go.mongodb.org/mongo-driver v1.13.1
 	golang.org/x/crypto v0.13.0
 )
 
 require (
+	github.com/BurntSushi/toml v1.3.2 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/felixge/httpsnoop v1.0.3 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
@@ -27,12 +30,7 @@ require (
 	github.com/klauspost/compress v1.17.0 // indirect
 	github.com/leodido/go-urn v1.2.4 // indirect
 	github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe // indirect
-<<<<<<< Updated upstream
-	github.com/natefinch/lumberjack v2.0.0+incompatible // indirect
-=======
->>>>>>> Stashed changes
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/stretchr/testify v1.8.4 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.1.2 // indirect
@@ -43,8 +41,6 @@ require (
 	golang.org/x/sys v0.12.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
-<<<<<<< Updated upstream
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
-=======
->>>>>>> Stashed changes
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 )

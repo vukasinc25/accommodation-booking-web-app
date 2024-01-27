@@ -13,13 +13,9 @@ import {
   ValidationErrors,
   Validators,
 } from '@angular/forms';
-<<<<<<< Updated upstream
 import { ProfServiceService } from '../../service/prof.service.service';
 import { NotificationService } from '../../service/notification.service';
 import { Notification1 } from '../../model/notification';
-=======
-import { ProfServiceService } from 'src/app/service/prof.service.service';
->>>>>>> Stashed changes
 
 @Component({
   selector: 'app-accommo-info',
@@ -39,12 +35,8 @@ export class AccommoInfoComponent implements OnInit {
     private profService: ProfServiceService,
     private accommodationService: AccommodationService,
     private authService: AuthService,
-<<<<<<< Updated upstream
     private reservationService: ReservationService,
     private notificationService: NotificationService
-=======
-    private reservationService: ReservationService
->>>>>>> Stashed changes
   ) {
     this.form = this.fb.group({
       grade: [
@@ -83,7 +75,7 @@ export class AccommoInfoComponent implements OnInit {
 
   notification: Notification1 = {
     hostId: '',
-    description: ''
+    description: '',
   };
 
   ngOnInit(): void {
@@ -149,7 +141,7 @@ export class AccommoInfoComponent implements OnInit {
               this.grades = data;
             },
             error: (err) => {
-              alert(err.error.message);
+              // alert(err.error.message);
             },
           });
           this.accommodationService
@@ -303,11 +295,8 @@ export class AccommoInfoComponent implements OnInit {
         this.form.reset();
       },
     });
-<<<<<<< Updated upstream
 
-    this.createNotification('One of your guests gave a review on you!')
-=======
->>>>>>> Stashed changes
+    this.createNotification('One of your guests gave a review on you!');
   }
 
   reserveDates() {
@@ -326,51 +315,11 @@ export class AccommoInfoComponent implements OnInit {
         error: (err) => {
           console.log(err.error.message);
           alert(err.error.message);
-<<<<<<< Updated upstream
           // this.ngOnInit();
-=======
-          this.ngOnInit();
-        },
-      });
-  }
-  deleteHostGrade(id: any) {
-    this.profService.deleteHostGrades(id).subscribe({
-      next: (data) => {
-        alert('Grade deleted');
-        this.ngOnInit();
-      },
-      error: (err) => {
-        alert(err.error.message);
-      },
-    });
-  }
-  deleteAccommodationGrade(id: any) {
-    this.accommodationService.deleteAccommodationGrade(id).subscribe({
-      next: (data) => {
-        alert('Accommodation deleted');
-        this.ngOnInit();
-      },
-      error: (err) => {
-        alert(err.error.message);
-      },
-    });
-  }
-
-  submitAccommodationGrade() {
-    this.accommodationService
-      .gradeAccommodation(this.id, this.formAccommodation.value.grade)
-      .subscribe({
-        next: (data) => {
-          alert('Accommodation graded');
-          this.ngOnInit();
-        },
-        error: (err) => {
-          alert(err.error.message);
->>>>>>> Stashed changes
         },
       });
 
-      this.createNotification('One of your accommodations just got reserved!')
+    this.createNotification('One of your accommodations just got reserved!');
   }
   deleteHostGrade(id: any) {
     this.profService.deleteHostGrades(id).subscribe({
@@ -383,7 +332,7 @@ export class AccommoInfoComponent implements OnInit {
       },
     });
 
-    this.createNotification('One of your guests deleted their review on you!')
+    this.createNotification('One of your guests deleted their review on you!');
   }
   deleteAccommodationGrade(id: any) {
     this.accommodationService.deleteAccommodationGrade(id).subscribe({
@@ -395,7 +344,9 @@ export class AccommoInfoComponent implements OnInit {
         alert(err.error.message);
       },
     });
-    this.createNotification('One of your guests deleted their review on one of your accommodations!')
+    this.createNotification(
+      'One of your guests deleted their review on one of your accommodations!'
+    );
   }
 
   submitAccommodationGrade() {
@@ -411,20 +362,22 @@ export class AccommoInfoComponent implements OnInit {
         },
       });
 
-     this.createNotification('One of your guests left a review on one of your accommodations!')
+    this.createNotification(
+      'One of your guests left a review on one of your accommodations!'
+    );
   }
 
-  createNotification(description: string){
+  createNotification(description: string) {
     this.notification.hostId = this.hostId;
-    this.notification.description = description
+    this.notification.description = description;
     this.notificationService.createNotification(this.notification).subscribe({
       next: (data) => {
-        alert('Notification Sent')
+        alert('Notification Sent');
       },
       error: (err) => {
-        alert(err.error.message)
-      }
-    })
+        alert(err.error.message);
+      },
+    });
   }
 
   onSubmit() {

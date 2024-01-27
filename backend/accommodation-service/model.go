@@ -18,10 +18,7 @@ type Accommodation struct {
 	MaxGuests    int                `bson:"maxGuests,omitempty" json:"maxGuests"`
 	Username     string             `bson:"username,omitempty" json:"username"`
 	AverageGrade float64            `bson:"averageGrade,omitempty" json:"averageGrade`
-<<<<<<< Updated upstream
 	Images       []string           `bson:"images,omitempty" json:"images"`
-=======
->>>>>>> Stashed changes
 	// Availability bool   `json:"availability"`
 	// Details      string `json:"details"`
 	//Price     string 			`bson:"price,omitempty" json:"price"`

@@ -65,7 +65,6 @@ services:
       MONGO_DB_URI: ${MONGO_DB_URI}
       RESERVATION_SERVICE_HOST: ${RESERVATION_SERVICE_HOST}
       RESERVATION_SERVICE_PORT: ${RESERVATION_SERVICE_PORT}
-<<<<<<< Updated upstream
       HDFS_URI: ${HDFS_URI}
       REDIS_HOST: ${REDIS_HOST}
       REDIS_PORT: ${REDIS_PORT}
@@ -98,8 +97,6 @@ services:
       HOST: ${NOTIFICATION_SERVICE_HOST}
       PORT: ${NOTIFICATION_SERVICE_PORT}
       MONGO_DB_URI: ${MONGO_DB_URI}
-=======
->>>>>>> Stashed changes
     depends_on:
       mongo:
         condition: service_healthy
@@ -214,7 +211,7 @@ services:
     networks:
       - network
 
-#   NoSQL: Consul
+  #   NoSQL: Consul
   consul:
     image: hashicorp/consul:latest
     ports:
@@ -234,7 +231,6 @@ services:
     networks:
       - network
 
-<<<<<<< Updated upstream
     # NoSQL: Redis
   redis:
     image: redis
@@ -304,41 +300,12 @@ services:
       - ./.env
     networks:
       - network
-=======
-  # namenode:
-  #   image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
-  #   container_name: namenode
-  #   ports:
-  #     - 9870:9870
-  #     - 9000:9000
-  #   volumes:
-  #     - hadoop_namenode:/hadoop/dfs/name
-  #   environment:
-  #     - CLUSTER_NAME=test
-  #   env_file:
-  #     - ./.env
-  #   networks:
-  #     - network
-
-  # datanode1:
-  #   image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
-  #   container_name: datanode1
-  #   volumes:
-  #     - hadoop_datanode1:/hadoop/dfs/data
-  #   environment:
-  #     SERVICE_PRECONDITION: "namenode:9870"
-  #   env_file:
-  #     - ./.env
-  #   networks:
-  #     - network
->>>>>>> Stashed changes
 
 volumes:
   mongo_store:
   mongo_express_data:
   cass_store:
   cosnul_store:
-<<<<<<< Updated upstream
   redis_data:
   hadoop_namenode:
   hadoop_datanode1:
@@ -348,10 +315,6 @@ volumes:
   prof_log:
   acco_log:
   res_log:
-=======
-  # hadoop_namenode:
-  # hadoop_datanode1:
->>>>>>> Stashed changes
 
 networks:
   network:

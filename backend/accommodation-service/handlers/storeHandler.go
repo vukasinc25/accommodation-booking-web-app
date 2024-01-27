@@ -123,7 +123,7 @@ func (s *StorageHandler) ReadFileFromStorage(rw http.ResponseWriter, h *http.Req
 	// io.WriteString(rw, fileContent)
 	rw.Header().Set("Content-Type", "image/jpeg")
 	rw.Write([]byte(fileContent))
-	log.Printf("Content of file %s: %s\n", fileName, fileContent)
+	// log.Printf("Content of file %s: %s\n", fileName, fileContent)
 
 }
 

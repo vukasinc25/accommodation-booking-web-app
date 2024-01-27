@@ -7,12 +7,6 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
-<<<<<<< Updated upstream
-
-	// ""
-=======
-	"log"
->>>>>>> Stashed changes
 	"mime"
 	"net/http"
 	"strconv"
@@ -255,70 +249,6 @@ func (rh *userHandler) MiddlewareRoleCheck00(client *http.Client, breaker *gobre
 	}
 }
 
-func (rh *userHandler) MiddlewareRoleCheck00(client *http.Client, breaker *gobreaker.CircuitBreaker) mux.MiddlewareFunc {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
-			defer cancel()
-
-			reqURL := "http://auth-service:8000/api/users/auth"
-
-			authorizationHeader := r.Header.Get("authorization")
-			fields := strings.Fields(authorizationHeader)
-
-			if len(fields) == 0 {
-				w.WriteHeader(http.StatusUnauthorized)
-				return
-			}
-
-			accessToken := fields[1]
-
-			var token ReqToken
-			token.Token = accessToken
-
-			jsonToken, _ := json.Marshal(token)
-
-			cbResp, err := breaker.Execute(func() (interface{}, error) {
-				req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, bytes.NewBuffer(jsonToken))
-				if err != nil {
-					return nil, err
-				}
-				return client.Do(req)
-			})
-			if err != nil {
-				rh.logger.Println(err)
-				sendErrorWithMessage(w, "Service is not working", http.StatusInternalServerError)
-				return
-			}
-
-			resp := cbResp.(*http.Response)
-			resBody, err := io.ReadAll(resp.Body)
-			rh.logger.Println("User Id:", string(resBody))
-			if resp.StatusCode != http.StatusOK {
-				rh.logger.Println("Error in auth response " + strconv.Itoa(resp.StatusCode))
-				rh.logger.Println("status " + resp.Status)
-				w.WriteHeader(resp.StatusCode)
-				return
-			}
-
-			userID := string(resBody)
-			ctx = context.WithValue(ctx, "userId", userID)
-
-			newReq, err := http.NewRequestWithContext(ctx, r.Method, r.URL.String(), nil)
-			if err != nil {
-				rh.logger.Println("Error creating new request:", err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			newReq.Header = r.Header
-
-			newReq.Header.Set("Content-Type", "application/json")
-
-			next.ServeHTTP(w, newReq)
-		})
-	}
-}
-
 func (uh *userHandler) createUser(w http.ResponseWriter, req *http.Request) {
 	uh.logger.Info("Usli u CreateUser")
 	contentType := req.Header.Get("Content-Type")
@@ -381,11 +311,7 @@ func (uh *userHandler) DeleteUser(res http.ResponseWriter, req *http.Request) {
 
 	err := uh.db.Delete(id)
 	if err != nil {
-<<<<<<< Updated upstream
 		uh.logger.Info("Unable to delete product.", err)
-=======
-		log.Println("Unable to delete product.", err)
->>>>>>> Stashed changes
 		sendErrorWithMessage(res, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -417,17 +343,10 @@ func renderJSON(w http.ResponseWriter, v interface{}) {
 }
 
 func (uh *userHandler) CreateHostGrade(res http.ResponseWriter, req *http.Request) {
-<<<<<<< Updated upstream
 	uh.logger.Info(req.Body)
 	hostGrade, err := decodeHostGradeBody(req.Body)
 	if err != nil {
 		uh.logger.Info("Cant decode body")
-=======
-	log.Println(req.Body)
-	hostGrade, err := decodeHostGradeBody(req.Body)
-	if err != nil {
-		log.Println("Cant decode body")
->>>>>>> Stashed changes
 		sendErrorWithMessage1(res, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -436,56 +355,32 @@ func (uh *userHandler) CreateHostGrade(res http.ResponseWriter, req *http.Reques
 	formattedTime := currentTime.Format("2006-01-02 15:04:05")
 	hostGrade.CreatedAt = formattedTime
 	hostGrade.ID = randstr.String(20)
-<<<<<<< Updated upstream
 	uh.logger.Info("HostGrade:", hostGrade)
 
 	response, err := uh.db.GetAllReservatinsForUserByHostId(hostGrade.UserId, hostGrade.HostId)
 	if err != nil {
 		uh.logger.Info("Error in method GetAllReservatinsForUserByHostId", err)
-=======
-	log.Println("HostGrade:", hostGrade)
-
-	response, err := uh.db.GetAllReservatinsForUserByHostId(hostGrade.UserId, hostGrade.HostId)
-	if err != nil {
-		log.Println("Error in method GetAllReservatinsForUserByHostId", err)
->>>>>>> Stashed changes
 		sendErrorWithMessage1(res, "Error in getting reservations for user", http.StatusBadRequest)
 		return
 	}
 
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-<<<<<<< Updated upstream
 		uh.logger.Info("Error in reading response body")
 		sendErrorWithMessage1(res, err.Error(), http.StatusInternalServerError)
-=======
-		log.Println("Error in reading response body")
-		sendErrorWithMessage(res, err.Error(), http.StatusInternalServerError)
->>>>>>> Stashed changes
 		return
 	}
 
 	if strings.Contains(string(body), "There is no active reservations for accommodations of this host") {
-<<<<<<< Updated upstream
 		sendErrorWithMessage1(res, "There is no active reservations for accommodations of this host", http.StatusBadRequest)
 		return
 	} else if strings.Contains(string(body), "There is no reservations for hosts accommodations") {
 		sendErrorWithMessage1(res, "There is no reservations for hosts accommodations", http.StatusBadRequest)
-=======
-		sendErrorWithMessage(res, "There is no active reservations for accommodations of this host", http.StatusBadRequest)
-		return
-	} else if strings.Contains(string(body), "There is no reservations for hosts accommodations") {
-		sendErrorWithMessage(res, "There is no reservations for hosts accommodations", http.StatusBadRequest)
->>>>>>> Stashed changes
 		return
 	} else if strings.Contains(string(body), "There is some reservtions for this user") {
 		err = uh.db.CreateHostGrade(hostGrade)
 		if err != nil {
-<<<<<<< Updated upstream
 			uh.logger.Info("HostGrade lavor")
-=======
-			log.Println("HostGrade lavor")
->>>>>>> Stashed changes
 			sendErrorWithMessage1(res, "Lavor when tryed to save HostGrade", http.StatusBadRequest)
 			return
 		}
@@ -507,22 +402,14 @@ func (uh *userHandler) DeleteHostGrade(res http.ResponseWriter, req *http.Reques
 
 	userId, ok := req.Context().Value("userId").(string)
 	if !ok {
-<<<<<<< Updated upstream
 		uh.logger.Info("Error retrieving hostId from context")
-=======
-		log.Println("Error retrieving hostId from context")
->>>>>>> Stashed changes
 		sendErrorWithMessage1(res, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
 	err := uh.db.DeleteHostGrade(id, userId)
 	if err != nil {
-<<<<<<< Updated upstream
 		uh.logger.Print("DeleteHost lavor")
-=======
-		log.Print("DeleteHost lavor")
->>>>>>> Stashed changes
 		sendErrorWithMessage1(res, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -535,16 +422,11 @@ func (uh *userHandler) GetAllHostGrades(res http.ResponseWriter, req *http.Reque
 	id := vars["id"]
 	// hostId, ok := req.Context().Value("hostId").(string)
 	// if !ok {
-<<<<<<< Updated upstream
 	// 	uh.logger.Info("Error retrieving hostId from context")
-=======
-	// 	log.Println("Error retrieving hostId from context")
->>>>>>> Stashed changes
 	// 	sendErrorWithMessage1(res, "Internal Server Error", http.StatusInternalServerError)
 	// 	return
 	// }
 
-<<<<<<< Updated upstream
 	// uh.logger.Info("HostId", hostId)
 	// uh.logger.Info("HostId")
 
@@ -552,15 +434,6 @@ func (uh *userHandler) GetAllHostGrades(res http.ResponseWriter, req *http.Reque
 	hostGrades, err := uh.db.GetAllHostGradesByHostId(id)
 	if err != nil {
 		uh.logger.Info("GetAllHostGrades lavor")
-=======
-	// log.Println("HostId", hostId)
-	// log.Println("HostId")
-
-	log.Println("Usli u GetAllHostGrades")
-	hostGrades, err := uh.db.GetAllHostGradesByHostId(id)
-	if err != nil {
-		log.Println("GetAllHostGrades lavor")
->>>>>>> Stashed changes
 		sendErrorWithMessage1(res, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -603,23 +476,6 @@ func decodeHostGradeBody(r io.Reader) (*HostGrade, error) {
 
 	if err := ValidateHostGrade(&rt); err != nil {
 		log.Info(err)
-		return nil, err
-	}
-	return &rt, nil
-}
-
-func decodeHostGradeBody(r io.Reader) (*HostGrade, error) {
-	dec := json.NewDecoder(r)
-	dec.DisallowUnknownFields()
-
-	var rt HostGrade
-	if err := dec.Decode(&rt); err != nil {
-		log.Println("Lavor", r)
-		return nil, err
-	}
-
-	if err := ValidateHostGrade(&rt); err != nil {
-		log.Println(err)
 		return nil, err
 	}
 	return &rt, nil
