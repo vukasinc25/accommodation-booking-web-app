@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"go.opentelemetry.io/otel/trace"
 	"io"
 
 	// "log"
@@ -26,11 +27,12 @@ type AccoHandler struct {
 	logger         *log.Logger
 	db             *AccoRepo
 	storageHandler *handlers.StorageHandler
+	tracer         trace.Tracer
 }
 
-func NewAccoHandler(l *log.Logger, r *AccoRepo, sh *handlers.StorageHandler) *AccoHandler {
+func NewAccoHandler(l *log.Logger, r *AccoRepo, sh *handlers.StorageHandler, t trace.Tracer) *AccoHandler {
 
-	return &AccoHandler{l, r, sh}
+	return &AccoHandler{l, r, sh, t}
 }
 
 func (ah *AccoHandler) createAccommodation(rw http.ResponseWriter, req *http.Request) {

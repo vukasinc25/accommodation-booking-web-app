@@ -11,6 +11,8 @@ import (
 	"time"
 
 	gorillaHandlers "github.com/gorilla/handlers"
+
+	//jaeger
 	"github.com/gorilla/mux"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/jaeger"

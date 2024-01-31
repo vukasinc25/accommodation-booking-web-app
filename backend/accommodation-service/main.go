@@ -3,6 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/jaeger"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/resource"
 
 	// "log"
 	"net/http"
@@ -20,6 +24,9 @@ import (
 	lumberjack "github.com/natefinch/lumberjack"
 	log "github.com/sirupsen/logrus"
 	"github.com/sony/gobreaker"
+
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 )
 
 func main() {
@@ -64,6 +71,20 @@ func main() {
 			Timeout:     10 * time.Second,
 			Interval:    0,
 		})
+
+	//JAEGER
+	ctx := context.Background()
+	exp, err := newExporter(config["jaeger"])
+	if err != nil {
+		log.Fatalf("failed to initialize exporter: %v", err)
+	}
+	tp := newTraceProvider(exp)
+	defer func() { _ = tp.Shutdown(ctx) }()
+	otel.SetTracerProvider(tp)
+	// Finally, set the tracer that can be used for this package.
+	tracer := tp.Tracer("notification-service")
+	otel.SetTextMapPropagator(propagation.TraceContext{})
+	//----------
 
 	timeoutContext, cancel := context.WithTimeout(context.Background(), 50*time.Second)
 	defer cancel()
@@ -110,7 +131,7 @@ func main() {
 	//router.StrictSlash(true)
 	cors := gorillaHandlers.CORS(gorillaHandlers.AllowedOrigins([]string{"*"}))
 
-	service := NewAccoHandler(logger, store, storageHandler)
+	service := NewAccoHandler(logger, store, storageHandler, tracer)
 
 	router.Use(service.MiddlewareContentTypeSet)
 
@@ -183,6 +204,35 @@ func loadConfig() map[string]string {
 	config["host"] = os.Getenv("HOST")
 	config["port"] = os.Getenv("PORT")
 	config["address"] = fmt.Sprintf(":%s", os.Getenv("PORT"))
+	config["jaeger"] = os.Getenv("JAEGER_ADDRESS")
 	config["conn_reservation_service_address"] = fmt.Sprintf("http://%s:%s", os.Getenv("RESERVATION_SERVICE_HOST"), os.Getenv("RESERVATION_SERVICE_PORT"))
 	return config
+}
+
+func newExporter(address string) (*jaeger.Exporter, error) {
+	exp, err := jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(address)))
+	if err != nil {
+		return nil, err
+	}
+	return exp, nil
+}
+
+func newTraceProvider(exp sdktrace.SpanExporter) *sdktrace.TracerProvider {
+	// Ensure default SDK resources and the required service name are set.
+	r, err := resource.Merge(
+		resource.Default(),
+		resource.NewWithAttributes(
+			semconv.SchemaURL,
+			semconv.ServiceNameKey.String("notification-service"),
+		),
+	)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return sdktrace.NewTracerProvider(
+		sdktrace.WithBatcher(exp),
+		sdktrace.WithResource(r),
+	)
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"go.opentelemetry.io/otel/trace"
 	"net/http"
 	"os"
 	"strconv"
@@ -24,6 +25,7 @@ type AccoRepo struct {
 	cli                         *mongo.Client
 	logger                      *log.Logger
 	reservation_service_address string
+	tracer                      trace.Tracer
 }
 
 func New(ctx context.Context, logger *log.Logger, conn_reservation_service_address string) (*AccoRepo, error) {
