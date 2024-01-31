@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"go.opentelemetry.io/otel/trace"
 	"log"
 	"os"
 	"time"
@@ -18,9 +19,10 @@ import (
 type NotificationRepo struct {
 	cli    *mongo.Client
 	logger *log.Logger
+	tracer trace.Tracer
 }
 
-func New(ctx context.Context, logger *log.Logger) (*NotificationRepo, error) {
+func New(ctx context.Context, logger *log.Logger, tracer trace.Tracer) (*NotificationRepo, error) {
 
 	dburi := os.Getenv("MONGO_DB_URI")
 
@@ -29,7 +31,7 @@ func New(ctx context.Context, logger *log.Logger) (*NotificationRepo, error) {
 		return nil, err
 	}
 	return &NotificationRepo{
-		cli: client, logger: logger,
+		cli: client, logger: logger, tracer: tracer,
 	}, nil
 }
 
@@ -78,27 +80,6 @@ func (ar *NotificationRepo) GetAll() (Notifications, error) {
 	}
 	return accommodations, nil
 }
-
-//func (ar *NotificationRepo) GetAllByUsername(username string) (Notifications, error) {
-//
-//	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-//	defer cancel()
-//
-//	notificationCollection := ar.getCollection()
-//
-//	var accommodations Notifications
-//	//objID, _ := primitive.ObjectIDFromHex(id)
-//	notificationCursor, err := notificationCollection.Find(ctx, bson.D{{"username", username}})
-//	if err != nil {
-//		ar.logger.Println(err)
-//		return nil, err
-//	}
-//	if err = notificationCursor.All(ctx, &accommodations); err != nil {
-//		ar.logger.Println(err)
-//		return nil, err
-//	}
-//	return accommodations, nil
-//}
 
 func (ar *NotificationRepo) GetAllByHostId(id string) (Notifications, error) {
 
@@ -154,7 +135,10 @@ func (ar *NotificationRepo) GetById(id string) (*Notification, error) {
 	return &notification, nil
 }
 
-func (ar *NotificationRepo) Insert(notification *Notification) error {
+func (ar *NotificationRepo) Insert(ctx context.Context, notification *Notification) error {
+	ctx, span := ar.tracer.Start(ctx, "NotificationRepo.Insert")
+	defer span.End()
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	accommodationCollection := ar.getCollection()
