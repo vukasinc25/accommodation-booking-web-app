@@ -108,9 +108,11 @@ func main() {
 	router.HandleFunc("/api/users/email/{code}", service.verifyEmail).Methods("POST")                            //uradjeno                         // for sending verification mail
 	router.HandleFunc("/api/users/sendforgottemail/{email}", service.sendForgottenPasswordEmail).Methods("POST") // nije  // for sending forgotten password email
 	router.HandleFunc("/api/users/changeForgottenPassword", service.changeForgottenPassword).Methods("POST")     // nije      // treba da se prosledi body sa newPassword, confirmPassword, code
+	router.HandleFunc("/api/users/updateGrade", service.UpdateUserGrade).Methods("PATCH")
 	authRoutes.HandleFunc("/api/users/update", service.UpdateUser).Methods("PATCH")
 	authRoutes.HandleFunc("/api/users/changePassword", service.ChangePassword).Methods("PATCH")
 	authRoutes.HandleFunc("/api/users/delete", service.DeleteUser).Methods("DELETE")
+	router.HandleFunc("/api/users/user/{id}", service.GetUserById).Methods("GET")
 
 	// Configure the HTTP server
 	server := http.Server{
@@ -121,8 +123,8 @@ func main() {
 		WriteTimeout: 10 * time.Second,
 		// TLSConfig: &tls.Config{
 		// 	InsecureSkipVerify: true, // samo za testiranje
-		// MinVersion:         tls.VersionTLS12,
-		// CipherSuites:       []uint16{tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384},
+		// 	MinVersion:         tls.VersionTLS12,
+		// 	CipherSuites:       []uint16{tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384},
 		// },
 	}
 
@@ -132,7 +134,7 @@ func main() {
 	// Start the HTTP server in a goroutine
 	go func() {
 		err := server.ListenAndServe()
-		// err := server.ListenAndServeTLS("/cert/auth-server.crt", "/cert/auth-server.key")
+		// err := server.ListenAndServeTLS("/cert/auth-service.crt", "/cert/auth-service.key")
 		if err != nil {
 			logger.Fatal(err)
 		}

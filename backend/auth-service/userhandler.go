@@ -102,6 +102,7 @@ func (uh *UserHandler) createUser(w http.ResponseWriter, req *http.Request) {
 	}
 
 	rt.IsEmailVerified = false
+	rt.AverageGrade = 0.0
 
 	sanitizedUsername := sanitizeInput(rt.Username)
 	sanitizedPassword := sanitizeInput(rt.Password)
@@ -731,6 +732,85 @@ func decodeNewPassword(r io.Reader) (*NewPassword, error) {
 	return &rt, nil
 }
 
+func (uh *UserHandler) GetUserById(res http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	id := vars["id"]
+
+	user, err := uh.db.GetById(id)
+	if err != nil {
+		uh.logger.Println("Error in getting user", err)
+		sendErrorWithMessage(res, "No such user", http.StatusBadRequest)
+		return
+	}
+
+	if user.AverageGrade >= 4.7 {
+		response, err := uh.db.IsHostFeatured(id)
+		if err != nil {
+			uh.logger.Println("Error reading response body for IsHostFeatured is GetUserById func:", err)
+			sendErrorWithMessage(res, "Error reading response body", http.StatusInternalServerError)
+			return
+		}
+
+		responseBody, err := ioutil.ReadAll(response.Body)
+		if err != nil {
+			uh.logger.Println("Error reading response body for IsHostFeatured is GetUserById func:", err)
+			sendErrorWithMessage(res, "Error reading response body", http.StatusInternalServerError)
+			return
+		}
+
+		defer response.Body.Close()
+		if string(responseBody) == "true" {
+			featuredUser := FeaturedUser{
+				Userr: Userr{
+					Username:     user.Username,
+					Email:        user.Email,
+					AverageGrade: user.AverageGrade,
+				},
+				IsHostFeatured: true,
+			}
+			log.Println("Host1:", featuredUser)
+			renderJSON(res, featuredUser)
+			return
+		} else {
+			featuredUser := FeaturedUser{
+				Userr: Userr{
+					Username:     user.Username,
+					Email:        user.Email,
+					AverageGrade: user.AverageGrade,
+				},
+				IsHostFeatured: false,
+			}
+			log.Println("Host2:", featuredUser)
+			renderJSON(res, featuredUser)
+			return
+			// sendErrorWithMessage(res, string(responseBody), response.StatusCode)
+		}
+	}
+
+	featuredUser := FeaturedUser{
+		Userr: Userr{
+			Username:     user.Username,
+			Email:        user.Email,
+			AverageGrade: user.AverageGrade,
+		},
+		IsHostFeatured: false,
+	}
+	renderJSON(res, featuredUser)
+}
+
+func decodeAverageGrade(r io.Reader) (*AverageGrade, error) {
+	dec := json.NewDecoder(r)
+	dec.DisallowUnknownFields()
+
+	var rt AverageGrade
+	if err := dec.Decode(&rt); err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	return &rt, nil
+}
+
 // decodeLoginBody decodes the request body into a LoginUser struct.
 func decodeLoginBody(r io.Reader) (*LoginUser, error) {
 	dec := json.NewDecoder(r)
@@ -1033,6 +1113,28 @@ func (uh *UserHandler) DeleteUser(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func (uh *UserHandler) UpdateUserGrade(res http.ResponseWriter, req *http.Request) {
+	uh.logger.Println("Usli u UpdateGrade")
+	averageGrade, err := decodeAverageGrade(req.Body)
+	if err != nil {
+		uh.logger.Println("Error in decoding body: ", err)
+		sendErrorWithMessage1(res, "Error in decoding body", http.StatusBadRequest)
+		return
+	}
+
+	log.Println("UserId", averageGrade.UserId)
+	log.Println("AverageGrade:", averageGrade.AverageGrade)
+
+	err = uh.db.UpdateGrade(averageGrade.UserId, averageGrade.AverageGrade)
+	if err != nil {
+		uh.logger.Println("Error in updating grade", err)
+		sendErrorWithMessage1(res, "Error in updating user average grade", http.StatusInternalServerError)
+		return
+	}
+
+	sendErrorWithMessage1(res, "grade updated", http.StatusOK)
+}
+
 // ToJSON converts a Users object to JSON and writes it to the response writer.
 func (u *Users) ToJSON(w io.Writer) error {
 	e := json.NewEncoder(w)
@@ -1055,4 +1157,10 @@ func sendErrorWithMessage(w http.ResponseWriter, message string, statusCode int)
 	w.WriteHeader(statusCode)
 	errorResponse := map[string]string{"message": message}
 	json.NewEncoder(w).Encode(errorResponse)
+}
+
+func sendErrorWithMessage1(w http.ResponseWriter, message string, statusCode int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(message))
+	w.WriteHeader(statusCode)
 }

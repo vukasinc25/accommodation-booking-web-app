@@ -30,6 +30,9 @@ export class ProfileComponent implements OnInit {
   showOldPassword: boolean = false;
   showNewPassword: boolean = false;
   showConfirmPassword: boolean = false;
+  averageGrade: number = 0.0;
+  isHostFeatured: boolean = false;
+  hostId: string = '';
   constructor(
     private authService: AuthService,
     private profService: ProfServiceService,
@@ -58,6 +61,8 @@ export class ProfileComponent implements OnInit {
   ngOnInit(): void {
     this.profService.getUserInfo().subscribe({
       next: (data) => {
+        console.log('User info:', data);
+        this.hostId = data.userId;
         this.user.username = data.username;
         this.user.email = data.email;
         this.user.firstName = data.firstname;
@@ -66,6 +71,17 @@ export class ProfileComponent implements OnInit {
         this.user.country = data.location.country;
         this.user.streetName = data.location.streetName;
         this.user.streetNumber = data.location.streetNumber;
+        // this.averageGrade = data.averageGrade;
+        this.authService.getUserById(this.hostId).subscribe({
+          next: (data) => {
+            console.log('host:', data);
+            this.averageGrade = data.averageGrade;
+            this.isHostFeatured = data.isHostFeatured;
+          },
+          error: (err) => {
+            alert(err.error.message);
+          },
+        });
       },
       error: (err) => {
         alert(err.error.message);

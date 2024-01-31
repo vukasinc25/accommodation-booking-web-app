@@ -146,32 +146,31 @@
               <td><input type="date" formControlName="availableUntil" /></td>
             </tr>
             <tr>
-              <th>Price per night:</th>
+              <th scope="row">Price type:</th>
               <td>
-                <input type="number" formControlName="pricePerNight" />
+                <select formControlName="priceType" required>
+                  <option value="night">Price per night</option>
+                  <option value="person">Price per person</option>
+                </select>
                 <div
                   style="color: red"
                   *ngIf="
-                    accommodationForm.get('pricePerNight')?.hasError('required')
+                    accommodationForm.get('priceType')?.hasError('required')
                   "
                 >
-                  Price per night is required.
+                  Price type is required.
                 </div>
               </td>
             </tr>
             <tr>
-              <th scope="row">Price per person:</th>
+              <th>Price:</th>
               <td>
-                <input type="number" formControlName="pricePerPerson" />
+                <input type="number" formControlName="price" required />
                 <div
                   style="color: red"
-                  *ngIf="
-                    accommodationForm
-                      .get('pricePerPerson')
-                      ?.hasError('required')
-                  "
+                  *ngIf="accommodationForm.get('price')?.hasError('required')"
                 >
-                  Price per person is required.
+                  Price is required.
                 </div>
               </td>
             </tr>
@@ -293,7 +292,7 @@
   </div>
 </div>
 <div class="container mt-4">
-  <h2>Host Grades</h2>
+  <h2>Host Grades AverageGrade: {{ hostAverageGrade }}</h2>
   <table class="table">
     <thead>
       <tr>
@@ -321,7 +320,7 @@
 </div>
 <br />
 <div class="container mt-4">
-  <h2>Accommodation Grades</h2>
+  <h2>Accommodation Grades, AverageGrade:{{ accommodation.AverageGrade }}</h2>
   <table class="table">
     <thead>
       <tr>

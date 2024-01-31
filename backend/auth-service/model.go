@@ -45,6 +45,13 @@ type User struct {
 	FirstName       string             `bson:"firstname,omitempty" json:"firstname"`
 	LastName        string             `bson:"lastname,omitempty" json:"lastname"`
 	Location        Location           `bson:"location,omitempty,inline" json:"location"`
+	AverageGrade    float64            `bson:"averageGrade,omitempty" json:"averageGrade"`
+}
+
+type Userr struct {
+	Username     string  `bson:"username,omitempty" json:"username" validate:"required,min=6"`
+	Email        string  `bson:"email,omitempty" json:"email" validate:"required,email"`
+	AverageGrade float64 `bson:"averageGrade,omitempty" json:"averageGrade"`
 }
 
 type Location struct {
@@ -52,6 +59,11 @@ type Location struct {
 	City         string `bson:"city,omitempty" json:"city" validate:"required"`
 	StreetName   string `bson:"streetName,omitempty" json:"streetName" validate:"required"`
 	StreetNumber string `bson:"streetNumber,omitempty" json:"streetNumber" validate:"required"`
+}
+
+type FeaturedUser struct {
+	Userr
+	IsHostFeatured bool `json:"isHostFeatured"`
 }
 
 type ResponseUser struct {
@@ -142,6 +154,11 @@ type ReservationsByAccommodation []*ReservationByAccommodation
 
 type ReqToken struct {
 	Token string `json:"token"`
+}
+
+type AverageGrade struct {
+	UserId       string  `json:"userId"`
+	AverageGrade float64 `json:"averageGrade"`
 }
 
 func ValidateNewPassword(newPassword NewPassword) error {

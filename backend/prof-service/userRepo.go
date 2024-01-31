@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,6 +16,7 @@ type UserRepo struct {
 	cli                        *api.Client
 	logger                     *log.Logger
 	reservation_service_string string
+	auth_service_string        string
 }
 
 const (
@@ -29,7 +31,7 @@ func generateKey(Id string) string {
 	return fmt.Sprintf(users, id)
 }
 
-func New(logger *log.Logger, conn_reservation_service_address string) (*UserRepo, error) {
+func New(logger *log.Logger, conn_reservation_service_address string, conn_auth_service_address string) (*UserRepo, error) {
 	config := api.DefaultConfig()
 	config.Address = fmt.Sprintf("%s:%s", "consul", "8500")
 	client, err := api.NewClient(config)
@@ -41,6 +43,7 @@ func New(logger *log.Logger, conn_reservation_service_address string) (*UserRepo
 		cli:                        client,
 		logger:                     logger,
 		reservation_service_string: conn_reservation_service_address,
+		auth_service_string:        conn_auth_service_address,
 	}, nil
 }
 
@@ -84,7 +87,7 @@ func (pr *UserRepo) GetAll() (Users, error) {
 	return users, nil
 }
 
-func (ur *UserRepo) Get(id string) (*ResponseUser, error) {
+func (ur *UserRepo) Get(id string) (*User, error) {
 	kv := ur.cli.KV()
 
 	pair, _, err := kv.Get(constructKey(id), nil)
@@ -96,7 +99,7 @@ func (ur *UserRepo) Get(id string) (*ResponseUser, error) {
 		return nil, nil
 	}
 
-	user := &ResponseUser{}
+	user := &User{}
 	err = json.Unmarshal(pair.Value, user)
 	if err != nil {
 		return nil, err
@@ -371,4 +374,32 @@ func (ur *UserRepo) GetHostGradeByID(id string) (*HostGrade, error) {
 	}
 
 	return &hg, nil
+}
+
+func (uh *UserRepo) UpdateUserGrade(userId string, grade float64) (*http.Response, error) {
+	url := uh.auth_service_string + "/api/users/updateGrade"
+
+	requestData := AverageGrade{
+		UserId:       userId,
+		AverageGrade: grade,
+	}
+
+	reqBody, err := json.Marshal(&requestData)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Println("Url:", url)
+	req, err := http.NewRequest(http.MethodPatch, url, bytes.NewBuffer(reqBody))
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	httpResp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	return httpResp, nil
 }

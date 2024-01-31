@@ -121,6 +121,8 @@ func main() {
 	getReservatinsForUserByHostId := router.Methods(http.MethodGet).Subrouter()
 	getReservatinsForUserByHostId.HandleFunc("/api/reservations/by_user_for_host_id/{userId}/{hostId}", reservationHandler.GetAllReservationsForUserIdByHostId)
 
+	router.HandleFunc("/api/reservations/host/{id}", reservationHandler.IsHostProminent).Methods("GET")
+
 	cors := gorillaHandlers.CORS(gorillaHandlers.AllowedOrigins([]string{"*"}))
 
 	server := http.Server{

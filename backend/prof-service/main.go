@@ -78,7 +78,7 @@ func main() {
 	// logger.SetOutput(lumberjackLogger)
 
 	// NoSQL: Initialize Product Repository store
-	store, err := New(logger, config["conn_reservation_service_address"])
+	store, err := New(logger, config["conn_reservation_service_address"], config["conn_auth_service_address"])
 	if err != nil {
 		logger.Fatal(err)
 	}
@@ -112,15 +112,15 @@ func main() {
 		ReadTimeout:  120 * time.Second,
 		WriteTimeout: 120 * time.Second,
 		// TLSConfig: &tls.Config{
-		// InsecureSkipVerify: true, // samo za testiranje
-		// MinVersion:         tls.VersionTLS12,
-		// CipherSuites:       []uint16{tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384},
+		// 	InsecureSkipVerify: true, // samo za testiranje
+		// 	MinVersion:         tls.VersionTLS12,
+		// 	CipherSuites:       []uint16{tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384},
 		// },
 	}
 	go func() {
 		logger.Info("lavor4")
 		err := server.ListenAndServe()
-		// err := server.ListenAndServeTLS("/cert/prof-server.crt", "/cert/prof-server.key")
+		// err := server.ListenAndServeTLS("/cert/prof-service.crt", "/cert/prof-service.key")
 		if err != nil {
 			logger.Println("Error starting server", err)
 			// logMessage(fmt.Sprintf("Error starting server: %s", err), logrus.ErrorLevel)
@@ -164,5 +164,6 @@ func loadConfig() map[string]string {
 	config["address"] = fmt.Sprintf(":%s", os.Getenv("PORT"))
 	config["mondo_db_uri"] = os.Getenv("MONGO_DB_URI")
 	config["conn_reservation_service_address"] = fmt.Sprintf("http://%s:%s", os.Getenv("RESERVATION_SERVICE_HOST"), os.Getenv("RESERVATION_SERVICE_PORT"))
+	config["conn_auth_service_address"] = fmt.Sprintf("http://%s:%s", os.Getenv("AUTH_SERVICE_HOST"), os.Getenv("AUTH_SERVICE_PORT"))
 	return config
 }
