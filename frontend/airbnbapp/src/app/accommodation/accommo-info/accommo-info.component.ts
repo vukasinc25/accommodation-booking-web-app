@@ -28,6 +28,7 @@ export class AccommoInfoComponent implements OnInit {
   form: FormGroup;
   accommodationForm!: FormGroup;
   formAccommodation!: FormGroup;
+  hostAverageGrade: any;
   constructor(
     private fb: FormBuilder,
     private route: ActivatedRoute,
@@ -82,8 +83,8 @@ export class AccommoInfoComponent implements OnInit {
     this.accommodationForm = this.fb.group({
       availableFrom: ['', Validators.required],
       availableUntil: ['', Validators.required],
-      pricePerNight: ['', Validators.required],
-      pricePerPerson: ['', Validators.required],
+      priceType: ['', Validators.required], // Make sure it's bound to priceType
+      price: ['', Validators.required], // Make sure it's bound to price
     });
 
     this.route.params.subscribe((params) => {
@@ -95,7 +96,7 @@ export class AccommoInfoComponent implements OnInit {
     this.accommodationService.getById(this.id).subscribe({
       next: (data) => {
         this.accommodation = data;
-        console.log(this.accommodation);
+        console.log('Accommodatin:', this.accommodation);
         for (const image of data.images) {
           console.log(image);
           this.accommodationService.getAccommodationImage(image).subscribe(
@@ -116,6 +117,8 @@ export class AccommoInfoComponent implements OnInit {
             }
           );
         }
+
+        // this.authService.getUserById()
         // console.log(this.accommodation._id);
         // console.log(data);
       },
@@ -141,7 +144,7 @@ export class AccommoInfoComponent implements OnInit {
               this.grades = data;
             },
             error: (err) => {
-              // alert(err.error.message);
+              alert(err.error.message);
             },
           });
           this.accommodationService
@@ -155,6 +158,15 @@ export class AccommoInfoComponent implements OnInit {
                 alert(err.error.message);
               },
             });
+          this.authService.getUserById(this.hostId).subscribe({
+            next: (data) => {
+              console.log('host:', data);
+              this.hostAverageGrade = data.averageGrade;
+            },
+            error: (err) => {
+              alert(err.error.message);
+            },
+          });
           this.startDate = new NgbDate(
             new Date(data[0].startDate).getFullYear(),
             new Date(data[0].startDate).getUTCMonth() + 1,
@@ -389,8 +401,8 @@ export class AccommoInfoComponent implements OnInit {
       )
       .subscribe({
         next: (data) => {
-          console.log('Reservation in succesfuly created');
-          alert('Reservation is successfully.');
+          console.log('Reservation is successfully created');
+          alert('Reservation is successfully created.');
           this.router.navigate(['accommodations/myAccommodations']);
         },
         error: (err) => {

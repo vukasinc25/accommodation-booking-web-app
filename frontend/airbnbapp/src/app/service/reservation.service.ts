@@ -50,18 +50,34 @@ export class ReservationService {
     id: any,
     reservation: any
   ): Observable<any> {
-    return this.http.post(
-      '/api/reservations/for_acco',
-      {
+    let requestBody: any;
+
+    if (reservation.priceType === 'night') {
+      requestBody = {
         accoId: id,
         numberPeople: 2,
-        priceByPeople: reservation.pricePerPerson,
-        priceByAccommodation: reservation.pricePerNight,
+        priceByPeople: null, // Set to null when priceType is 'night'
+        priceByAccommodation: reservation.price,
         startDate: reservation.availableFrom,
         endDate: reservation.availableUntil,
-      },
-      { headers: this.headers, responseType: 'json' }
-    );
+      };
+    } else if (reservation.priceType === 'person') {
+      requestBody = {
+        accoId: id,
+        numberPeople: 2,
+        priceByPeople: reservation.price,
+        priceByAccommodation: null, // Set to null when priceType is 'person'
+        startDate: reservation.availableFrom,
+        endDate: reservation.availableUntil,
+      };
+    } else {
+      // Handle other cases if needed
+    }
+
+    return this.http.post('/api/reservations/for_acco', requestBody, {
+      headers: this.headers,
+      responseType: 'json',
+    });
   }
   getAvailabelDatesForAccomodation(id: any): Observable<any> {
     return this.http.get(`${'/api/reservations/by_acco/'}${id}`, {

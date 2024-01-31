@@ -82,7 +82,7 @@ export class AuthService {
   }
 
   getUserId(): string {
-    let token = localStorage.getItem('jwt');  
+    let token = localStorage.getItem('jwt');
     if (token != null) return this.jwt.decodeToken(token).id;
     else return '';
   }
@@ -158,6 +158,12 @@ export class AuthService {
     );
   }
 
+  getUserById(id: string): Observable<any> {
+    return this.http.get(`${'/api/users/user/'}${id}`, {
+      headers: this.headers,
+      responseType: 'json',
+    });
+  }
   sendVerifyingEmail(code: string): Observable<any> {
     return this.http.post(
       `${'/api/users/email/'}${code}`,

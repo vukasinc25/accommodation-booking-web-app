@@ -206,6 +206,27 @@ func (uh *UserRepo) GetByUsername(username string) (*User, error) {
 	return &user, nil
 }
 
+func (uh *UserRepo) GetById(id string) (*Userr, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	usersCollection, err := uh.getCollection()
+	if err != nil {
+		log.Println("Error getting collection: ", err)
+		return nil, err
+	}
+	var user Userr
+	objID, _ := primitive.ObjectIDFromHex(id)
+	log.Println("Querying for user with id: ", id)
+	// objUsername, _ := primitive.ObjectIDFromHex(username)
+	err = usersCollection.FindOne(ctx, bson.M{"_id": objID}).Decode(&user)
+	if err != nil {
+		log.Println("Error decoding user document: ", err)
+		return nil, err
+	}
+	return &user, nil
+}
+
 func (uh *UserRepo) UpdateUsersPassword(user *UserA) error { //
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -621,4 +642,49 @@ func (uh *UserRepo) UpdateProfileServiceUser(newUser *UserB) (*http.Response, er
 		return nil, err
 	}
 	return httpResp, nil
+}
+
+func (uh *UserRepo) UpdateGrade(userId string, grade float64) error {
+	log.Println("Usli u UpdateGrade", "average grade:", grade, "userId:", userId)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	userCollection, err := uh.getCollection()
+	if err != nil {
+		log.Println("Cant get User collection in UpdateUser method")
+		return err
+	}
+
+	objID, _ := primitive.ObjectIDFromHex(userId)
+	filter := bson.M{"_id": objID}
+	update := bson.M{"$set": bson.M{
+		"averageGrade": grade,
+	}}
+	result, err := userCollection.UpdateOne(ctx, filter, update)
+	log.Printf("Documents matched: %v\n", result.MatchedCount)
+	log.Printf("Documents updated: %v\n", result.ModifiedCount)
+
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	return nil
+}
+
+func (uh *UserRepo) IsHostFeatured(id string) (*http.Response, error) {
+	url := uh.reservation_service_string + "/api/reservations/host/" + id
+
+	log.Println("Url:", url)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	httpResp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	return httpResp, nil
+
 }

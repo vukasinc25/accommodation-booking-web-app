@@ -7,6 +7,8 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
+
+	// "log"
 	"mime"
 	"net/http"
 	"strconv"
@@ -439,12 +441,52 @@ func (uh *userHandler) GetAllHostGrades(res http.ResponseWriter, req *http.Reque
 	}
 
 	if hostGrades == nil {
-		sendErrorWithMessage1(res, "Unauthorized", http.StatusUnauthorized)
+		sendErrorWithMessage1(res, "Host dont have any grades", http.StatusBadRequest)
 		return
 	}
 
-	e := json.NewEncoder(res)
-	e.Encode(hostGrades)
+	var averageGrade = 0.0
+	var allGrades = 0
+	var x = 0
+	for _, value := range hostGrades {
+		allGrades += value.Grade
+		x++
+	}
+
+	if allGrades != 0 {
+		log.Println("Id", id)
+		log.Println("AllGrades:", allGrades)
+		log.Println("x:", x)
+		averageGrade = float64(allGrades) / float64(x)
+		log.Println("Average Grade:", averageGrade)
+		response, err := uh.db.UpdateUserGrade(id, averageGrade)
+		if err != nil {
+			uh.logger.Println("Error in updating grade", err)
+			sendErrorWithMessage1(res, "Error in updating grade", http.StatusInternalServerError)
+			return
+		}
+
+		responseBody, err := ioutil.ReadAll(response.Body)
+		if err != nil {
+			uh.logger.Println("Error reading response body:", err)
+			sendErrorWithMessage1(res, "Error reading response body", http.StatusInternalServerError)
+			return
+		}
+
+		defer response.Body.Close()
+		if string(responseBody) == "grade updated" {
+			// sendErrorWithMessage1(res, "Grade updated", http.StatusOK)
+			e := json.NewEncoder(res)
+			e.Encode(hostGrades)
+			return
+		} else {
+			sendErrorWithMessage1(res, string(responseBody), response.StatusCode)
+			return
+		}
+	}
+
+	// e := json.NewEncoder(res)
+	// e.Encode(hostGrades)
 
 }
 func decodeUserInfoBody(r io.Reader) (*User, error) {

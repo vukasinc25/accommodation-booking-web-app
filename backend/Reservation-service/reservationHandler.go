@@ -157,10 +157,10 @@ func (rh *reservationHandler) getAllReservationsByUser(res http.ResponseWriter, 
 }
 
 func (rh *reservationHandler) GetAllReservationsByUserId(res http.ResponseWriter, req *http.Request) {
-	log.Println("Request Body: ", req.Body)
+	rh.logger.Println("Request Body: ", req.Body)
 	requestId, err := decodeIdBody(req.Body)
 	if err != nil {
-		log.Println("Cant decode body")
+		rh.logger.Println("Cant decode body")
 		sendErrorWithMessage(res, "Cant decode body", http.StatusBadRequest)
 		return
 	}
@@ -311,6 +311,78 @@ func (rh *reservationHandler) GetAllReservationsForUserIdByHostId(res http.Respo
 	}
 	counterIsThereAnyReservations = 0
 	sendErrorWithMessage1(res, "There is no reservations for this user", http.StatusBadRequest)
+}
+
+func (rh *reservationHandler) IsHostProminent(res http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	hostId := vars["id"]
+	rh.logger.Println("Entered IsHostProminent func")
+
+	reservationsDatesByHostId, err := rh.repo.GetReservationsDatesByHostId(hostId)
+	if err != nil {
+		rh.logger.Print("Database exception: ", err)
+		sendErrorWithMessage1(res, "Error when getting reservations", http.StatusBadRequest)
+		return
+	}
+
+	if reservationsDatesByHostId == nil {
+		rh.logger.Print("There is no accommodation for that host in func IsHostProminent")
+		sendErrorWithMessage1(res, "There is no accommodation for that host", http.StatusBadRequest)
+		return
+	}
+
+	var counterIsThereAnyReservations = 0
+	var numOfReservationsForAccommodationOfThatHost = 0
+	var allDates []time.Time
+	processedAccommodations := make(map[string]bool) // Keep track of processed accommodations
+
+	for _, element := range reservationsDatesByHostId {
+		if processedAccommodations[element.AccoId] {
+			continue
+		}
+
+		processedAccommodations[element.AccoId] = true // Mark the accommodation as processed
+
+		rh.logger.Println("Reservation:", element)
+		reservationsByAccId, err := rh.repo.GetReservationsDatesByAccomodationId(element.AccoId)
+		if err != nil {
+			rh.logger.Println("Cant get reservations by accommodationId:", err)
+			sendErrorWithMessage1(res, "Cant get reservations by accommodationId", http.StatusInternalServerError)
+			return
+		}
+
+		if len(reservationsByAccId) != 0 {
+			counterIsThereAnyReservations++
+			for _, element1 := range reservationsByAccId {
+				numOfReservationsForAccommodationOfThatHost++
+				rh.logger.Println("Reservation by AccoId:", element1)
+				start := element1.BeginAccomodationDate
+				end := element1.EndAccomodationDate
+
+				for current := start; current.Before(end) || current.Equal(end); current = current.Add(24 * time.Hour) {
+					allDates = append(allDates, current)
+				}
+			}
+		}
+	}
+
+	numOfDates := len(allDates)
+	rh.logger.Println("Number of dates: %d\n", numOfDates)
+
+	if counterIsThereAnyReservations == 0 {
+		rh.logger.Println("No reservations")
+		sendErrorWithMessage1(res, "false", http.StatusBadRequest)
+		return
+	}
+
+	if numOfReservationsForAccommodationOfThatHost >= 5 || numOfDates == 50 {
+		rh.logger.Println("There is min 5 reservations for accommodations of this host")
+		sendErrorWithMessage1(res, "true", http.StatusOK)
+		return
+	}
+
+	rh.logger.Println("Number:", numOfReservationsForAccommodationOfThatHost)
+	sendErrorWithMessage1(res, "false", http.StatusOK)
 }
 
 func (rh *reservationHandler) CreateReservationDateForDate(res http.ResponseWriter, req *http.Request) {
