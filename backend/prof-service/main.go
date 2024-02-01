@@ -165,5 +165,7 @@ func loadConfig() map[string]string {
 	config["mondo_db_uri"] = os.Getenv("MONGO_DB_URI")
 	config["conn_reservation_service_address"] = fmt.Sprintf("http://%s:%s", os.Getenv("RESERVATION_SERVICE_HOST"), os.Getenv("RESERVATION_SERVICE_PORT"))
 	config["conn_auth_service_address"] = fmt.Sprintf("http://%s:%s", os.Getenv("AUTH_SERVICE_HOST"), os.Getenv("AUTH_SERVICE_PORT"))
+	config["address"] = fmt.Sprintf(":%s", os.Getenv("PORT"))
+	config["jaeger"] = os.Getenv("JAEGER_ADDRESS")
 	return config
 }

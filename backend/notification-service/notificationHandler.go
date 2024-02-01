@@ -38,9 +38,7 @@ func NewNotificationHandler(l *log.Logger, r *NotificationRepo, t trace.Tracer) 
 
 func (nh *NotificationHandler) createNotification(rw http.ResponseWriter, req *http.Request) {
 	ctx, span := nh.tracer.Start(req.Context(), "NotificationHandler.createNotification") //tracer
-	log.Println(ctx)
-	log.Println(span)
-	defer span.End() //tracer
+	defer span.End()                                                                      //tracer
 
 	notification, err := decodeBody(req.Body)
 	notification.Date = time.Now()

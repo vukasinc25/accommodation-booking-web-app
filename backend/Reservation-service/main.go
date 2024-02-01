@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"fmt"
+
 	// "log"
 	"net/http"
 	"os"
@@ -35,6 +37,8 @@ func main() {
 			log.Error("Error closing log file:", err)
 		}
 	}()
+
+	//config := loadConfig()
 
 	// ... (rest of your code)
 
@@ -155,4 +159,14 @@ func main() {
 		logger.Fatal("Cannot gracefully shutdown...")
 	}
 	logger.Println("Server stopped")
+}
+
+func loadConfig() map[string]string {
+	config := make(map[string]string)
+	config["host"] = os.Getenv("HOST")
+	config["port"] = os.Getenv("PORT")
+	config["address"] = fmt.Sprintf(":%s", os.Getenv("PORT"))
+	config["jaeger"] = os.Getenv("JAEGER_ADDRESS")
+	config["conn_reservation_service_address"] = fmt.Sprintf("http://%s:%s", os.Getenv("RESERVATION_SERVICE_HOST"), os.Getenv("RESERVATION_SERVICE_PORT"))
+	return config
 }
