@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"go.opentelemetry.io/otel/trace"
 	"io"
+	"io/ioutil"
 
 	// "log"
 	"net/http"
@@ -144,6 +145,49 @@ func (ah *AccoHandler) GetAllAccommodationsByLocation(w http.ResponseWriter, req
 		ah.logger.Fatal("Unable to convert to json :", err)
 		return
 	}
+}
+
+func (ah *AccoHandler) GetAllAccommodationsByDate(w http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	startDate := vars["startDate"]
+	endDate := vars["endDate"]
+	var accommodations []Accommodation
+
+	accoIdListResponse, err := ah.db.GetAllAccoFromReservationServiceByDate(startDate, endDate)
+	if err != nil {
+		ah.logger.Print("Database exception: ", err)
+		http.Error(w, "Error fetching accommodation IDs", http.StatusInternalServerError)
+		return
+	}
+	accommodationIdList, err := ioutil.ReadAll(accoIdListResponse.Body)
+	if err != nil {
+		ah.logger.Println("Error reading response body:", err)
+		sendErrorWithMessage(w, "Error reading response body", http.StatusInternalServerError)
+		return
+	}
+	log.Println(accommodationIdList)
+
+	//for _, accoID := range accommodationIdList {
+	//	accommodation, err := ah.db.GetById(accoID)
+	//	if err != nil {
+	//		ah.logger.Printf("Error fetching accommodation with ID %d: %v", accoID, err)
+	//		continue
+	//	}
+	//	accommodations = append(accommodations, accommodation)
+	//}
+
+	if accommodations == nil {
+		http.Error(w, "Accommodations with given date not found", http.StatusNotFound)
+		ah.logger.Printf("Accommodations with location: '%s' '%s' not found", startDate, endDate)
+		return
+	}
+
+	//err = accommodations.ToJSON(w)
+	//if err != nil {
+	//	http.Error(w, "Unable to convert to json", http.StatusInternalServerError)
+	//	ah.logger.Fatal("Unable to convert to json :", err)
+	//	return
+	//}
 }
 
 func (ah *AccoHandler) DeleteAccommodationGrade(res http.ResponseWriter, req *http.Request) {

@@ -42,18 +42,24 @@ func main() {
 	//		Interval:    0,
 	//	})
 
-	//JAEGER
-	ctx := context.Background()
-	exp, err := newExporter(config["jaeger"])
+	tracerProvider, err := NewTracerProvider(config["jaeger"])
 	if err != nil {
-		log.Fatalf("failed to initialize exporter: %v", err)
+		log.Fatal("JaegerTraceProvider failed to Initialize", err)
 	}
-	tp := newTraceProvider(exp)
-	defer func() { _ = tp.Shutdown(ctx) }()
-	otel.SetTracerProvider(tp)
-	// Finally, set the tracer that can be used for this package.
-	tracer := tp.Tracer("notification-service")
-	otel.SetTextMapPropagator(propagation.TraceContext{})
+	tracer := tracerProvider.Tracer("notification-service")
+
+	//JAEGER
+	//ctx := context.Background()
+	//exp, err := newExporter(config["jaeger"])
+	//if err != nil {
+	//	log.Fatalf("failed to initialize exporter: %v", err)
+	//}
+	//tp := newTraceProvider(exp)
+	//defer func() { _ = tp.Shutdown(ctx) }()
+	//otel.SetTracerProvider(tp)
+	//// Finally, set the tracer that can be used for this package.
+	//tracer := tp.Tracer("notification-service")
+	//otel.SetTextMapPropagator(propagation.TraceContext{})
 	//----------
 
 	timeoutContext, cancel := context.WithTimeout(context.Background(), 50*time.Second)
@@ -94,6 +100,8 @@ func main() {
 		WriteTimeout: 1 * time.Second,
 	}
 
+	log.Println(config["jaeger"])
+	logger.Println(config["jaeger"])
 	logger.Println("Server listening on port", config["port"])
 	//Distribute all the connections to goroutines
 	go func() {
@@ -135,6 +143,26 @@ func newExporter(address string) (*jaeger.Exporter, error) {
 		return nil, err
 	}
 	return exp, nil
+}
+
+func NewTracerProvider(collectorEndpoint string) (*sdktrace.TracerProvider, error) {
+	exporter, err := jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(collectorEndpoint)))
+	if err != nil {
+		return nil, fmt.Errorf("unable to initialize exporter due: %w", err)
+	}
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithSampler(sdktrace.AlwaysSample()),
+		sdktrace.WithBatcher(exporter),
+		sdktrace.WithResource(resource.NewWithAttributes(
+			semconv.SchemaURL,
+			semconv.ServiceNameKey.String("notification-service"),
+			semconv.DeploymentEnvironmentKey.String("development"),
+		)),
+	)
+	otel.SetTracerProvider(tp)
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
+
+	return tp, nil
 }
 
 func newTraceProvider(exp sdktrace.SpanExporter) *sdktrace.TracerProvider {

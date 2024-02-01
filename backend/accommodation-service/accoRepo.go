@@ -185,6 +185,26 @@ func (ar *AccoRepo) GetAllByLocation(location string) (*Accommodations, error) {
 	return &accommodations, nil
 }
 
+// Gets all acco_ids from the reservation service
+func (ar *AccoRepo) GetAllAccoFromReservationServiceByDate(beginReservationDate string, endReservationDate string) (*http.Response, error) {
+	url := ar.reservation_service_address + "/api/accommodations/delete/" + beginReservationDate + "/" + endReservationDate
+
+	log.Println("Url", url)
+
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	httpResp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	return httpResp, nil
+}
+
 func (ar *AccoRepo) DeleteAccommodationGrade(userId string, id string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -334,7 +354,6 @@ func (ar *AccoRepo) SendRequestToReservationService(token string) (*http.Respons
 		return nil, err
 	}
 	return httpResp, nil
-
 }
 
 func (ar *AccoRepo) GetAllAccommodationGrades(id string) (*AccommodationGrades, error) {

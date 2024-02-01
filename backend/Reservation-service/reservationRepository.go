@@ -217,6 +217,18 @@ func (rs *ReservationRepo) InsertReservationByAcco(resAcco *ReservationByAccommo
 		rs.logger.Println(err)
 		return err
 	}
+
+	//DODAJE U DRUGU TABELU
+	err = rs.session.Query(
+		`INSERT INTO reservations_dates_by_acco_id (accommodation_id, begin_reservation_date, end_reservation_date)
+		VALUES (?, ?, ?);`,
+		resAcco.AccoId, resAcco.StartDate, resAcco.EndDate).Exec()
+	if err != nil {
+		rs.logger.Println(err)
+		return err
+	}
+	log.Println("Insert prosao")
+
 	return nil
 }
 
@@ -242,7 +254,7 @@ func (rs *ReservationRepo) GetReservationsDatesByHostId(host_id string) (Reserva
 }
 
 // RESERVATION DATE FOR ACCO
-func (rs *ReservationRepo) GetReservationsDatesByAccomodationId(acco_id string) (ReservationDatesByAccomodationId, error) {
+func (rs *ReservationRepo) GetReservationsDatesByAccommodationId(acco_id string) (ReservationDatesByAccomodationId, error) {
 	scanner := rs.session.Query(`SELECT begin_reservation_date, end_reservation_date
     FROM reservations_dates_by_acco_id
     WHERE accommodation_id = ?;`, // teba videi da li ce trebati isDeleted
@@ -265,7 +277,7 @@ func (rs *ReservationRepo) GetReservationsDatesByAccomodationId(acco_id string) 
 	return dates, nil
 }
 
-func (rs *ReservationRepo) InsertReservationDateForAccomodation(resDate *ReservationDateByDate) error { // -----------------------
+func (rs *ReservationRepo) InsertReservationDateForAccommodation(resDate *ReservationDateByDate) error { // -----------------------
 	log.Println("Usli u Insert")
 
 	// overlap, err := rs.CheckOverlap(resDate.AccoId, resDate.BeginAccomodationDate, resDate.EndAccomodationDate)

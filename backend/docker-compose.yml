@@ -99,6 +99,7 @@ services:
       HOST: ${NOTIFICATION_SERVICE_HOST}
       PORT: ${NOTIFICATION_SERVICE_PORT}
       MONGO_DB_URI: ${MONGO_DB_URI}
+      JAEGER_ADDRESS: ${JAEGER_ADDRESS}
     depends_on:
       jaeger:
         condition: service_healthy
@@ -146,7 +147,7 @@ services:
     image: otel/opentelemetry-collector:0.69.0
     command: [ "--config=/etc/otel-collector-config.yaml" ]
     volumes:
-      - ./api_gateway/otel-collector-config.yaml:/etc/otel-collector-config.yaml
+      - ./api-gateway/otel-collector-config.yaml:/etc/otel-collector-config.yaml
     networks:
       - network
 
@@ -163,6 +164,7 @@ services:
       - accommodation-service
       - prof-service
       - reservation-service
+      - notification-service
     networks:
       - network
 
@@ -197,7 +199,7 @@ services:
     networks:
       - network
 
-  # NoSQL: MognoExpress
+  # NoSQL: MongoExpress
   mongo-express:
     image: mongo-express
     restart: always
@@ -217,7 +219,7 @@ services:
     networks:
       - network
 
-    # NoSQL: CassandraDB
+  # NoSQL: CassandraDB
   cassandra:
     image: cassandra
     restart: always
@@ -237,7 +239,7 @@ services:
     networks:
       - network
 
-  #   NoSQL: Consul
+  # NoSQL: Consul
   consul:
     image: hashicorp/consul:latest
     ports:

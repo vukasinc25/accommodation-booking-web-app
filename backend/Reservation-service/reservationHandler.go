@@ -63,7 +63,7 @@ func (rh *reservationHandler) GetReservationDatesByAccommodationId(res http.Resp
 	vars := mux.Vars(req)
 	accoId := vars["id"]
 
-	reservationDatesByAccomodationId, err := rh.repo.GetReservationsDatesByAccomodationId(accoId)
+	reservationDatesByAccomodationId, err := rh.repo.GetReservationsDatesByAccommodationId(accoId)
 	if err != nil {
 		rh.logger.Print("Database exception: ", err)
 		sendErrorWithMessage(res, "Error when getting reservation dates", http.StatusBadRequest)
@@ -205,7 +205,7 @@ func (rh *reservationHandler) GetAllReservationsDatesByHostId(res http.ResponseW
 	var counterIsThereAnyReservations = 0
 	for _, element := range reservationsDatesByHostId {
 		rh.logger.Println("Reservation:", element)
-		reservationsByAccomodationIdFromReservationsByUserTable, err := rh.repo.GetReservationsDatesByAccomodationId(element.AccoId)
+		reservationsByAccomodationIdFromReservationsByUserTable, err := rh.repo.GetReservationsDatesByAccommodationId(element.AccoId)
 		if err != nil {
 			rh.logger.Println("Cant get reservations by accommodation:", err)
 			sendErrorWithMessage1(res, "Cant get reservations by accommodationId for host", http.StatusInternalServerError)
@@ -344,7 +344,7 @@ func (rh *reservationHandler) IsHostProminent(res http.ResponseWriter, req *http
 		processedAccommodations[element.AccoId] = true // Mark the accommodation as processed
 
 		rh.logger.Println("Reservation:", element)
-		reservationsByAccId, err := rh.repo.GetReservationsDatesByAccomodationId(element.AccoId)
+		reservationsByAccId, err := rh.repo.GetReservationsDatesByAccommodationId(element.AccoId)
 		if err != nil {
 			rh.logger.Println("Cant get reservations by accommodationId:", err)
 			sendErrorWithMessage1(res, "Cant get reservations by accommodationId", http.StatusInternalServerError)

@@ -406,8 +406,8 @@ export class AccommoInfoComponent implements OnInit {
           this.router.navigate(['accommodations/myAccommodations']);
         },
         error: (err) => {
-          console.log(err.error.message);
-          alert(err.error.message);
+          console.log(err.error);
+          alert(err.error);
         },
       });
   }
