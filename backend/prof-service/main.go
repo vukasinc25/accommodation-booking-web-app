@@ -3,6 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/jaeger"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"net/http"
 	"os"
 	"os/signal"
@@ -13,6 +18,7 @@ import (
 	lumberjack "github.com/natefinch/lumberjack"
 	log "github.com/sirupsen/logrus"
 	"github.com/sony/gobreaker"
+	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 )
 
 func main() {
@@ -64,6 +70,14 @@ func main() {
 
 	config := loadConfig()
 
+	//TRACING
+	tracerProvider, err := NewTracerProvider(config["jaeger"])
+	if err != nil {
+		log.Fatal("JaegerTraceProvider failed to Initialize", err)
+	}
+	tracer := tracerProvider.Tracer("prof-service")
+	//
+
 	//Initialize the logger we are going to use, with prefix and datetime for every log
 	// logger := log.New(os.Stdout, "[product-api] ", log.LstdFlags)
 	// logger := log.New()
@@ -78,13 +92,14 @@ func main() {
 	// logger.SetOutput(lumberjackLogger)
 
 	// NoSQL: Initialize Product Repository store
-	store, err := New(logger, config["conn_reservation_service_address"], config["conn_auth_service_address"])
+	store, err := New(logger, config["conn_reservation_service_address"], config["conn_auth_service_address"], tracer)
 	if err != nil {
 		logger.Fatal(err)
 	}
 
-	service := NewUserHandler(logger, store)
+	service := NewUserHandler(logger, store, tracer)
 
+	router.Use(service.ExtractTraceInfoMiddleware)
 	// router.HandleFunc("/api/prof/email/{code}", service.verifyEmail).Methods("POST") // for sending verification mail
 	router.HandleFunc("/api/prof/create", service.createUser).Methods("POST")
 	router.HandleFunc("/api/prof/users/", service.getAllUsers).Methods("GET")
@@ -168,4 +183,24 @@ func loadConfig() map[string]string {
 	config["address"] = fmt.Sprintf(":%s", os.Getenv("PORT"))
 	config["jaeger"] = os.Getenv("JAEGER_ADDRESS")
 	return config
+}
+
+func NewTracerProvider(collectorEndpoint string) (*sdktrace.TracerProvider, error) {
+	exporter, err := jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(collectorEndpoint)))
+	if err != nil {
+		return nil, fmt.Errorf("unable to initialize exporter due: %w", err)
+	}
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithSampler(sdktrace.AlwaysSample()),
+		sdktrace.WithBatcher(exporter),
+		sdktrace.WithResource(resource.NewWithAttributes(
+			semconv.SchemaURL,
+			semconv.ServiceNameKey.String("prof-service"),
+			semconv.DeploymentEnvironmentKey.String("development"),
+		)),
+	)
+	otel.SetTracerProvider(tp)
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
+
+	return tp, nil
 }

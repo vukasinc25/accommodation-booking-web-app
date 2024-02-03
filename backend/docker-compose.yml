@@ -129,7 +129,10 @@ services:
       - 8000:8000
     environment:
       # - PORT=8000
-      - CASS_DB=cassandra:9042
+      HOST: ${RESERVATION_SERVICE_HOST}
+      PORT: ${RESERVATION_SERVICE_PORT}
+      CASS_DB: ${CASS_DB}
+      JAEGER_ADDRESS: ${JAEGER_ADDRESS}
     depends_on:
       cassandra:
         condition: service_healthy

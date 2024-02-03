@@ -72,19 +72,13 @@ func main() {
 			Interval:    0,
 		})
 
-	//JAEGER
-	ctx := context.Background()
-	exp, err := newExporter(config["jaeger"])
+	//TRACING
+	tracerProvider, err := NewTracerProvider(config["jaeger"])
 	if err != nil {
-		log.Fatalf("failed to initialize exporter: %v", err)
+		log.Fatal("JaegerTraceProvider failed to Initialize", err)
 	}
-	tp := newTraceProvider(exp)
-	defer func() { _ = tp.Shutdown(ctx) }()
-	otel.SetTracerProvider(tp)
-	// Finally, set the tracer that can be used for this package.
-	tracer := tp.Tracer("notification-service")
-	otel.SetTextMapPropagator(propagation.TraceContext{})
-	//----------
+	tracer := tracerProvider.Tracer("accommodation-service")
+	//
 
 	timeoutContext, cancel := context.WithTimeout(context.Background(), 50*time.Second)
 	defer cancel()
@@ -94,7 +88,7 @@ func main() {
 	// storageLogger := log.New(os.Stdout, "[file-storage] ", log.LstdFlags)
 	// loggerCache := log.New(os.Stdout, "[redis-cache] ", log.LstdFlags)
 	//pub := InitPubSub()
-	store, err := New(timeoutContext, logger, config["conn_reservation_service_address"])
+	store, err := New(timeoutContext, logger, config["conn_reservation_service_address"], tracer)
 	if err != nil {
 		logger.Fatal(err)
 	}
@@ -134,11 +128,13 @@ func main() {
 	service := NewAccoHandler(logger, store, storageHandler, tracer)
 
 	router.Use(service.MiddlewareContentTypeSet)
+	router.Use(service.ExtractTraceInfoMiddleware)
 
 	postRouter := router.Methods(http.MethodPost).Subrouter()
 	postRouter.HandleFunc("/api/accommodations/create", service.createAccommodation)
 	postRouter.Use(service.MiddlewareRoleCheck(authClient, authBreaker))
 	postRouter.Use(service.MiddlewareAccommodationDeserialization)
+	postRouter.Use(service.ExtractTraceInfoMiddleware)
 
 	router.HandleFunc("/api/accommodations/", service.getAllAccommodations).Methods("GET")
 	router.HandleFunc("/api/accommodations/{id}", service.GetAccommodationById).Methods("GET")
@@ -209,30 +205,22 @@ func loadConfig() map[string]string {
 	return config
 }
 
-func newExporter(address string) (*jaeger.Exporter, error) {
-	exp, err := jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(address)))
+func NewTracerProvider(collectorEndpoint string) (*sdktrace.TracerProvider, error) {
+	exporter, err := jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(collectorEndpoint)))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to initialize exporter due: %w", err)
 	}
-	return exp, nil
-}
-
-func newTraceProvider(exp sdktrace.SpanExporter) *sdktrace.TracerProvider {
-	// Ensure default SDK resources and the required service name are set.
-	r, err := resource.Merge(
-		resource.Default(),
-		resource.NewWithAttributes(
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithSampler(sdktrace.AlwaysSample()),
+		sdktrace.WithBatcher(exporter),
+		sdktrace.WithResource(resource.NewWithAttributes(
 			semconv.SchemaURL,
-			semconv.ServiceNameKey.String("notification-service"),
-		),
+			semconv.ServiceNameKey.String("accommodation-service"),
+			semconv.DeploymentEnvironmentKey.String("development"),
+		)),
 	)
+	otel.SetTracerProvider(tp)
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
 
-	if err != nil {
-		panic(err)
-	}
-
-	return sdktrace.NewTracerProvider(
-		sdktrace.WithBatcher(exp),
-		sdktrace.WithResource(r),
-	)
+	return tp, nil
 }

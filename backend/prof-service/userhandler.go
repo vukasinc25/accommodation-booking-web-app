@@ -5,6 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 	"io"
 	"io/ioutil"
 
@@ -24,10 +27,11 @@ import (
 type userHandler struct {
 	logger *log.Logger
 	db     *UserRepo
+	tracer trace.Tracer
 }
 
-func NewUserHandler(l *log.Logger, r *UserRepo) *userHandler {
-	return &userHandler{l, r}
+func NewUserHandler(l *log.Logger, r *UserRepo, t trace.Tracer) *userHandler {
+	return &userHandler{l, r, t}
 }
 
 func (rh *userHandler) MiddlewareRoleCheck(client *http.Client, breaker *gobreaker.CircuitBreaker) mux.MiddlewareFunc {
@@ -252,6 +256,9 @@ func (rh *userHandler) MiddlewareRoleCheck00(client *http.Client, breaker *gobre
 }
 
 func (uh *userHandler) createUser(w http.ResponseWriter, req *http.Request) {
+	ctx, span := uh.tracer.Start(req.Context(), "userHandler.createUser") //tracer
+	defer span.End()                                                      //tracer
+
 	uh.logger.Info("Usli u CreateUser")
 	contentType := req.Header.Get("Content-Type")
 	mediatype, _, err := mime.ParseMediaType(contentType)
@@ -275,7 +282,7 @@ func (uh *userHandler) createUser(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err = uh.db.Insert(rt)
+	err = uh.db.Insert(rt, ctx)
 	if err != nil {
 		uh.logger.Info("User not saved")
 		sendErrorWithMessage(w, err.Error(), http.StatusBadRequest)
@@ -286,10 +293,12 @@ func (uh *userHandler) createUser(w http.ResponseWriter, req *http.Request) {
 }
 
 func (uh *userHandler) getAllUsers(w http.ResponseWriter, req *http.Request) {
+	ctx, span := uh.tracer.Start(req.Context(), "userHandler.getAllUsers") //tracer
+	defer span.End()
 
 	// uh.logger.Info("Get All Users method enterd geting Accomodation")
 	// uh.getAccomodations(w)
-	users, err := uh.db.GetAll()
+	users, err := uh.db.GetAll(ctx)
 
 	if err != nil {
 		uh.logger.Print("Database exception: ", err)
@@ -308,10 +317,13 @@ func (uh *userHandler) getAllUsers(w http.ResponseWriter, req *http.Request) {
 }
 
 func (uh *userHandler) DeleteUser(res http.ResponseWriter, req *http.Request) {
+	ctx, span := uh.tracer.Start(req.Context(), "userHandler.DeleteUser") //tracer
+	defer span.End()
+
 	vars := mux.Vars(req)
 	id := vars["id"]
 
-	err := uh.db.Delete(id)
+	err := uh.db.Delete(id, ctx)
 	if err != nil {
 		uh.logger.Info("Unable to delete product.", err)
 		sendErrorWithMessage(res, err.Error(), http.StatusBadRequest)
@@ -345,6 +357,9 @@ func renderJSON(w http.ResponseWriter, v interface{}) {
 }
 
 func (uh *userHandler) CreateHostGrade(res http.ResponseWriter, req *http.Request) {
+	ctx, span := uh.tracer.Start(req.Context(), "userHandler.CreateHostGrade") //tracer
+	defer span.End()
+
 	uh.logger.Info(req.Body)
 	hostGrade, err := decodeHostGradeBody(req.Body)
 	if err != nil {
@@ -359,7 +374,7 @@ func (uh *userHandler) CreateHostGrade(res http.ResponseWriter, req *http.Reques
 	hostGrade.ID = randstr.String(20)
 	uh.logger.Info("HostGrade:", hostGrade)
 
-	response, err := uh.db.GetAllReservatinsForUserByHostId(hostGrade.UserId, hostGrade.HostId)
+	response, err := uh.db.GetAllReservatinsForUserByHostId(hostGrade.UserId, hostGrade.HostId, ctx)
 	if err != nil {
 		uh.logger.Info("Error in method GetAllReservatinsForUserByHostId", err)
 		sendErrorWithMessage1(res, "Error in getting reservations for user", http.StatusBadRequest)
@@ -380,7 +395,7 @@ func (uh *userHandler) CreateHostGrade(res http.ResponseWriter, req *http.Reques
 		sendErrorWithMessage1(res, "There is no reservations for hosts accommodations", http.StatusBadRequest)
 		return
 	} else if strings.Contains(string(body), "There is some reservtions for this user") {
-		err = uh.db.CreateHostGrade(hostGrade)
+		err = uh.db.CreateHostGrade(hostGrade, ctx)
 		if err != nil {
 			uh.logger.Info("HostGrade lavor")
 			sendErrorWithMessage1(res, "Lavor when tryed to save HostGrade", http.StatusBadRequest)
@@ -399,6 +414,9 @@ func (uh *userHandler) CreateHostGrade(res http.ResponseWriter, req *http.Reques
 }
 
 func (uh *userHandler) DeleteHostGrade(res http.ResponseWriter, req *http.Request) {
+	ctx, span := uh.tracer.Start(req.Context(), "userHandler.DeleteHostGrade") //tracer
+	defer span.End()
+
 	vars := mux.Vars(req)
 	id := vars["id"]
 
@@ -409,7 +427,7 @@ func (uh *userHandler) DeleteHostGrade(res http.ResponseWriter, req *http.Reques
 		return
 	}
 
-	err := uh.db.DeleteHostGrade(id, userId)
+	err := uh.db.DeleteHostGrade(id, userId, ctx)
 	if err != nil {
 		uh.logger.Print("DeleteHost lavor")
 		sendErrorWithMessage1(res, err.Error(), http.StatusBadRequest)
@@ -420,6 +438,9 @@ func (uh *userHandler) DeleteHostGrade(res http.ResponseWriter, req *http.Reques
 }
 
 func (uh *userHandler) GetAllHostGrades(res http.ResponseWriter, req *http.Request) {
+	ctx, span := uh.tracer.Start(req.Context(), "userHandler.GetAllHostGrades") //tracer
+	defer span.End()
+
 	vars := mux.Vars(req)
 	id := vars["id"]
 	// hostId, ok := req.Context().Value("hostId").(string)
@@ -433,7 +454,7 @@ func (uh *userHandler) GetAllHostGrades(res http.ResponseWriter, req *http.Reque
 	// uh.logger.Info("HostId")
 
 	uh.logger.Info("Usli u GetAllHostGrades")
-	hostGrades, err := uh.db.GetAllHostGradesByHostId(id)
+	hostGrades, err := uh.db.GetAllHostGradesByHostId(id, ctx)
 	if err != nil {
 		uh.logger.Info("GetAllHostGrades lavor")
 		sendErrorWithMessage1(res, err.Error(), http.StatusBadRequest)
@@ -459,7 +480,7 @@ func (uh *userHandler) GetAllHostGrades(res http.ResponseWriter, req *http.Reque
 		log.Println("x:", x)
 		averageGrade = float64(allGrades) / float64(x)
 		log.Println("Average Grade:", averageGrade)
-		response, err := uh.db.UpdateUserGrade(id, averageGrade)
+		response, err := uh.db.UpdateUserGrade(id, averageGrade, ctx)
 		if err != nil {
 			uh.logger.Println("Error in updating grade", err)
 			sendErrorWithMessage1(res, "Error in updating grade", http.StatusInternalServerError)
@@ -536,6 +557,9 @@ func (u *ResponseUser) ToJSON(w io.Writer) error {
 	return e.Encode(u)
 }
 func (uh *userHandler) UpdateUser(res http.ResponseWriter, req *http.Request) {
+	ctx, span := uh.tracer.Start(req.Context(), "userHandler.UpdateUser") //tracer
+	defer span.End()
+
 	uh.logger.Info("Usli u Update")
 	uh.logger.Info(req.Body)
 
@@ -546,7 +570,7 @@ func (uh *userHandler) UpdateUser(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	userDb, err := uh.db.Get(user.ID)
+	userDb, err := uh.db.Get(user.ID, ctx)
 	if err != nil {
 		uh.logger.Fatal("Database exception:", err)
 		http.Error(res, "Database exception", http.StatusInternalServerError)
@@ -561,7 +585,7 @@ func (uh *userHandler) UpdateUser(res http.ResponseWriter, req *http.Request) {
 
 	user.Role = userDb.Role
 
-	err = uh.db.UpdateUser(user)
+	err = uh.db.UpdateUser(user, ctx)
 	if err != nil {
 		uh.logger.Info("Error in updating user: ", err)
 		sendErrorWithMessage1(res, "Cant update user", http.StatusInternalServerError)
@@ -572,6 +596,8 @@ func (uh *userHandler) UpdateUser(res http.ResponseWriter, req *http.Request) {
 }
 
 func (uh *userHandler) GetUserById(res http.ResponseWriter, req *http.Request) {
+	ctx, span := uh.tracer.Start(req.Context(), "userHandler.GetUserById") //tracer
+	defer span.End()
 
 	requestId, err := decodeIdBody(req.Body)
 	if err != nil {
@@ -582,7 +608,7 @@ func (uh *userHandler) GetUserById(res http.ResponseWriter, req *http.Request) {
 
 	uh.logger.Info("usao u metodu")
 
-	user, err := uh.db.Get(requestId.UserId)
+	user, err := uh.db.Get(requestId.UserId, ctx)
 	if err != nil {
 		http.Error(res, "Database exception", http.StatusInternalServerError)
 		uh.logger.Fatal("Database exception: ", err)
@@ -626,4 +652,11 @@ func sendErrorWithMessage1(w http.ResponseWriter, message string, statusCode int
 	w.WriteHeader(statusCode)
 	errorResponse := map[string]string{"message": message}
 	json.NewEncoder(w).Encode(errorResponse)
+}
+
+func (nh *userHandler) ExtractTraceInfoMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }

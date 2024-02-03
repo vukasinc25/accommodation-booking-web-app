@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 	"io"
 
 	// "log"
@@ -23,10 +26,11 @@ type KeyProduct struct{}
 type reservationHandler struct {
 	logger *log.Logger
 	repo   *ReservationRepo
+	tracer trace.Tracer
 }
 
-func NewReservationHandler(l *log.Logger, r *ReservationRepo) *reservationHandler {
-	return &reservationHandler{l, r}
+func NewReservationHandler(l *log.Logger, r *ReservationRepo, t trace.Tracer) *reservationHandler {
+	return &reservationHandler{l, r, t}
 }
 
 //type AccoHandler struct {
@@ -39,6 +43,9 @@ func NewReservationHandler(l *log.Logger, r *ReservationRepo) *reservationHandle
 //}
 
 func (rh *reservationHandler) GetAllReservationIds(res http.ResponseWriter, req *http.Request) {
+	//ctx, span := rh.tracer.Start(req.Context(), "reservationHandler.createNotification") //tracer
+	//defer span.End()                                                                     //tracer
+
 	reservationIds, err := rh.repo.GetDistinctIds("reservation_id", "reservations_by_user")
 	if err != nil {
 		rh.logger.Print("Database exception: ", err)
@@ -60,10 +67,13 @@ func (rh *reservationHandler) GetAllReservationIds(res http.ResponseWriter, req 
 }
 
 func (rh *reservationHandler) GetReservationDatesByAccommodationId(res http.ResponseWriter, req *http.Request) {
+	ctx, span := rh.tracer.Start(req.Context(), "reservationHandler.GetReservationDatesByAccommodationId") //tracer
+	defer span.End()
+
 	vars := mux.Vars(req)
 	accoId := vars["id"]
 
-	reservationDatesByAccomodationId, err := rh.repo.GetReservationsDatesByAccommodationId(accoId)
+	reservationDatesByAccomodationId, err := rh.repo.GetReservationsDatesByAccommodationId(accoId, ctx)
 	if err != nil {
 		rh.logger.Print("Database exception: ", err)
 		sendErrorWithMessage(res, "Error when getting reservation dates", http.StatusBadRequest)
@@ -83,10 +93,13 @@ func (rh *reservationHandler) GetReservationDatesByAccommodationId(res http.Resp
 }
 
 func (rh *reservationHandler) GetAllReservationsByAccommodationId(res http.ResponseWriter, req *http.Request) {
+	ctx, span := rh.tracer.Start(req.Context(), "reservationHandler.GetAllReservationsByAccommodationId") //tracer
+	defer span.End()
+
 	vars := mux.Vars(req)
 	accoId := vars["id"]
 
-	reservationsByAcco, err := rh.repo.GetReservationsByAcco(accoId)
+	reservationsByAcco, err := rh.repo.GetReservationsByAcco(accoId, ctx)
 	if err != nil {
 		rh.logger.Print("Database exception: ", err)
 		sendErrorWithMessage(res, "Error when getting reservations", http.StatusBadRequest)
@@ -107,11 +120,14 @@ func (rh *reservationHandler) GetAllReservationsByAccommodationId(res http.Respo
 }
 
 func (rh *reservationHandler) GetAllReservationsDatesByDate(res http.ResponseWriter, req *http.Request) {
+	ctx, span := rh.tracer.Start(req.Context(), "reservationHandler.GetAllReservationsDatesByDate") //tracer
+	defer span.End()
+
 	vars := mux.Vars(req)
 	startDate := vars["startDate"]
 	endDate := vars["endDate"]
 
-	reservationsByAcco, err := rh.repo.GetReservationsDatesByDate(startDate, endDate)
+	reservationsByAcco, err := rh.repo.GetReservationsDatesByDate(startDate, endDate, ctx)
 	if err != nil {
 		rh.logger.Print("Database exception: ", err)
 		sendErrorWithMessage(res, "Error when getting reservations", http.StatusBadRequest)
@@ -131,10 +147,13 @@ func (rh *reservationHandler) GetAllReservationsDatesByDate(res http.ResponseWri
 }
 
 func (rh *reservationHandler) getAllReservationsByUser(res http.ResponseWriter, req *http.Request) {
+	ctx, span := rh.tracer.Start(req.Context(), "reservationHandler.getAllReservationsByUser") //tracer
+	defer span.End()
+
 	//vars := mux.Vars(req)
 	////userId := vars["id"]
 	requestId, err := decodeIdBody(req.Body)
-	reservationsByUser, err := rh.repo.GetReservationsByUser(requestId.UserId)
+	reservationsByUser, err := rh.repo.GetReservationsByUser(requestId.UserId, ctx)
 	// vars := mux.Vars(req)
 	// userId := vars["id"]
 	// reservationsByUser, err := rh.repo.GetReservationsByUser(userId)
@@ -157,6 +176,9 @@ func (rh *reservationHandler) getAllReservationsByUser(res http.ResponseWriter, 
 }
 
 func (rh *reservationHandler) GetAllReservationsByUserId(res http.ResponseWriter, req *http.Request) {
+	ctx, span := rh.tracer.Start(req.Context(), "reservationHandler.GetAllReservationsByUserId") //tracer
+	defer span.End()
+
 	rh.logger.Println("Request Body: ", req.Body)
 	requestId, err := decodeIdBody(req.Body)
 	if err != nil {
@@ -165,7 +187,7 @@ func (rh *reservationHandler) GetAllReservationsByUserId(res http.ResponseWriter
 		return
 	}
 
-	reservationsByUser, err := rh.repo.GetReservationsByUser(requestId.UserId)
+	reservationsByUser, err := rh.repo.GetReservationsByUser(requestId.UserId, ctx)
 	if err != nil {
 		rh.logger.Println("Database exception: ", err)
 		sendErrorWithMessage(res, "Error in getting reservation", http.StatusBadRequest)
@@ -185,11 +207,14 @@ func (rh *reservationHandler) GetAllReservationsByUserId(res http.ResponseWriter
 }
 
 func (rh *reservationHandler) GetAllReservationsDatesByHostId(res http.ResponseWriter, req *http.Request) {
+	ctx, span := rh.tracer.Start(req.Context(), "reservationHandler.GetAllReservationsDatesByHostId") //tracer
+	defer span.End()
+
 	vars := mux.Vars(req)
 	hostId := vars["id"]
 	rh.logger.Println("Usli u GetReservationsDatesByHostId met")
 
-	reservationsDatesByHostId, err := rh.repo.GetReservationsDatesByHostId(hostId)
+	reservationsDatesByHostId, err := rh.repo.GetReservationsDatesByHostId(hostId, ctx)
 	if err != nil {
 		rh.logger.Print("Database exception: ", err)
 		sendErrorWithMessage1(res, "Error when getting reservations", http.StatusBadRequest)
@@ -205,7 +230,7 @@ func (rh *reservationHandler) GetAllReservationsDatesByHostId(res http.ResponseW
 	var counterIsThereAnyReservations = 0
 	for _, element := range reservationsDatesByHostId {
 		rh.logger.Println("Reservation:", element)
-		reservationsByAccomodationIdFromReservationsByUserTable, err := rh.repo.GetReservationsDatesByAccommodationId(element.AccoId)
+		reservationsByAccomodationIdFromReservationsByUserTable, err := rh.repo.GetReservationsDatesByAccommodationId(element.AccoId, ctx)
 		if err != nil {
 			rh.logger.Println("Cant get reservations by accommodation:", err)
 			sendErrorWithMessage1(res, "Cant get reservations by accommodationId for host", http.StatusInternalServerError)
@@ -258,12 +283,15 @@ func (rh *reservationHandler) GetAllReservationsDatesByHostId(res http.ResponseW
 }
 
 func (rh *reservationHandler) GetAllReservationsForUserIdByHostId(res http.ResponseWriter, req *http.Request) {
+	ctx, span := rh.tracer.Start(req.Context(), "reservationHandler.GetAllReservationsForUserIdByHostId") //tracer
+	defer span.End()
+
 	vars := mux.Vars(req)
 	userId := vars["userId"]
 	hostId := vars["hostId"]
 	rh.logger.Println("Usli u GetReservationsDatesByHostId met")
 
-	reservationsDatesByHostId, err := rh.repo.GetReservationsDatesByHostId(hostId)
+	reservationsDatesByHostId, err := rh.repo.GetReservationsDatesByHostId(hostId, ctx)
 	if err != nil {
 		rh.logger.Print("Database exception: ", err)
 		sendErrorWithMessage1(res, "Error when getting reservations", http.StatusBadRequest)
@@ -279,7 +307,7 @@ func (rh *reservationHandler) GetAllReservationsForUserIdByHostId(res http.Respo
 	var counterIsThereAnyReservations = 0
 	for _, element := range reservationsDatesByHostId {
 		rh.logger.Println("Reservation:", element)
-		reservationsByUserId, err := rh.repo.GetReservationsByUser(userId)
+		reservationsByUserId, err := rh.repo.GetReservationsByUser(userId, ctx)
 		if err != nil {
 			rh.logger.Println("Cant get reservations by user:", err)
 			sendErrorWithMessage1(res, "Cant get reservations by userId for userId", http.StatusInternalServerError)
@@ -314,11 +342,14 @@ func (rh *reservationHandler) GetAllReservationsForUserIdByHostId(res http.Respo
 }
 
 func (rh *reservationHandler) IsHostProminent(res http.ResponseWriter, req *http.Request) {
+	ctx, span := rh.tracer.Start(req.Context(), "reservationHandler.IsHostProminent") //tracer
+	defer span.End()
+
 	vars := mux.Vars(req)
 	hostId := vars["id"]
 	rh.logger.Println("Entered IsHostProminent func")
 
-	reservationsDatesByHostId, err := rh.repo.GetReservationsDatesByHostId(hostId)
+	reservationsDatesByHostId, err := rh.repo.GetReservationsDatesByHostId(hostId, ctx)
 	if err != nil {
 		rh.logger.Print("Database exception: ", err)
 		sendErrorWithMessage1(res, "Error when getting reservations", http.StatusBadRequest)
@@ -344,7 +375,7 @@ func (rh *reservationHandler) IsHostProminent(res http.ResponseWriter, req *http
 		processedAccommodations[element.AccoId] = true // Mark the accommodation as processed
 
 		rh.logger.Println("Reservation:", element)
-		reservationsByAccId, err := rh.repo.GetReservationsDatesByAccommodationId(element.AccoId)
+		reservationsByAccId, err := rh.repo.GetReservationsDatesByAccommodationId(element.AccoId, ctx)
 		if err != nil {
 			rh.logger.Println("Cant get reservations by accommodationId:", err)
 			sendErrorWithMessage1(res, "Cant get reservations by accommodationId", http.StatusInternalServerError)
@@ -386,6 +417,9 @@ func (rh *reservationHandler) IsHostProminent(res http.ResponseWriter, req *http
 }
 
 func (rh *reservationHandler) CreateReservationDateForDate(res http.ResponseWriter, req *http.Request) {
+	ctx, span := rh.tracer.Start(req.Context(), "reservationHandler.CreateReservationDateForDate") //tracer
+	defer span.End()
+
 	reservationDate, err := decodeBody(req.Body)
 	if err != nil {
 		rh.logger.Println("Error in decoding body")
@@ -393,7 +427,7 @@ func (rh *reservationHandler) CreateReservationDateForDate(res http.ResponseWrit
 		return
 	}
 
-	err = rh.repo.InsertReservationDateByDate(reservationDate)
+	err = rh.repo.InsertReservationDateByDate(reservationDate, ctx)
 	if err != nil {
 		rh.logger.Print("Database exception: ", err)
 		sendErrorWithMessage(res, err.Error(), http.StatusBadRequest)
@@ -420,13 +454,16 @@ func (rh *reservationHandler) CreateReservationDateForDate(res http.ResponseWrit
 // }
 
 func (rh *reservationHandler) CreateReservationForAcco(res http.ResponseWriter, req *http.Request) {
+	ctx, span := rh.tracer.Start(req.Context(), "reservationHandler.CreateReservationForAcco") //tracer
+	defer span.End()
+
 	reservation, err := decodeReservationBody(req.Body)
 	if err != nil {
 		rh.logger.Println("Error in decoding body")
 		sendErrorWithMessage(res, "Error in decoding body", http.StatusBadRequest)
 		return
 	}
-	err = rh.repo.InsertReservationByAcco(reservation)
+	err = rh.repo.InsertReservationByAcco(reservation, ctx)
 	if err != nil {
 		rh.logger.Print("Database exception: ", err)
 		sendErrorWithMessage(res, "Cant create reservation", http.StatusBadRequest)
@@ -436,12 +473,15 @@ func (rh *reservationHandler) CreateReservationForAcco(res http.ResponseWriter, 
 }
 
 func (rh *reservationHandler) CreateReservationForUser(res http.ResponseWriter, req *http.Request) {
+	ctx, span := rh.tracer.Start(req.Context(), "reservationHandler.CreateReservationForUser") //tracer
+	defer span.End()
+
 	reservationUser, err := decodeReservationByUserBody(req.Body)
 	if err != nil {
 		sendErrorWithMessage(res, "Cant decode body", http.StatusBadRequest)
 		return
 	}
-	err = rh.repo.InsertReservationByUser(reservationUser)
+	err = rh.repo.InsertReservationByUser(reservationUser, ctx)
 	if err != nil {
 		rh.logger.Print("Database exception: ", err)
 		if strings.Contains(err.Error(), "Cant reserve in past") {
@@ -458,6 +498,9 @@ func (rh *reservationHandler) CreateReservationForUser(res http.ResponseWriter, 
 }
 
 func (rh *reservationHandler) UpdateReservationByUser(res http.ResponseWriter, req *http.Request) {
+	ctx, span := rh.tracer.Start(req.Context(), "reservationHandler.UpdateReservationByUser") //tracer
+	defer span.End()
+
 	reservation, err := decodeReservationByUserBody(req.Body)
 	if err != nil {
 		rh.logger.Println(err)
@@ -465,7 +508,7 @@ func (rh *reservationHandler) UpdateReservationByUser(res http.ResponseWriter, r
 		return
 	}
 
-	err = rh.repo.UpdateReservationByUser(reservation)
+	err = rh.repo.UpdateReservationByUser(reservation, ctx)
 	if err != nil {
 		rh.logger.Print("Database exception: ", err)
 		if strings.Contains(err.Error(), "Cant find reservation") {
@@ -481,6 +524,9 @@ func (rh *reservationHandler) UpdateReservationByUser(res http.ResponseWriter, r
 }
 
 func (rh *reservationHandler) UpdateReservationByAcco(res http.ResponseWriter, req *http.Request) {
+	ctx, span := rh.tracer.Start(req.Context(), "reservationHandler.UpdateReservationByAcco") //tracer
+	defer span.End()
+
 	vars := mux.Vars(req)
 	accoId := vars["accoId"]
 	reservationId := vars["reservationId"]
@@ -490,7 +536,7 @@ func (rh *reservationHandler) UpdateReservationByAcco(res http.ResponseWriter, r
 	d := json.NewDecoder(req.Body)
 	d.Decode(&stepenStudija)
 
-	err := rh.repo.UpdateReservationByAcco(accoId, reservationId, price)
+	err := rh.repo.UpdateReservationByAcco(accoId, reservationId, price, ctx)
 	if err != nil {
 		rh.logger.Print("Database exception: ", err)
 		res.WriteHeader(http.StatusBadRequest)
@@ -833,4 +879,11 @@ func sendErrorWithMessage(w http.ResponseWriter, message string, statusCode int)
 	w.WriteHeader(statusCode)
 	errorResponse := map[string]string{"message": message}
 	json.NewEncoder(w).Encode(errorResponse)
+}
+
+func (nh *reservationHandler) ExtractTraceInfoMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }

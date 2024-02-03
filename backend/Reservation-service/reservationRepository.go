@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"go.opentelemetry.io/otel/trace"
 
 	// "log"
 	"os"
@@ -15,9 +17,10 @@ import (
 type ReservationRepo struct {
 	session *gocql.Session
 	logger  *log.Logger
+	tracer  trace.Tracer
 }
 
-func New(logger *log.Logger) (*ReservationRepo, error) {
+func New(logger *log.Logger, tracer trace.Tracer) (*ReservationRepo, error) {
 	db := os.Getenv("CASS_DB")
 
 	cluster := gocql.NewCluster(db)
@@ -51,6 +54,7 @@ func New(logger *log.Logger) (*ReservationRepo, error) {
 	return &ReservationRepo{
 		session: session,
 		logger:  logger,
+		tracer:  tracer,
 	}, nil
 }
 
@@ -165,7 +169,10 @@ func (rs *ReservationRepo) CreateTables() {
 }
 
 // -------Reservation By Accommodation-------//
-func (rs *ReservationRepo) GetReservationsByAcco(acco_id string) (ReservationsByAccommodation, error) {
+func (rs *ReservationRepo) GetReservationsByAcco(acco_id string, ctx context.Context) (ReservationsByAccommodation, error) {
+	ctx, span := rs.tracer.Start(ctx, "NotificationRepo.GetReservationsByAcco")
+	defer span.End()
+
 	scanner := rs.session.Query(`SELECT reservation_id, acco_id, startDate, endDate, host_id, numberPeople, priceByAcoommodation, priceByPeople FROM reservations_by_acco1 WHERE acco_id = ?;`,
 		acco_id).Iter().Scanner() // lista
 	var reservations ReservationsByAccommodation
@@ -186,7 +193,10 @@ func (rs *ReservationRepo) GetReservationsByAcco(acco_id string) (ReservationsBy
 	return reservations, nil
 }
 
-func (rs *ReservationRepo) InsertReservationByAcco(resAcco *ReservationByAccommodation) error {
+func (rs *ReservationRepo) InsertReservationByAcco(resAcco *ReservationByAccommodation, ctx context.Context) error {
+	ctx, span := rs.tracer.Start(ctx, "NotificationRepo.InsertReservationByAcco")
+	defer span.End()
+
 	overlap, err := rs.CheckOverlap1(resAcco.AccoId, resAcco.StartDate, resAcco.EndDate)
 	if err != nil {
 		return err
@@ -232,7 +242,10 @@ func (rs *ReservationRepo) InsertReservationByAcco(resAcco *ReservationByAccommo
 	return nil
 }
 
-func (rs *ReservationRepo) GetReservationsDatesByHostId(host_id string) (ReservationsByAccommodation, error) {
+func (rs *ReservationRepo) GetReservationsDatesByHostId(host_id string, ctx context.Context) (ReservationsByAccommodation, error) {
+	ctx, span := rs.tracer.Start(ctx, "NotificationRepo.GetReservationsDatesByHostId")
+	defer span.End()
+
 	scanner := rs.session.Query(`SELECT reservation_id, acco_id, startDate, endDate, host_id, numberPeople, priceByAcoommodation, priceByPeople FROM reservations_by_acco2 WHERE host_id = ?;`,
 		host_id).Iter().Scanner() // lista
 	var reservations ReservationsByAccommodation
@@ -254,7 +267,10 @@ func (rs *ReservationRepo) GetReservationsDatesByHostId(host_id string) (Reserva
 }
 
 // RESERVATION DATE FOR ACCO
-func (rs *ReservationRepo) GetReservationsDatesByAccommodationId(acco_id string) (ReservationDatesByAccomodationId, error) {
+func (rs *ReservationRepo) GetReservationsDatesByAccommodationId(acco_id string, ctx context.Context) (ReservationDatesByAccomodationId, error) {
+	ctx, span := rs.tracer.Start(ctx, "NotificationRepo.GetReservationsDatesByAccommodationId")
+	defer span.End()
+
 	scanner := rs.session.Query(`SELECT begin_reservation_date, end_reservation_date
     FROM reservations_dates_by_acco_id
     WHERE accommodation_id = ?;`, // teba videi da li ce trebati isDeleted
@@ -304,7 +320,10 @@ func (rs *ReservationRepo) InsertReservationDateForAccommodation(resDate *Reserv
 }
 
 // SEARCH - RESERVATION DATES BY START AND END DATE
-func (rs *ReservationRepo) GetReservationsDatesByDate(beginReservationDate string, endReservationDate string) (ReservationDatesByDateGet, error) {
+func (rs *ReservationRepo) GetReservationsDatesByDate(beginReservationDate string, endReservationDate string, ctx context.Context) (ReservationDatesByDateGet, error) {
+	ctx, span := rs.tracer.Start(ctx, "NotificationRepo.GetReservationsDatesByDate")
+	defer span.End()
+
 	scanner := rs.session.Query(`SELECT accommodation_id FROM reservations_dates_by_date
     WHERE begin_reservation_date = ? AND end_reservation_date = ?`,
 		beginReservationDate, endReservationDate).Iter().Scanner()
@@ -326,7 +345,10 @@ func (rs *ReservationRepo) GetReservationsDatesByDate(beginReservationDate strin
 	return dates, nil
 }
 
-func (rs *ReservationRepo) InsertReservationDateByDate(resDate *ReservationDateByDate) error {
+func (rs *ReservationRepo) InsertReservationDateByDate(resDate *ReservationDateByDate, ctx context.Context) error {
+	ctx, span := rs.tracer.Start(ctx, "NotificationRepo.InsertReservationDateByDate")
+	defer span.End()
+
 	reservationId, _ := gocql.RandomUUID()
 	err := rs.session.Query(
 		`INSERT INTO reservations_dates_by_date (id, accommodation_id, begin_reservation_date, end_reservation_date) 
@@ -340,7 +362,10 @@ func (rs *ReservationRepo) InsertReservationDateByDate(resDate *ReservationDateB
 }
 
 // -------Reservation By User-------//
-func (rs *ReservationRepo) GetReservationsByUser(user_id string) (ReservationsByUser, error) {
+func (rs *ReservationRepo) GetReservationsByUser(user_id string, ctx context.Context) (ReservationsByUser, error) {
+	ctx, span := rs.tracer.Start(ctx, "NotificationRepo.GetReservationsByUser")
+	defer span.End()
+
 	scanner := rs.session.Query(`SELECT reservation_id, acco_id, price, 
 	begin_reservation_date, numberOfPeople, end_reservation_date
 	FROM reservations_by_user WHERE user_id = ?;`,
@@ -364,7 +389,10 @@ func (rs *ReservationRepo) GetReservationsByUser(user_id string) (ReservationsBy
 	return reservations, nil
 }
 
-func (rs *ReservationRepo) InsertReservationByUser(resUser *ReservationByUser) error {
+func (rs *ReservationRepo) InsertReservationByUser(resUser *ReservationByUser, ctx context.Context) error {
+	ctx, span := rs.tracer.Start(ctx, "NotificationRepo.InsertReservationByUser")
+	defer span.End()
+
 	log.Println("Usli u metodu")
 
 	response, err := rs.isDatePassed(resUser.StartDate)
@@ -409,7 +437,7 @@ func (rs *ReservationRepo) InsertReservationByUser(resUser *ReservationByUser) e
 
 //--------------//
 
-func (rs *ReservationRepo) UpdateReservationByAcco(accoId string, reservationId string, hostId string) error { // nije namesteno
+func (rs *ReservationRepo) UpdateReservationByAcco(accoId string, reservationId string, hostId string, ctx context.Context) error { // nije namesteno
 	// err := rs.session.Query(
 	// 	`DELETE FROM reservations_by_acco1 where acoo_id = ? and reservation_id = ?`, // delete
 	// 	accoId, reservationId).Exec()
@@ -486,7 +514,10 @@ func (rs *ReservationRepo) CheckOverlap1(accommodationID string, beginDate, endD
 	return count > 0, nil
 }
 
-func (rs *ReservationRepo) UpdateReservationByUser(reservationByUser *ReservationByUser) error {
+func (rs *ReservationRepo) UpdateReservationByUser(reservationByUser *ReservationByUser, ctx context.Context) error {
+	ctx, span := rs.tracer.Start(ctx, "NotificationRepo.UpdateReservationByUser")
+	defer span.End()
+
 	overlap, err := rs.CheckTable(reservationByUser.UserId, reservationByUser.ReservationId, reservationByUser.AccoId, reservationByUser.StartDate, reservationByUser.EndDate)
 	if err != nil {
 		return err

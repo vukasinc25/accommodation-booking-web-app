@@ -59,7 +59,6 @@ func main() {
 	if err != nil {
 		log.Fatal("JaegerTraceProvider failed to Initialize", err)
 	}
-	log.Println(config["jaeger"])
 	tracer := tracerProvider.Tracer("auth-service")
 	//
 
@@ -185,14 +184,6 @@ func loadConfig() map[string]string {
 	config["jaeger"] = os.Getenv("JAEGER_ADDRESS")
 	config["conn_accommodation_service_address"] = fmt.Sprintf("http://%s:%s", os.Getenv("ACCOMMODATION_SERVICE_HOST"), os.Getenv("ACCOMMODATION_SERVICE_PORT"))
 	return config
-}
-
-func newExporter(address string) (*jaeger.Exporter, error) {
-	exp, err := jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(address)))
-	if err != nil {
-		return nil, err
-	}
-	return exp, nil
 }
 
 func NewTracerProvider(collectorEndpoint string) (*sdktrace.TracerProvider, error) {

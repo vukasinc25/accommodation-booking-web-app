@@ -72,10 +72,13 @@ func (nh *NotificationHandler) createNotification(rw http.ResponseWriter, req *h
 }
 
 func (nh *NotificationHandler) GetNotificationById(w http.ResponseWriter, req *http.Request) {
+	ctx, span := nh.tracer.Start(req.Context(), "NotificationHandler.createNotification") //tracer
+	defer span.End()
+
 	vars := mux.Vars(req)
 	id := vars["id"]
 
-	notification, err := nh.db.GetById(id)
+	notification, err := nh.db.GetById(id, ctx)
 	if err != nil {
 		nh.logger.Println(err)
 	}
@@ -118,10 +121,13 @@ func (nh *NotificationHandler) GetNotificationById(w http.ResponseWriter, req *h
 //}
 
 func (nh *NotificationHandler) GetAllNotificationsByUserId(w http.ResponseWriter, req *http.Request) {
+	ctx, span := nh.tracer.Start(req.Context(), "NotificationHandler.createNotification") //tracer
+	defer span.End()
+
 	vars := mux.Vars(req)
 	id := vars["id"]
 	log.Println(id)
-	accommodations, err := nh.db.GetAllByHostId(id)
+	accommodations, err := nh.db.GetAllByHostId(id, ctx)
 	if err != nil {
 		nh.logger.Print("Database exception: ", err)
 	}
@@ -141,10 +147,13 @@ func (nh *NotificationHandler) GetAllNotificationsByUserId(w http.ResponseWriter
 }
 
 func (nh *NotificationHandler) DeleteNotification(res http.ResponseWriter, req *http.Request) {
+	ctx, span := nh.tracer.Start(req.Context(), "NotificationHandler.createNotification") //tracer
+	defer span.End()
+
 	vars := mux.Vars(req)
 	username := vars["username"]
 
-	err := nh.db.Delete(username)
+	err := nh.db.Delete(username, ctx)
 	if err != nil {
 		log.Println("Error when tried to delete notification:", err)
 		sendErrorWithMessage1(res, "Error when tried to delete notification", http.StatusInternalServerError)
@@ -182,13 +191,6 @@ func (nh *NotificationHandler) sendEmail(contentStr string, subjectStr string, e
 	// w.WriteHeader(http.StatusCreated)
 	// message := "Poslat je mail na moblineaplikacijesit@gmail.com"
 	// renderJSON(w, message)
-}
-
-func ExtractTraceInfoMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
 }
 
 func (nh *NotificationHandler) ExtractTraceInfoMiddleware(next http.Handler) http.Handler {
