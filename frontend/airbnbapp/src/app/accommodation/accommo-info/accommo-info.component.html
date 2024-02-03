@@ -191,7 +191,10 @@
       </form>
     </div>
 
-    <div *ngIf="role == 'GUEST' && startDate != null" class="container">
+    <div
+      *ngIf="role == 'GUEST' && firstAvailableDate != null"
+      class="container"
+    >
       <div class="row">
         <!-- Left column for Reservations -->
         <div class="col-md-6">
@@ -201,21 +204,27 @@
             <ngb-datepicker
               #dp
               (dateSelect)="onDateSelection($event)"
+              [displayMonths]="2"
+              [markDisabled]="isDisabled"
               [dayTemplate]="t"
               outsideDays="hidden"
-              [markDisabled]="isDisabled"
-              [minDate]="startDate!"
-              [maxDate]="endDate!"
+              [minDate]="firstAvailableDate!"
+              [maxDate]="lastAvailableDate!"
             >
             </ngb-datepicker>
 
-            <ng-template #t let-date let-focused="focused">
+            <ng-template
+              #t
+              let-date
+              let-focused="focused"
+              let-disabled="disabled"
+            >
               <span
                 class="custom-day"
                 [class.focused]="focused"
                 [class.range]="isRange(date)"
                 [class.faded]="isHovered(date) || isInside(date)"
-                [class.disabled]="isDisabled(date)"
+                [class.disabled]="disabled"
                 (mouseenter)="hoveredDate = date"
                 (mouseleave)="hoveredDate = null"
               >
@@ -234,7 +243,7 @@
         </div>
 
         <!-- Right column for Host Grading Form -->
-        <div class="col-md-6">
+        <div class="col-md-6 ps-5">
           <div>
             <h2>Grade Host</h2>
             <form [formGroup]="form" (ngSubmit)="submitGrade()">
