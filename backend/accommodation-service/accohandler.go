@@ -8,8 +8,6 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 	"io"
-	"io/ioutil"
-
 	// "log"
 	"net/http"
 	"strconv"
@@ -163,6 +161,10 @@ func (ah *AccoHandler) GetAllAccommodationsByLocation(w http.ResponseWriter, req
 	}
 }
 
+type ReservationDateByDateGet struct {
+	AccoId string `json:"acco_id"`
+}
+
 func (ah *AccoHandler) GetAllAccommodationsByDate(w http.ResponseWriter, req *http.Request) {
 	ctx, span := ah.tracer.Start(req.Context(), "AccoHandler.GetAllAccommodationsByDate") //tracer
 	defer span.End()
@@ -170,7 +172,7 @@ func (ah *AccoHandler) GetAllAccommodationsByDate(w http.ResponseWriter, req *ht
 	vars := mux.Vars(req)
 	startDate := vars["startDate"]
 	endDate := vars["endDate"]
-	var accommodations []Accommodation
+	var accommodations Accommodations
 
 	accoIdListResponse, err := ah.db.GetAllAccoFromReservationServiceByDate(startDate, endDate, ctx)
 	if err != nil {
@@ -178,35 +180,37 @@ func (ah *AccoHandler) GetAllAccommodationsByDate(w http.ResponseWriter, req *ht
 		http.Error(w, "Error fetching accommodation IDs", http.StatusInternalServerError)
 		return
 	}
-	accommodationIdList, err := ioutil.ReadAll(accoIdListResponse.Body)
-	if err != nil {
-		ah.logger.Println("Error reading response body:", err)
-		sendErrorWithMessage(w, "Error reading response body", http.StatusInternalServerError)
-		return
+	log.Println(accoIdListResponse)
+
+	var accommodationIdList []ReservationDateByDateGet
+	if err := json.NewDecoder(accoIdListResponse.Body).Decode(&accommodationIdList); err != nil {
+		log.Println("Decoding error, da ne kazem glup si... :", err)
 	}
 	log.Println(accommodationIdList)
 
-	//for _, accoID := range accommodationIdList {
-	//	accommodation, err := ah.db.GetById(accoID)
-	//	if err != nil {
-	//		ah.logger.Printf("Error fetching accommodation with ID %d: %v", accoID, err)
-	//		continue
-	//	}
-	//	accommodations = append(accommodations, accommodation)
-	//}
+	for _, accoID := range accommodationIdList {
+		log.Println(accoID)
+		accommodation, err := ah.db.GetById(accoID.AccoId, ctx)
+		if err != nil {
+			ah.logger.Printf("Error fetching accommodation with ID %d: %v", accoID, err)
+			continue
+		}
+		accommodations = append(accommodations, accommodation)
+	}
 
+	log.Println(accommodations)
 	if accommodations == nil {
 		http.Error(w, "Accommodations with given date not found", http.StatusNotFound)
-		ah.logger.Printf("Accommodations with location: '%s' '%s' not found", startDate, endDate)
+		ah.logger.Printf("Accommodations with date: '%s' '%s' not found", startDate, endDate)
 		return
 	}
 
-	//err = accommodations.ToJSON(w)
-	//if err != nil {
-	//	http.Error(w, "Unable to convert to json", http.StatusInternalServerError)
-	//	ah.logger.Fatal("Unable to convert to json :", err)
-	//	return
-	//}
+	err = accommodations.ToJSON(w)
+	if err != nil {
+		http.Error(w, "Unable to convert to json", http.StatusInternalServerError)
+		ah.logger.Fatal("Unable to convert to json :", err)
+		return
+	}
 }
 
 func (ah *AccoHandler) DeleteAccommodationGrade(res http.ResponseWriter, req *http.Request) {

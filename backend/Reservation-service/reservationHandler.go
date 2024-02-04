@@ -139,6 +139,8 @@ func (rh *reservationHandler) GetAllReservationsDatesByDate(res http.ResponseWri
 	}
 
 	err = reservationsByAcco.ToJSON(res)
+	//log.Println("ALO BRE", res)
+	//log.Println("ISPIS ONOGA STO VRACA RES SERVIS", reservationsByAcco.ToJSON(res))
 	if err != nil {
 		sendErrorWithMessage(res, "Unable to convert to json", http.StatusInternalServerError)
 		rh.logger.Fatal("Unable to convert to json :", err)

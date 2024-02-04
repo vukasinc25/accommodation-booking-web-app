@@ -141,6 +141,7 @@ func main() {
 	router.HandleFunc("/api/accommodations/myAccommodations/{username}", service.GetAllAccommodationsByUsername).Methods("GET")
 	router.HandleFunc("/api/accommodations/search_by_location/{locations}", service.GetAllAccommodationsByLocation).Methods("GET")
 	router.HandleFunc("/api/accommodations/search_by_noGuests/{noGuests}", service.GetAllAccommodationsByNoGuests).Methods("GET")
+	router.HandleFunc("/api/accommodations/search_by_date/{startDate}/{endDate}", service.GetAllAccommodationsByDate).Methods("GET")
 	router.HandleFunc("/api/accommodations/get_all_acco_by_id/{id}", service.GetAllAccommodationsById).Methods("GET")
 	router.HandleFunc("/api/accommodations/delete/{username}", service.DeleteAccommodation).Methods("DELETE")
 	createAccommodationGrade := router.Methods(http.MethodPost).Subrouter()

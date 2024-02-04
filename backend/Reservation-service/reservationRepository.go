@@ -228,7 +228,7 @@ func (rs *ReservationRepo) InsertReservationByAcco(resAcco *ReservationByAccommo
 		return err
 	}
 
-	//DODAJE U DRUGU TABELU
+	//Insert into second table
 	err = rs.session.Query(
 		`INSERT INTO reservations_dates_by_acco_id (accommodation_id, begin_reservation_date, end_reservation_date)
 		VALUES (?, ?, ?);`,
@@ -238,6 +238,17 @@ func (rs *ReservationRepo) InsertReservationByAcco(resAcco *ReservationByAccommo
 		return err
 	}
 	log.Println("Insert prosao")
+
+	//Insert into third table
+	reservationId, _ = gocql.RandomUUID()
+	err = rs.session.Query(
+		`INSERT INTO reservations_dates_by_date (id, accommodation_id, begin_reservation_date, end_reservation_date) 
+		VALUES (?, ?, ?, ?);`,
+		reservationId, resAcco.AccoId, resAcco.StartDate, resAcco.EndDate).Exec()
+	if err != nil {
+		rs.logger.Println(err)
+		return err
+	}
 
 	return nil
 }
@@ -328,7 +339,7 @@ func (rs *ReservationRepo) GetReservationsDatesByDate(beginReservationDate strin
     WHERE begin_reservation_date = ? AND end_reservation_date = ?`,
 		beginReservationDate, endReservationDate).Iter().Scanner()
 
-	var dates ReservationDatesByDateGet
+	var accoIds ReservationDatesByDateGet
 	for scanner.Next() {
 		var res ReservationDateByDateGet
 		err := scanner.Scan(&res.AccoId)
@@ -336,13 +347,13 @@ func (rs *ReservationRepo) GetReservationsDatesByDate(beginReservationDate strin
 			rs.logger.Println(err)
 			return nil, err
 		}
-		dates = append(dates, &res)
+		accoIds = append(accoIds, &res)
 	}
 	if err := scanner.Err(); err != nil {
 		rs.logger.Println(err)
 		return nil, err
 	}
-	return dates, nil
+	return accoIds, nil
 }
 
 func (rs *ReservationRepo) InsertReservationDateByDate(resDate *ReservationDateByDate, ctx context.Context) error {

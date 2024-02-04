@@ -205,9 +205,8 @@ func (ar *AccoRepo) GetAllAccoFromReservationServiceByDate(beginReservationDate 
 	ctx, span := ar.tracer.Start(ctx, "AccoRepo.GetAllAccoFromReservationServiceByDate")
 	defer span.End()
 
-	url := ar.reservation_service_address + "/api/accommodations/delete/" + beginReservationDate + "/" + endReservationDate
-
-	log.Println("Url", url)
+	url := ar.reservation_service_address + "/api/reservations/search_by_date/" + beginReservationDate + "/" + endReservationDate
+	log.Println(url)
 
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -220,6 +219,7 @@ func (ar *AccoRepo) GetAllAccoFromReservationServiceByDate(beginReservationDate 
 	if err != nil {
 		return nil, err
 	}
+
 	return httpResp, nil
 }
 
