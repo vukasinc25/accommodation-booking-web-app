@@ -830,68 +830,6 @@ func (uh *UserHandler) GetUserById(res http.ResponseWriter, req *http.Request) {
 	renderJSON(res, featuredUser)
 }
 
-func decodeAverageGrade(r io.Reader) (*AverageGrade, error) {
-	dec := json.NewDecoder(r)
-	dec.DisallowUnknownFields()
-
-	var rt AverageGrade
-	if err := dec.Decode(&rt); err != nil {
-		log.Println(err)
-		return nil, err
-	}
-
-	return &rt, nil
-}
-
-// decodeLoginBody decodes the request body into a LoginUser struct.
-func decodeLoginBody(r io.Reader) (*LoginUser, error) {
-	dec := json.NewDecoder(r)
-	dec.DisallowUnknownFields()
-
-	var rt LoginUser
-	if err := dec.Decode(&rt); err != nil {
-		return nil, err
-	}
-
-	return &rt, nil
-}
-
-func decodeForgottenPasswordBody(r io.Reader) (*ForgottenPassword, error) {
-	dec := json.NewDecoder(r)
-	dec.DisallowUnknownFields()
-
-	var rt ForgottenPassword
-	if err := dec.Decode(&rt); err != nil {
-		return nil, err
-	}
-
-	if err := ValidateForgottenPassword(rt); err != nil {
-		log.Println("ForgottenPasswordCredentials are not succesfuly validated in ValidateForgottenPassword func")
-		return nil, err
-	}
-
-	return &rt, nil
-}
-
-// sanitizeInput replaces "<" with "&lt;" to prevent potential HTML/script injection.
-func sanitizeInput(input string) string {
-	sanitizedInput := strings.ReplaceAll(input, "<", "&lt;")
-	return sanitizedInput
-}
-
-// renderJSON writes JSON data to the response writer.
-func renderJSON(w http.ResponseWriter, v interface{}) {
-	js, err := json.Marshal(v)
-	if err != nil {
-		log.Println("Ovde")
-		sendErrorWithMessage(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(js)
-}
-
 func (uh *UserHandler) DeleteUser(res http.ResponseWriter, req *http.Request) {
 	ctx, span := uh.tracer.Start(req.Context(), "UserHandler.DeleteUser") //tracer
 	defer span.End()
@@ -1169,6 +1107,68 @@ func (uh *UserHandler) UpdateUserGrade(res http.ResponseWriter, req *http.Reques
 	}
 
 	sendErrorWithMessage1(res, "grade updated", http.StatusOK)
+}
+
+func decodeAverageGrade(r io.Reader) (*AverageGrade, error) {
+	dec := json.NewDecoder(r)
+	dec.DisallowUnknownFields()
+
+	var rt AverageGrade
+	if err := dec.Decode(&rt); err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	return &rt, nil
+}
+
+// decodeLoginBody decodes the request body into a LoginUser struct.
+func decodeLoginBody(r io.Reader) (*LoginUser, error) {
+	dec := json.NewDecoder(r)
+	dec.DisallowUnknownFields()
+
+	var rt LoginUser
+	if err := dec.Decode(&rt); err != nil {
+		return nil, err
+	}
+
+	return &rt, nil
+}
+
+func decodeForgottenPasswordBody(r io.Reader) (*ForgottenPassword, error) {
+	dec := json.NewDecoder(r)
+	dec.DisallowUnknownFields()
+
+	var rt ForgottenPassword
+	if err := dec.Decode(&rt); err != nil {
+		return nil, err
+	}
+
+	if err := ValidateForgottenPassword(rt); err != nil {
+		log.Println("ForgottenPasswordCredentials are not succesfuly validated in ValidateForgottenPassword func")
+		return nil, err
+	}
+
+	return &rt, nil
+}
+
+// sanitizeInput replaces "<" with "&lt;" to prevent potential HTML/script injection.
+func sanitizeInput(input string) string {
+	sanitizedInput := strings.ReplaceAll(input, "<", "&lt;")
+	return sanitizedInput
+}
+
+// renderJSON writes JSON data to the response writer.
+func renderJSON(w http.ResponseWriter, v interface{}) {
+	js, err := json.Marshal(v)
+	if err != nil {
+		log.Println("Ovde")
+		sendErrorWithMessage(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(js)
 }
 
 // ToJSON converts a Users object to JSON and writes it to the response writer.

@@ -9,7 +9,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { Router } from '@angular/router';
-import { AccommodationService } from 'src/app/service/accommodation.service';
+import { AccommodationService } from '../../service/accommodation.service';
 import { Accommodation } from '../../model/accommodation';
 import { AmenityType } from '../../model/amenityType';
 import { AuthService } from '../../service/auth.service';
@@ -110,6 +110,7 @@ export class AccommoAddComponent implements OnInit {
 
   submit() {
     let accommodation: Accommodation = { ...this.form.value };
+    console.log(accommodation)
     accommodation.username = this.authService.getUsername();
     console.log('ImageNames:', this.imageNames);
     console.log('Images:', this.selectedFiles);

@@ -7,20 +7,55 @@
   >
     Create Accommodation
   </button>
+
   <div class="container">
     <form [formGroup]="searchAccoForm" (ngSubmit)="searchAcco()">
       <div class="wrapper">
         <p>Search Accommodations</p>
         <div class="search-container">
-          <input type="text" [formControlName]="'location'" class="location" placeholder="Location">
-          <input type="date" [formControlName]="'startDate'" class="date-from" placeholder="Check In">
-          <input type="date" [formControlName]="'endDate'" class="date-to" placeholder="Check Out">
-          <input type="text" [formControlName]="'noGuests'" class="noPeople" placeholder="Number of people">
+          <input id="searchInput" type="text" [formControlName]="'location'" class="location" placeholder="Location">
+          <input id="searchInput" type="date" [formControlName]="'startDate'" class="date-from" placeholder="Check In">
+          <input id="searchInput" type="date" [formControlName]="'endDate'" class="date-to" placeholder="Check Out">
+          <input id="searchInput" type="text" [formControlName]="'noGuests'" class="noPeople" placeholder="Number of people">
           <button type="submit" class="button">Search</button>
           <button type="button" class="button" (click)="ngOnInit()">Reset</button>
         </div>
       </div> 
     </form>
-    </div>
+  </div>
+  <br>
+  <div class="container">
+    <form [formGroup]="filterAccoForm" (ngSubmit)="filterAcco()">
+      <div class="wrapper">
+        <p>Filter Accommodations</p>
+        <div class="search-container">
+          <input id="filterInput" type="text" [formControlName]="'priceFrom'" class="priceFrom" placeholder="Price From">
+          <input id="filterInput" type="text" [formControlName]="'priceTo'" class="priceTo" placeholder="Price To">
+
+          <div
+            class="form-check"
+            *ngFor="let amenity of getRange(amenityRange); let i = index"
+            >
+            <input
+              id="filterInput"
+              type="checkbox"
+              [value]="amenity"
+              (change)="onCheckChange($event)"
+            />
+            <label class="form-check-label" [for]="amenity">{{ amenity }}</label>
+          </div>
+
+          <div class="form-check">
+            <input id="filterInput" type="checkbox" [formControlName]="'isFeatured'" class="featuredHost" value="Featured Host">
+            <label class="form-check-label">Featured Host</label>
+          </div>
+          
+          <button type="submit" class="button">Filter</button>
+          <!-- <button type="button" class="button" (click)="ngOnInit()">Reset</button> -->
+        </div>
+      </div> 
+    </form>
+  </div>
+
   <app-accommo-list [accommodations]="accommodations" class="accommodations"></app-accommo-list>
 </div>

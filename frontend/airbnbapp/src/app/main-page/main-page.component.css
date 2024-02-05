@@ -16,6 +16,7 @@
   height: 200vh;
 }
 
+
 .container {
   background-color: #fff;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
@@ -47,6 +48,10 @@ p {
   margin-bottom: 10px;
 }
 
+.featuredHost {
+  border: 1px solid gray;
+}
+
 .search-container {
   display: flex;
   flex-wrap: wrap;
@@ -54,11 +59,28 @@ p {
   justify-content: center;
 }
 
-input {
+.form-check {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-check-input {
+  margin-bottom: 5px; /* Adjust margin between checkbox and label */
+}
+
+#searchInput {
   padding: 10px;
   border: 1px solid #ccc;
   border-radius: 4px;
   width: 200px;
+  box-sizing: border-box;
+}
+
+#filterInput {
+  padding: 5px;
+  border: 1px solid #ccc;
+  border-radius: 1px;
+  /* width: 200px; */
   box-sizing: border-box;
 }
 
