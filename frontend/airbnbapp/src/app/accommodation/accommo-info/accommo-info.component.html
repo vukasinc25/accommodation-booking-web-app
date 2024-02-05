@@ -136,6 +136,9 @@
       <p>Create Availability period:</p>
       <form [formGroup]="accommodationForm" (ngSubmit)="onSubmit()">
         <table class="table table-bordered table-striped-columns">
+          <caption>
+            Create availability period
+          </caption>
           <tbody>
             <tr>
               <th scope="row">Available from:</th>
@@ -303,6 +306,9 @@
 <div class="container mt-4">
   <h2>Host Grades AverageGrade: {{ hostAverageGrade }}</h2>
   <table class="table">
+    <caption>
+      Host Grades AverageGrade
+    </caption>
     <thead>
       <tr>
         <th scope="col">User ID</th>
@@ -331,6 +337,9 @@
 <div class="container mt-4">
   <h2>Accommodation Grades, AverageGrade:{{ accommodation.AverageGrade }}</h2>
   <table class="table">
+    <caption>
+      Accommodation Grades
+    </caption>
     <thead>
       <tr>
         <th scope="col">User ID</th>
