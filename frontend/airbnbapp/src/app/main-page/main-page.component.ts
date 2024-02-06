@@ -3,7 +3,7 @@ import { Accommodation } from '../model/accommodation';
 import { AccommodationService } from '../service/accommodation.service';
 import { Router } from '@angular/router';
 import { AuthService } from '../service/auth.service';
-import { Subscription, catchError, forkJoin, of } from 'rxjs';
+import { Subscription, catchError, forkJoin, of, range } from 'rxjs';
 import { AbstractControl, FormArray, FormControl, FormGroup } from '@angular/forms';
 import { NgbDate } from '@ng-bootstrap/ng-bootstrap';
 import { ReservationService } from '../service/reservation.service';
@@ -110,12 +110,13 @@ export class MainPageComponent implements OnInit, OnDestroy {
     this.amenities = this.filterAccoForm.get('amenities')?.value
     this.isFeatured = this.filterAccoForm.get('isFeatured')?.value;
 
+    const observables = [];
+
     if (this.priceFrom > 0 && this.priceTo > 0) {
       this.isFilterPrice = true;
       for (const accommodation of this.accommodations){
         this.reservationService.getReservationsByAccoId(accommodation._id).subscribe({
           next: (data) => {
-            console.log(data)
             for (const reservation of data) {
               if ((reservation.priceByAccommodation >= this.priceFrom || reservation.priceByPeople >= this.priceFrom) && (
                   reservation.priceByAccommodation <= this.priceTo || reservation.priceByPeople <= this.priceTo)) {
@@ -125,9 +126,27 @@ export class MainPageComponent implements OnInit, OnDestroy {
           },
           // error: (err) => {
           //   alert("No Accommodations Found")
-          // }
+          // } unsinc
         });
       }
+      this.priceFrom = 0;
+      this.priceTo = 0;
+    }
+
+    if (this.amenities.length > 0) {
+      this.isFilterAmenities = true;
+      for (const accommodation of this.accommodations) {
+        if (accommodation.amenities) {
+          for (const amenity of this.amenities) {
+            if (accommodation.amenities.includes(amenity)) {
+              if (!this.amenitiesAccommodations.includes(accommodation)) {
+                this.amenitiesAccommodations.push(accommodation)
+              }
+            }
+          }
+        }
+      }
+      this.amenities = [];
     }
 
     if (this.isFeatured == true) {
@@ -146,22 +165,19 @@ export class MainPageComponent implements OnInit, OnDestroy {
         })
       }
     }
+    this.displayFilteredAccos()
+  }
 
-    if (this.amenities != null) {
-      this.isFilterAmenities = true;
-      for (const accommodation of this.accommodations) {
-        if (accommodation.amenities) {
-          for (const amenity of this.amenities) {
-            if (accommodation.amenities.includes(amenity)) {
-              if (!this.amenitiesAccommodations.includes(accommodation)) {
-                this.amenitiesAccommodations.push(accommodation)
-              }
-            }
-          }
-        }
-      }
-    }
+  amenityFiltering(){
     
+  }
+
+  sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  async displayFilteredAccos() {
+    await this.sleep(500);
     if (this.isFilterPrice == true && this.isFilterAmenities == false && this.isFilterFeaturedHost == false) {
       console.log("Price Filter")
       this.accommodations = this.priceAccommodations;
@@ -188,9 +204,9 @@ export class MainPageComponent implements OnInit, OnDestroy {
       this.accommodations = this.featuredHostAccommodations;
     }
     else if (this.isFilterPrice == true && this.isFilterAmenities == true && this.isFilterFeaturedHost == false) {
-      console.log("Price and Amenities Filter")
-      for (const accommodation1 of this.priceAccommodations) {
-        for (const accommodation2 of this.amenitiesAccommodations) {
+      console.log("Price and Amenities")
+      for (const accommodation1 of this.amenitiesAccommodations) {
+        for (const accommodation2 of this.priceAccommodations) {
           if (accommodation1._id == accommodation2._id) {
             this.soonToBeAccommodations.push(accommodation1)
           }
@@ -220,7 +236,14 @@ export class MainPageComponent implements OnInit, OnDestroy {
       }
       this.accommodations = this.soonToBeAccommodations;
     }
-    
+
+    // this.isFilterAmenities = false;
+    // this.isFilterFeaturedHost = false;
+    // this.isFilterPrice = false;
+    // this.soonToBeAccommodations = [];
+    // this.featuredHostAccommodations = [];
+    // this.amenitiesAccommodations = [];
+    // this.priceAccommodations = [];
   }
 
   searchAcco(): void {
