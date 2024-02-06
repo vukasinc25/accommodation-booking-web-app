@@ -8,6 +8,9 @@ import (
 	"fmt"
 	"github.com/thanhpk/randstr"
 	"github.com/vukasinc25/fst-airbnb/mail"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 	"io"
 	"log"
 	"net/http"
@@ -25,24 +28,31 @@ type KeyProduct struct{}
 type NotificationHandler struct {
 	logger *log.Logger
 	db     *NotificationRepo
+	tracer trace.Tracer
 }
 
-func NewNotificationHandler(l *log.Logger, r *NotificationRepo) *NotificationHandler {
+func NewNotificationHandler(l *log.Logger, r *NotificationRepo, t trace.Tracer) *NotificationHandler {
 
-	return &NotificationHandler{l, r}
+	return &NotificationHandler{l, r, t}
 }
 
 func (nh *NotificationHandler) createNotification(rw http.ResponseWriter, req *http.Request) {
+	ctx, span := nh.tracer.Start(req.Context(), "NotificationHandler.createNotification") //tracer
+	defer span.End()                                                                      //tracer
+
 	notification, err := decodeBody(req.Body)
 	notification.Date = time.Now()
 	//notification := req.Context().Value(KeyProduct{}).(*Notification)
-	err = nh.db.Insert(notification)
+	err = nh.db.Insert(ctx, notification)
 	if err != nil {
 		rw.WriteHeader(http.StatusBadRequest)
 	}
 	rw.WriteHeader(http.StatusCreated)
 
 	if err == nil {
+
+		otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(req.Header)) //tracer
+
 		log.Println("Usli u slanje notf maila")
 		content := `
 				<h1>AirBnb New notification</h1>
@@ -62,10 +72,13 @@ func (nh *NotificationHandler) createNotification(rw http.ResponseWriter, req *h
 }
 
 func (nh *NotificationHandler) GetNotificationById(w http.ResponseWriter, req *http.Request) {
+	ctx, span := nh.tracer.Start(req.Context(), "NotificationHandler.createNotification") //tracer
+	defer span.End()
+
 	vars := mux.Vars(req)
 	id := vars["id"]
 
-	notification, err := nh.db.GetById(id)
+	notification, err := nh.db.GetById(id, ctx)
 	if err != nil {
 		nh.logger.Println(err)
 	}
@@ -108,10 +121,13 @@ func (nh *NotificationHandler) GetNotificationById(w http.ResponseWriter, req *h
 //}
 
 func (nh *NotificationHandler) GetAllNotificationsByUserId(w http.ResponseWriter, req *http.Request) {
+	ctx, span := nh.tracer.Start(req.Context(), "NotificationHandler.createNotification") //tracer
+	defer span.End()
+
 	vars := mux.Vars(req)
 	id := vars["id"]
 	log.Println(id)
-	accommodations, err := nh.db.GetAllByHostId(id)
+	accommodations, err := nh.db.GetAllByHostId(id, ctx)
 	if err != nil {
 		nh.logger.Print("Database exception: ", err)
 	}
@@ -131,10 +147,13 @@ func (nh *NotificationHandler) GetAllNotificationsByUserId(w http.ResponseWriter
 }
 
 func (nh *NotificationHandler) DeleteNotification(res http.ResponseWriter, req *http.Request) {
+	ctx, span := nh.tracer.Start(req.Context(), "NotificationHandler.createNotification") //tracer
+	defer span.End()
+
 	vars := mux.Vars(req)
 	username := vars["username"]
 
-	err := nh.db.Delete(username)
+	err := nh.db.Delete(username, ctx)
 	if err != nil {
 		log.Println("Error when tried to delete notification:", err)
 		sendErrorWithMessage1(res, "Error when tried to delete notification", http.StatusInternalServerError)
@@ -172,6 +191,13 @@ func (nh *NotificationHandler) sendEmail(contentStr string, subjectStr string, e
 	// w.WriteHeader(http.StatusCreated)
 	// message := "Poslat je mail na moblineaplikacijesit@gmail.com"
 	// renderJSON(w, message)
+}
+
+func (nh *NotificationHandler) ExtractTraceInfoMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }
 
 func (nh *NotificationHandler) MiddlewareRoleCheck00(client *http.Client, breaker *gobreaker.CircuitBreaker) mux.MiddlewareFunc {

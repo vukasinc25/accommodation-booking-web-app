@@ -164,6 +164,14 @@ export class AuthService {
       responseType: 'json',
     });
   }
+
+  getUserIdByUsername(id: string): Observable<any> {
+    return this.http.get(`${'/api/users/user_id_by_username/'}${id}`, {
+      headers: this.headers,
+      responseType: 'json',
+    });
+  }
+
   sendVerifyingEmail(code: string): Observable<any> {
     return this.http.post(
       `${'/api/users/email/'}${code}`,

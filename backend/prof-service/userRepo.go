@@ -2,9 +2,11 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"go.opentelemetry.io/otel/trace"
 	"net/http"
 	"strings"
 
@@ -17,6 +19,7 @@ type UserRepo struct {
 	logger                     *log.Logger
 	reservation_service_string string
 	auth_service_string        string
+	tracer                     trace.Tracer
 }
 
 const (
@@ -31,7 +34,8 @@ func generateKey(Id string) string {
 	return fmt.Sprintf(users, id)
 }
 
-func New(logger *log.Logger, conn_reservation_service_address string, conn_auth_service_address string) (*UserRepo, error) {
+func New(logger *log.Logger, conn_reservation_service_address string,
+	conn_auth_service_address string, tracer trace.Tracer) (*UserRepo, error) {
 	config := api.DefaultConfig()
 	config.Address = fmt.Sprintf("%s:%s", "consul", "8500")
 	client, err := api.NewClient(config)
@@ -44,10 +48,14 @@ func New(logger *log.Logger, conn_reservation_service_address string, conn_auth_
 		logger:                     logger,
 		reservation_service_string: conn_reservation_service_address,
 		auth_service_string:        conn_auth_service_address,
+		tracer:                     tracer,
 	}, nil
 }
 
-func (ur *UserRepo) Insert(user *User) error {
+func (ur *UserRepo) Insert(user *User, ctx context.Context) error {
+	ctx, span := ur.tracer.Start(ctx, "userRepo.Insert")
+	defer span.End()
+
 	log.Println("Usli u Insert")
 	kv := ur.cli.KV()
 
@@ -67,7 +75,10 @@ func (ur *UserRepo) Insert(user *User) error {
 	return nil
 }
 
-func (pr *UserRepo) GetAll() (Users, error) {
+func (pr *UserRepo) GetAll(ctx context.Context) (Users, error) {
+	ctx, span := pr.tracer.Start(ctx, "userRepo.GetAll")
+	defer span.End()
+
 	kv := pr.cli.KV()
 	data, _, err := kv.List(all, nil)
 	if err != nil {
@@ -87,7 +98,10 @@ func (pr *UserRepo) GetAll() (Users, error) {
 	return users, nil
 }
 
-func (ur *UserRepo) Get(id string) (*User, error) {
+func (ur *UserRepo) Get(id string, ctx context.Context) (*User, error) {
+	ctx, span := ur.tracer.Start(ctx, "userRepo.Get")
+	defer span.End()
+
 	kv := ur.cli.KV()
 
 	pair, _, err := kv.Get(constructKey(id), nil)
@@ -112,7 +126,10 @@ func constructKey(id string) string {
 	return fmt.Sprintf(users, id)
 }
 
-func (ur *UserRepo) Delete(id string) error {
+func (ur *UserRepo) Delete(id string, ctx context.Context) error {
+	ctx, span := ur.tracer.Start(ctx, "userRepo.Delete")
+	defer span.End()
+
 	kv := ur.cli.KV()
 
 	_, err := kv.Delete(constructKey(id), nil)
@@ -123,7 +140,10 @@ func (ur *UserRepo) Delete(id string) error {
 	return nil
 }
 
-func (ur *UserRepo) UpdateUser(user *User) error {
+func (ur *UserRepo) UpdateUser(user *User, ctx context.Context) error {
+	ctx, span := ur.tracer.Start(ctx, "userRepo.UpdateUser")
+	defer span.End()
+
 	kv := ur.cli.KV()
 
 	data, err := json.Marshal(user)
@@ -140,7 +160,10 @@ func (ur *UserRepo) UpdateUser(user *User) error {
 	return nil
 }
 
-func (ur *UserRepo) CreateHostGrade(hostGrade *HostGrade) error {
+func (ur *UserRepo) CreateHostGrade(hostGrade *HostGrade, ctx context.Context) error {
+	ctx, span := ur.tracer.Start(ctx, "userRepo.CreateHostGrade")
+	defer span.End()
+
 	log.Println("Usli u CreateHostGrade")
 	log.Println("HostGrade:", hostGrade)
 	kv := ur.cli.KV()
@@ -194,7 +217,10 @@ func (ur *UserRepo) CreateHostGrade(hostGrade *HostGrade) error {
 	return nil
 }
 
-func (ur *UserRepo) DeleteHostGrade(id string, userId string) error {
+func (ur *UserRepo) DeleteHostGrade(id string, userId string, ctx context.Context) error {
+	ctx, span := ur.tracer.Start(ctx, "userRepo.DeleteHostGrade")
+	defer span.End()
+
 	kv := ur.cli.KV()
 
 	log.Println("Ovde1")
@@ -292,7 +318,10 @@ func removeFromCSV(csvString, idToRemove string) string {
 	return string(jsonArrayString)
 }
 
-func (ur *UserRepo) GetAllReservatinsForUserByHostId(userId string, hostId string) (*http.Response, error) {
+func (ur *UserRepo) GetAllReservatinsForUserByHostId(userId string, hostId string, ctx context.Context) (*http.Response, error) {
+	ctx, span := ur.tracer.Start(ctx, "userRepo.GetAllReservatinsForUserByHostId")
+	defer span.End()
+
 	url := ur.reservation_service_string + "/api/reservations/by_user_for_host_id/" + userId + "/" + hostId
 
 	log.Println("Url", url)
@@ -311,7 +340,10 @@ func (ur *UserRepo) GetAllReservatinsForUserByHostId(userId string, hostId strin
 	return httpResp, nil
 }
 
-func (ur *UserRepo) GetAllHostGradesByHostId(hostId string) ([]HostGrade, error) {
+func (ur *UserRepo) GetAllHostGradesByHostId(hostId string, ctx context.Context) ([]HostGrade, error) {
+	ctx, span := ur.tracer.Start(ctx, "userRepo.GetAllHostGradesByHostId")
+	defer span.End()
+
 	log.Println("Usli u GetAllHostGradesByHostId")
 	kv := ur.cli.KV()
 
@@ -376,7 +408,10 @@ func (ur *UserRepo) GetHostGradeByID(id string) (*HostGrade, error) {
 	return &hg, nil
 }
 
-func (uh *UserRepo) UpdateUserGrade(userId string, grade float64) (*http.Response, error) {
+func (uh *UserRepo) UpdateUserGrade(userId string, grade float64, ctx context.Context) (*http.Response, error) {
+	ctx, span := uh.tracer.Start(ctx, "userRepo.UpdateUserGrade")
+	defer span.End()
+
 	url := uh.auth_service_string + "/api/users/updateGrade"
 
 	requestData := AverageGrade{

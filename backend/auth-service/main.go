@@ -3,6 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/jaeger"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 
 	// "log"
 
@@ -18,6 +23,8 @@ import (
 	lumberjack "github.com/natefinch/lumberjack"
 	log "github.com/sirupsen/logrus"
 	"github.com/vukasinc25/fst-airbnb/token"
+
+	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 )
 
 func main() {
@@ -46,6 +53,15 @@ func main() {
 	logger.Info("lavor1")
 
 	config := loadConfig()
+
+	//TRACING
+	tracerProvider, err := NewTracerProvider(config["jaeger"])
+	if err != nil {
+		log.Fatal("JaegerTraceProvider failed to Initialize", err)
+	}
+	tracer := tracerProvider.Tracer("auth-service")
+	//
+
 	// Read the port from the environment variable, default to "8000" if not set
 	port := os.Getenv("PORT")
 	if len(port) == 0 {
@@ -71,7 +87,7 @@ func main() {
 	}
 
 	// NoSQL: Initialize auth Repository store
-	store, err := New(timeoutContext, logger, config["conn_service_address"], config["conn_reservation_service_address"], config["conn_accommodation_service_address"])
+	store, err := New(timeoutContext, logger, config["conn_service_address"], config["conn_reservation_service_address"], config["conn_accommodation_service_address"], tracer)
 	if err != nil {
 		logger.Fatal(err)
 	}
@@ -81,7 +97,7 @@ func main() {
 	store.Ping()
 
 	// Create a user handler service
-	service := NewUserHandler(logger, store, tokenMaker)
+	service := NewUserHandler(logger, store, tokenMaker, tracer)
 	// subu := InitPubSubUsername()
 	if err != nil {
 		logger.Fatal(err)
@@ -101,6 +117,8 @@ func main() {
 
 	authRoutes := router.PathPrefix("/").Subrouter()
 	authRoutes.Use(AuthMiddleware(tokenMaker))
+	router.Use(service.ExtractTraceInfoMiddleware)
+	authRoutes.Use(service.ExtractTraceInfoMiddleware)
 
 	router.HandleFunc("/api/users/auth", service.Auth).Methods("GET")
 	router.HandleFunc("/api/users/register", SetCSPHeader(service.createUser)).Methods("POST") // uradjeno
@@ -162,8 +180,30 @@ func loadConfig() map[string]string {
 	config := make(map[string]string)
 	config["conn_service_address"] = fmt.Sprintf("http://%s:%s", os.Getenv("PROF_SERVICE_HOST"), os.Getenv("PROF_SERVICE_PORT"))
 	config["conn_reservation_service_address"] = fmt.Sprintf("http://%s:%s", os.Getenv("RESERVATION_SERVICE_HOST"), os.Getenv("RESERVATION_SERVICE_PORT"))
+	config["address"] = fmt.Sprintf(":%s", os.Getenv("PORT"))
+	config["jaeger"] = os.Getenv("JAEGER_ADDRESS")
 	config["conn_accommodation_service_address"] = fmt.Sprintf("http://%s:%s", os.Getenv("ACCOMMODATION_SERVICE_HOST"), os.Getenv("ACCOMMODATION_SERVICE_PORT"))
 	return config
+}
+
+func NewTracerProvider(collectorEndpoint string) (*sdktrace.TracerProvider, error) {
+	exporter, err := jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(collectorEndpoint)))
+	if err != nil {
+		return nil, fmt.Errorf("unable to initialize exporter due: %w", err)
+	}
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithSampler(sdktrace.AlwaysSample()),
+		sdktrace.WithBatcher(exporter),
+		sdktrace.WithResource(resource.NewWithAttributes(
+			semconv.SchemaURL,
+			semconv.ServiceNameKey.String("auth-service"),
+			semconv.DeploymentEnvironmentKey.String("development"),
+		)),
+	)
+	otel.SetTracerProvider(tp)
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
+
+	return tp, nil
 }
 
 // func logFile() {
