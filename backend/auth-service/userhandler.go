@@ -218,6 +218,28 @@ func (uh *UserHandler) getAllUsers(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func (uh *UserHandler) GetUserIdByUsername(w http.ResponseWriter, req *http.Request) {
+	ctx, span := uh.tracer.Start(req.Context(), "UserHandler.GetUserIdByUsername") //tracer
+	defer span.End()
+
+	vars := mux.Vars(req)
+	username := vars["username"]
+
+	user, err := uh.db.GetByUsername(username, ctx)
+	if err != nil {
+		uh.logger.Println("mongo: no documents in result: no user")
+		sendErrorWithMessage(w, "No such user", http.StatusBadRequest)
+		return
+	}
+
+	err = user.ToJSON(w)
+	if err != nil {
+		sendErrorWithMessage(w, "Unable to convert to json", http.StatusInternalServerError)
+		uh.logger.Fatal("Unable to convert to json :", err)
+		return
+	}
+}
+
 // loginUser handles user login requests.
 func (uh *UserHandler) loginUser(w http.ResponseWriter, req *http.Request) {
 	ctx, span := uh.tracer.Start(req.Context(), "UserHandler.loginUser") //tracer
@@ -1201,7 +1223,7 @@ func sendErrorWithMessage1(w http.ResponseWriter, message string, statusCode int
 	w.WriteHeader(statusCode)
 }
 
-func (nh *UserHandler) ExtractTraceInfoMiddleware(next http.Handler) http.Handler {
+func (uh *UserHandler) ExtractTraceInfoMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
 		next.ServeHTTP(w, r.WithContext(ctx))

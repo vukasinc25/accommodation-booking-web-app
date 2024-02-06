@@ -39,7 +39,8 @@ export class MainPageComponent implements OnInit, OnDestroy {
   priceTo: number = 0;
   isFeatured: boolean = false;
   amenities: [] = [];
-  userId: 0;
+  userId: number = 0;
+  soonToBeAccommodations: Accommodation[] = [];
 
   constructor(
     private router: Router,
@@ -95,12 +96,24 @@ export class MainPageComponent implements OnInit, OnDestroy {
     this.amenities = this.filterAccoForm.get('amenities')?.value
     this.isFeatured = this.filterAccoForm.get('isFeatured')?.value;
 
-    if (this.priceFrom > 0 || this.priceTo > 0) {
+    if (this.priceFrom > 0 && this.priceTo > 0) {
       for (const accommodation of this.accommodations){
-        this.authService.(accommodation.username)
+        this.reservationService.getReservationsByAccoId(accommodation._id).subscribe({
+          next: (data) => {
+            console.log(data)
+            for (const reservation of data) {
+              if ((reservation.priceByAccommodation >= this.priceFrom || reservation.priceByPeople >= this.priceFrom) && (
+                  reservation.priceByAccommodation <= this.priceTo || reservation.priceByPeople <= this.priceTo)) {
+                  this.soonToBeAccommodations.push(accommodation)
+              }
+            }
+          }
+        });
       }
-      this.reservationService.getReservationsByAccoId()
+      this.accommodations = this.soonToBeAccommodations;
+      // this.reservationService.getReservationsByAccoId()
     }
+
     
     console.log(this.filterAccoForm.value)
   }
