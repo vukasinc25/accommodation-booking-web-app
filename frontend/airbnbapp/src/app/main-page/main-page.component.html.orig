@@ -13,6 +13,12 @@
       <div class="wrapper">
         <p>Search Accommodations</p>
         <div class="search-container">
+<<<<<<< Updated upstream
+          <input id="searchInput" type="text" [formControlName]="'location'" class="location" placeholder="Location">
+          <input id="searchInput" type="date" [formControlName]="'startDate'" class="date-from" placeholder="Check In">
+          <input id="searchInput" type="date" [formControlName]="'endDate'" class="date-to" placeholder="Check Out">
+          <input id="searchInput" type="text" [formControlName]="'noGuests'" class="noPeople" placeholder="Number of people">
+=======
           <input
             type="text"
             [formControlName]="'location'"
@@ -37,6 +43,7 @@
             class="noPeople"
             placeholder="Number of people"
           />
+>>>>>>> Stashed changes
           <button type="submit" class="button">Search</button>
           <button type="button" class="button" (click)="ngOnInit()">
             Reset
@@ -45,6 +52,7 @@
       </div>
     </form>
   </div>
+<<<<<<< Updated upstream
   <br>
   <div class="container">
     <form [formGroup]="filterAccoForm" (ngSubmit)="filterAcco()">
@@ -79,6 +87,8 @@
     </form>
   </div>
 
+  <app-accommo-list [accommodations]="accommodations" class="accommodations"></app-accommo-list>
+=======
   <div class="mt-3" *ngIf="isLoggedin && userRole === 'GUEST' && recCount > 0">
     <h3>Recommendations:</h3>
     <div class="row row-cols-3 g-4">
@@ -113,4 +123,5 @@
     [accommodations]="accommodations"
     class="accommodations"
   ></app-accommo-list>
+>>>>>>> Stashed changes
 </div>

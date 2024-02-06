@@ -705,7 +705,7 @@ func (uh *UserHandler) verifyEmail(w http.ResponseWriter, req *http.Request) {
 
 }
 func jwtToken(user *User, w http.ResponseWriter, uh *UserHandler) {
-	durationStr := "15m" // Should be a constant outside the function
+	durationStr := "45m" // Should be a constant outside the function
 	duration, err := time.ParseDuration(durationStr)
 	if err != nil {
 		uh.logger.Println("Cannot parse duration")

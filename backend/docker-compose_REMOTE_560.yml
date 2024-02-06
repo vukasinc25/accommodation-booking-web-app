@@ -17,11 +17,8 @@ services:
       RESERVATION_SERVICE_PORT: ${RESERVATION_SERVICE_PORT}
       ACCOMMODATION_SERVICE_HOST: ${ACCOMMODATIONS_SERVICE_HOST}
       ACCOMMODATION_SERVICE_PORT: ${ACCOMMODATIONS_SERVICE_PORT}
-      JAEGER_ADDRESS: ${JAEGER_ADDRESS}
     depends_on:
       mongo:
-        condition: service_healthy
-      jaeger:
         condition: service_healthy
     volumes:
       - auth_log:/auth
@@ -46,11 +43,8 @@ services:
       RESERVATION_SERVICE_PORT: ${RESERVATION_SERVICE_PORT}
       AUTH_SERVICE_HOST: ${AUTH_SERVICE_HOST}
       AUTH_SERVICE_PORT: ${AUTH_SERVICE_PORT}
-      JAEGER_ADDRESS: ${JAEGER_ADDRESS}
     depends_on:
       consul:
-        condition: service_healthy
-      jaeger:
         condition: service_healthy
     volumes:
       - prof_log:/prof
@@ -76,7 +70,6 @@ services:
       HDFS_URI: ${HDFS_URI}
       REDIS_HOST: ${REDIS_HOST}
       REDIS_PORT: ${REDIS_PORT}
-      JAEGER_ADDRESS: ${JAEGER_ADDRESS}
     depends_on:
       mongo:
         condition: service_healthy
@@ -89,8 +82,6 @@ services:
       datanode3:
         condition: service_healthy
       redis:
-        condition: service_healthy
-      jaeger:
         condition: service_healthy
     volumes:
       - acco_log:/acco
@@ -108,10 +99,7 @@ services:
       HOST: ${NOTIFICATION_SERVICE_HOST}
       PORT: ${NOTIFICATION_SERVICE_PORT}
       MONGO_DB_URI: ${MONGO_DB_URI}
-      JAEGER_ADDRESS: ${JAEGER_ADDRESS}
     depends_on:
-      jaeger:
-        condition: service_healthy
       mongo:
         condition: service_healthy
     networks:
@@ -129,39 +117,12 @@ services:
       - 8000:8000
     environment:
       # - PORT=8000
-      HOST: ${RESERVATION_SERVICE_HOST}
-      PORT: ${RESERVATION_SERVICE_PORT}
-      CASS_DB: ${CASS_DB}
-      JAEGER_ADDRESS: ${JAEGER_ADDRESS}
+      - CASS_DB=cassandra:9042
     depends_on:
       cassandra:
         condition: service_healthy
-      jaeger:
-        condition: service_healthy
     volumes:
       - res_log:/res
-    networks:
-      - network
-
-  jaeger:
-    image: jaegertracing/all-in-one:latest
-    ports:
-      - "6831:6831/udp"
-      - "16686:16686"
-    restart: on-failure
-    healthcheck:
-      test: [ "CMD", "nc", "-z", "localhost", "16686" ]
-      interval: 10s
-      retries: 3
-      timeout: 5s
-    networks:
-      - network
-
-  collector:
-    image: otel/opentelemetry-collector:0.69.0
-    command: [ "--config=/etc/otel-collector-config.yaml" ]
-    volumes:
-      - ./api-gateway/otel-collector-config.yaml:/etc/otel-collector-config.yaml
     networks:
       - network
 
@@ -202,7 +163,6 @@ services:
       - accommodation-service
       - prof-service
       - reservation-service
-      - notification-service
       - recommendation-service
     networks:
       - network
@@ -238,7 +198,7 @@ services:
     networks:
       - network
 
-  # NoSQL: MongoExpress
+  # NoSQL: MognoExpress
   mongo-express:
     image: mongo-express
     restart: always
@@ -258,7 +218,7 @@ services:
     networks:
       - network
 
-  # NoSQL: CassandraDB
+    # NoSQL: CassandraDB
   cassandra:
     image: cassandra
     restart: always
@@ -278,7 +238,7 @@ services:
     networks:
       - network
 
-  # NoSQL: Consul
+  #   NoSQL: Consul
   consul:
     image: hashicorp/consul:latest
     ports:
