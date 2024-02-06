@@ -165,8 +165,8 @@ export class AuthService {
     });
   }
 
-  getUserIdByUsername(id: string): Observable<any> {
-    return this.http.get(`${'/api/users/user_id_by_username/'}${id}`, {
+  getUserByUsername(username: string): Observable<any> {
+    return this.http.get(`${'/api/users/username/'}${username}`, {
       headers: this.headers,
       responseType: 'json',
     });

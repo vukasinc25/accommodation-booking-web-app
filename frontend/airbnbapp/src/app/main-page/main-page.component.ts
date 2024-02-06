@@ -41,6 +41,12 @@ export class MainPageComponent implements OnInit, OnDestroy {
   amenities: [] = [];
   userId: number = 0;
   soonToBeAccommodations: Accommodation[] = [];
+  priceAccommodations: Accommodation[] = [];
+  featuredHostAccommodations: Accommodation[] = [];
+  amenitiesAccommodations: Accommodation[] = [];
+  isFilterPrice: boolean = false;
+  isFilterAmenities: boolean = false;
+  isFilterFeaturedHost: boolean = false;
 
   constructor(
     private router: Router,
@@ -91,12 +97,21 @@ export class MainPageComponent implements OnInit, OnDestroy {
   }
 
   filterAcco(): void {
+    this.isFilterAmenities = false;
+    this.isFilterFeaturedHost = false;
+    this.isFilterPrice = false;
+    this.soonToBeAccommodations = [];
+    this.featuredHostAccommodations = [];
+    this.amenitiesAccommodations = [];
+    this.priceAccommodations = [];
+
     this.priceFrom = this.filterAccoForm.get('priceFrom')?.value;
     this.priceTo = this.filterAccoForm.get('priceTo')?.value;
     this.amenities = this.filterAccoForm.get('amenities')?.value
     this.isFeatured = this.filterAccoForm.get('isFeatured')?.value;
 
     if (this.priceFrom > 0 && this.priceTo > 0) {
+      this.isFilterPrice = true;
       for (const accommodation of this.accommodations){
         this.reservationService.getReservationsByAccoId(accommodation._id).subscribe({
           next: (data) => {
@@ -104,18 +119,108 @@ export class MainPageComponent implements OnInit, OnDestroy {
             for (const reservation of data) {
               if ((reservation.priceByAccommodation >= this.priceFrom || reservation.priceByPeople >= this.priceFrom) && (
                   reservation.priceByAccommodation <= this.priceTo || reservation.priceByPeople <= this.priceTo)) {
-                  this.soonToBeAccommodations.push(accommodation)
+                  this.priceAccommodations.push(accommodation)
+              }
+            }
+          },
+          // error: (err) => {
+          //   alert("No Accommodations Found")
+          // }
+        });
+      }
+    }
+
+    if (this.isFeatured == true) {
+      this.isFilterFeaturedHost = true;
+      for (const accommodation of this.accommodations) {
+        this.authService.getUserByUsername(accommodation.username ?? '').subscribe({
+          next: (data) => {
+            this.authService.getUserById(data._id).subscribe({
+              next: (data) => {
+                if (data.isFeatured == true) {
+                  this.featuredHostAccommodations.push(accommodation)
+                }
+              }
+            })
+          }
+        })
+      }
+    }
+
+    if (this.amenities != null) {
+      this.isFilterAmenities = true;
+      for (const accommodation of this.accommodations) {
+        if (accommodation.amenities) {
+          for (const amenity of this.amenities) {
+            if (accommodation.amenities.includes(amenity)) {
+              if (!this.amenitiesAccommodations.includes(accommodation)) {
+                this.amenitiesAccommodations.push(accommodation)
               }
             }
           }
-        });
+        }
+      }
+    }
+    
+    if (this.isFilterPrice == true && this.isFilterAmenities == false && this.isFilterFeaturedHost == false) {
+      console.log("Price Filter")
+      this.accommodations = this.priceAccommodations;
+    }
+    else if (this.isFilterPrice == true && this.isFilterAmenities == true && this.isFilterFeaturedHost == true) {
+      console.log("Everything Filter")
+      for (const accommodation1 of this.priceAccommodations) {
+        for (const accommodation2 of this.featuredHostAccommodations) {
+          for (const accommodation3 of this.amenitiesAccommodations) {
+            if (accommodation1._id == accommodation2._id && accommodation1._id == accommodation3._id) {
+              this.soonToBeAccommodations.push(accommodation1)
+            }
+          }
+        }
       }
       this.accommodations = this.soonToBeAccommodations;
-      // this.reservationService.getReservationsByAccoId()
     }
-
+    else if (this.isFilterPrice == false && this.isFilterAmenities == true && this.isFilterFeaturedHost == false) {
+      console.log("Amenities Filter")
+      this.accommodations = this.amenitiesAccommodations;
+    }
+    else if (this.isFilterPrice == false && this.isFilterAmenities == false && this.isFilterFeaturedHost == true) {
+      console.log("Featured Host Filter")
+      this.accommodations = this.featuredHostAccommodations;
+    }
+    else if (this.isFilterPrice == true && this.isFilterAmenities == true && this.isFilterFeaturedHost == false) {
+      console.log("Price and Amenities Filter")
+      for (const accommodation1 of this.priceAccommodations) {
+        for (const accommodation2 of this.amenitiesAccommodations) {
+          if (accommodation1._id == accommodation2._id) {
+            this.soonToBeAccommodations.push(accommodation1)
+          }
+        }
+      }
+      this.accommodations = this.soonToBeAccommodations;
+    }
+    else if (this.isFilterPrice == true && this.isFilterAmenities == false && this.isFilterFeaturedHost == true) {
+      console.log("Price and Featured Host Filter")
+      for (const accommodation1 of this.priceAccommodations) {
+        for (const accommodation2 of this.featuredHostAccommodations) {
+          if (accommodation1._id == accommodation2._id) {
+            this.soonToBeAccommodations.push(accommodation1)
+          }
+        }
+      }
+      this.accommodations = this.soonToBeAccommodations;
+    }
+    else if (this.isFilterPrice == false && this.isFilterAmenities == true && this.isFilterFeaturedHost == true) {
+      console.log("Featured Host and Amenities Filter")
+      for (const accommodation1 of this.featuredHostAccommodations) {
+        for (const accommodation2 of this.amenitiesAccommodations) {
+          if (accommodation1._id == accommodation2._id) {
+            this.soonToBeAccommodations.push(accommodation1)
+          }
+        }
+      }
+      this.accommodations = this.soonToBeAccommodations;
+    }
     
-    console.log(this.filterAccoForm.value)
   }
 
   searchAcco(): void {

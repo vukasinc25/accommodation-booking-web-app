@@ -131,6 +131,7 @@ func main() {
 	authRoutes.HandleFunc("/api/users/changePassword", service.ChangePassword).Methods("PATCH")
 	authRoutes.HandleFunc("/api/users/delete", service.DeleteUser).Methods("DELETE")
 	router.HandleFunc("/api/users/user/{id}", service.GetUserById).Methods("GET")
+	router.HandleFunc("/api/users/username/{username}", service.GetUserByUsername).Methods("GET")
 
 	// Configure the HTTP server
 	server := http.Server{
