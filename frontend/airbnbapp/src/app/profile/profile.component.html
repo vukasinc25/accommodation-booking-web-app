@@ -12,6 +12,7 @@
   <div class="forms-container">
     <div class="user-profile-form">
       <h2>User Profile</h2>
+      <h2 *ngIf="isHostFeatured">Prominent Host</h2>
       <form (ngSubmit)="submitForm()" #userProfileForm="ngForm">
         <div class="form-group col-md-8">
           <label for="username">Username:</label>

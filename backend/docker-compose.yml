@@ -17,11 +17,19 @@ services:
       RESERVATION_SERVICE_PORT: ${RESERVATION_SERVICE_PORT}
       ACCOMMODATION_SERVICE_HOST: ${ACCOMMODATIONS_SERVICE_HOST}
       ACCOMMODATION_SERVICE_PORT: ${ACCOMMODATIONS_SERVICE_PORT}
+      JAEGER_ADDRESS: ${JAEGER_ADDRESS}
     depends_on:
       mongo:
         condition: service_healthy
+      jaeger:
+        condition: service_healthy
+    volumes:
+      - auth_log:/auth
     networks:
       - network
+    # volumes:
+    #   - ./auth-service/cert/auth-server.crt:/cert/auth-server.crt
+    #   - ./auth-service/cert/auth-server.key:/cert/auth-server.key
 
   prof-service:
     image: prof-service
@@ -36,11 +44,21 @@ services:
       PROF_DB_PORT: ${PROF_DB_PORT}
       RESERVATION_SERVICE_HOST: ${RESERVATION_SERVICE_HOST}
       RESERVATION_SERVICE_PORT: ${RESERVATION_SERVICE_PORT}
-    # depends_on:
-    # consul:
-    #   condition: service_healthy
+      AUTH_SERVICE_HOST: ${AUTH_SERVICE_HOST}
+      AUTH_SERVICE_PORT: ${AUTH_SERVICE_PORT}
+      JAEGER_ADDRESS: ${JAEGER_ADDRESS}
+    depends_on:
+      consul:
+        condition: service_healthy
+      jaeger:
+        condition: service_healthy
+    volumes:
+      - prof_log:/prof
     networks:
       - network
+    # volumes:
+    #   - ./prof-service/cert/prof-server.crt:/cert/prof-server.crt
+    #   - ./prof-service/cert/prof-server.key:/cert/prof-server.key
 
   accommodation-service:
     image: accommodation-service
@@ -58,6 +76,7 @@ services:
       HDFS_URI: ${HDFS_URI}
       REDIS_HOST: ${REDIS_HOST}
       REDIS_PORT: ${REDIS_PORT}
+      JAEGER_ADDRESS: ${JAEGER_ADDRESS}
     depends_on:
       mongo:
         condition: service_healthy
@@ -71,6 +90,10 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      jaeger:
+        condition: service_healthy
+    volumes:
+      - acco_log:/acco
     networks:
       - network
 
@@ -85,7 +108,10 @@ services:
       HOST: ${NOTIFICATION_SERVICE_HOST}
       PORT: ${NOTIFICATION_SERVICE_PORT}
       MONGO_DB_URI: ${MONGO_DB_URI}
+      JAEGER_ADDRESS: ${JAEGER_ADDRESS}
     depends_on:
+      jaeger:
+        condition: service_healthy
       mongo:
         condition: service_healthy
     networks:
@@ -103,10 +129,39 @@ services:
       - 8000:8000
     environment:
       # - PORT=8000
-      - CASS_DB=cassandra:9042
+      HOST: ${RESERVATION_SERVICE_HOST}
+      PORT: ${RESERVATION_SERVICE_PORT}
+      CASS_DB: ${CASS_DB}
+      JAEGER_ADDRESS: ${JAEGER_ADDRESS}
     depends_on:
       cassandra:
         condition: service_healthy
+      jaeger:
+        condition: service_healthy
+    volumes:
+      - res_log:/res
+    networks:
+      - network
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - "6831:6831/udp"
+      - "16686:16686"
+    restart: on-failure
+    healthcheck:
+      test: [ "CMD", "nc", "-z", "localhost", "16686" ]
+      interval: 10s
+      retries: 3
+      timeout: 5s
+    networks:
+      - network
+
+  collector:
+    image: otel/opentelemetry-collector:0.69.0
+    command: [ "--config=/etc/otel-collector-config.yaml" ]
+    volumes:
+      - ./api-gateway/otel-collector-config.yaml:/etc/otel-collector-config.yaml
     networks:
       - network
 
@@ -123,6 +178,7 @@ services:
       - accommodation-service
       - prof-service
       - reservation-service
+      - notification-service
     networks:
       - network
 
@@ -157,7 +213,7 @@ services:
     networks:
       - network
 
-  # NoSQL: MognoExpress
+  # NoSQL: MongoExpress
   mongo-express:
     image: mongo-express
     restart: always
@@ -177,7 +233,7 @@ services:
     networks:
       - network
 
-    # NoSQL: CassandraDB
+  # NoSQL: CassandraDB
   cassandra:
     image: cassandra
     restart: always
@@ -197,7 +253,7 @@ services:
     networks:
       - network
 
-#   NoSQL: Consul
+  # NoSQL: Consul
   consul:
     image: hashicorp/consul:latest
     ports:
@@ -297,6 +353,10 @@ volumes:
   hadoop_datanode1:
   hadoop_datanode2:
   hadoop_datanode3:
+  auth_log:
+  prof_log:
+  acco_log:
+  res_log:
 
 networks:
   network:

@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve --ssl true --ssl-cert ../../backend/auth-service/cert/auth-server.crt --ssl-key ../../backend/auth-service/cert/auth-server.key",
+    "start": "ng serve --ssl true --ssl-cert ../../backend/auth-service/cert/auth-service.crt --ssl-key ../../backend/auth-service/cert/auth-service.key",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"

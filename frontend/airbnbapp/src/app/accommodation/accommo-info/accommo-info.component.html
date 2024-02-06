@@ -136,6 +136,9 @@
       <p>Create Availability period:</p>
       <form [formGroup]="accommodationForm" (ngSubmit)="onSubmit()">
         <table class="table table-bordered table-striped-columns">
+          <caption>
+            Create availability period
+          </caption>
           <tbody>
             <tr>
               <th scope="row">Available from:</th>
@@ -146,32 +149,31 @@
               <td><input type="date" formControlName="availableUntil" /></td>
             </tr>
             <tr>
-              <th>Price per night:</th>
+              <th scope="row">Price type:</th>
               <td>
-                <input type="number" formControlName="pricePerNight" />
+                <select formControlName="priceType" required>
+                  <option value="night">Price per night</option>
+                  <option value="person">Price per person</option>
+                </select>
                 <div
                   style="color: red"
                   *ngIf="
-                    accommodationForm.get('pricePerNight')?.hasError('required')
+                    accommodationForm.get('priceType')?.hasError('required')
                   "
                 >
-                  Price per night is required.
+                  Price type is required.
                 </div>
               </td>
             </tr>
             <tr>
-              <th scope="row">Price per person:</th>
+              <th>Price:</th>
               <td>
-                <input type="number" formControlName="pricePerPerson" />
+                <input type="number" formControlName="price" required />
                 <div
                   style="color: red"
-                  *ngIf="
-                    accommodationForm
-                      .get('pricePerPerson')
-                      ?.hasError('required')
-                  "
+                  *ngIf="accommodationForm.get('price')?.hasError('required')"
                 >
-                  Price per person is required.
+                  Price is required.
                 </div>
               </td>
             </tr>
@@ -192,7 +194,10 @@
       </form>
     </div>
 
-    <div *ngIf="role == 'GUEST' && startDate != null" class="container">
+    <div
+      *ngIf="role == 'GUEST' && firstAvailableDate != null"
+      class="container"
+    >
       <div class="row">
         <!-- Left column for Reservations -->
         <div class="col-md-6">
@@ -202,21 +207,27 @@
             <ngb-datepicker
               #dp
               (dateSelect)="onDateSelection($event)"
+              [displayMonths]="2"
+              [markDisabled]="isDisabled"
               [dayTemplate]="t"
               outsideDays="hidden"
-              [markDisabled]="isDisabled"
-              [minDate]="startDate!"
-              [maxDate]="endDate!"
+              [minDate]="firstAvailableDate!"
+              [maxDate]="lastAvailableDate!"
             >
             </ngb-datepicker>
 
-            <ng-template #t let-date let-focused="focused">
+            <ng-template
+              #t
+              let-date
+              let-focused="focused"
+              let-disabled="disabled"
+            >
               <span
                 class="custom-day"
                 [class.focused]="focused"
                 [class.range]="isRange(date)"
                 [class.faded]="isHovered(date) || isInside(date)"
-                [class.disabled]="isDisabled(date)"
+                [class.disabled]="disabled"
                 (mouseenter)="hoveredDate = date"
                 (mouseleave)="hoveredDate = null"
               >
@@ -235,7 +246,7 @@
         </div>
 
         <!-- Right column for Host Grading Form -->
-        <div class="col-md-6">
+        <div class="col-md-6 ps-5">
           <div>
             <h2>Grade Host</h2>
             <form [formGroup]="form" (ngSubmit)="submitGrade()">
@@ -293,8 +304,11 @@
   </div>
 </div>
 <div class="container mt-4">
-  <h2>Host Grades</h2>
+  <h2>Host Grades AverageGrade: {{ hostAverageGrade }}</h2>
   <table class="table">
+    <caption>
+      Host Grades AverageGrade
+    </caption>
     <thead>
       <tr>
         <th scope="col">User ID</th>
@@ -321,8 +335,11 @@
 </div>
 <br />
 <div class="container mt-4">
-  <h2>Accommodation Grades</h2>
+  <h2>Accommodation Grades, AverageGrade:{{ accommodation.AverageGrade }}</h2>
   <table class="table">
+    <caption>
+      Accommodation Grades
+    </caption>
     <thead>
       <tr>
         <th scope="col">User ID</th>

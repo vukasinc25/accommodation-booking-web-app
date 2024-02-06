@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 	"io"
-	"log"
+	// "log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -14,6 +17,7 @@ import (
 	"github.com/sony/gobreaker"
 
 	"github.com/gorilla/mux"
+	log "github.com/sirupsen/logrus"
 	"github.com/thanhpk/randstr"
 	"github.com/vukasinc25/fst-airbnb/handlers"
 )
@@ -24,21 +28,24 @@ type AccoHandler struct {
 	logger         *log.Logger
 	db             *AccoRepo
 	storageHandler *handlers.StorageHandler
+	tracer         trace.Tracer
 }
 
-func NewAccoHandler(l *log.Logger, r *AccoRepo, sh *handlers.StorageHandler) *AccoHandler {
+func NewAccoHandler(l *log.Logger, r *AccoRepo, sh *handlers.StorageHandler, t trace.Tracer) *AccoHandler {
 
-	return &AccoHandler{l, r, sh}
+	return &AccoHandler{l, r, sh, t}
 }
 
 func (ah *AccoHandler) createAccommodation(rw http.ResponseWriter, req *http.Request) {
+	ctx, span := ah.tracer.Start(req.Context(), "AccoHandler.createAccommodation") //tracer
+	defer span.End()                                                               //tracer
 
 	accommodation := req.Context().Value(KeyProduct{}).(*Accommodation)
 	ah.logger.Println(accommodation)
 	accommodation.AverageGrade = 0
-	err := ah.db.Insert(accommodation)
+	err := ah.db.Insert(accommodation, ctx)
 	if err != nil {
-		log.Println("error:1", err.Error())
+		ah.logger.Println("error:1", err.Error())
 		if strings.Contains(err.Error(), "duplicate key") {
 			sendErrorWithMessage(rw, "accommodation with that name already exists", http.StatusBadRequest)
 			return
@@ -52,10 +59,13 @@ func (ah *AccoHandler) createAccommodation(rw http.ResponseWriter, req *http.Req
 }
 
 func (ah *AccoHandler) GetAccommodationById(w http.ResponseWriter, req *http.Request) {
+	ctx, span := ah.tracer.Start(req.Context(), "AccoHandler.GetAccommodationById") //tracer
+	defer span.End()
+
 	vars := mux.Vars(req)
 	id := vars["id"]
 
-	accommodation, err := ah.db.GetById(id)
+	accommodation, err := ah.db.GetById(id, ctx)
 	if err != nil {
 		ah.logger.Println(err)
 	}
@@ -75,10 +85,13 @@ func (ah *AccoHandler) GetAccommodationById(w http.ResponseWriter, req *http.Req
 }
 
 func (ah *AccoHandler) GetAllAccommodationsByUsername(w http.ResponseWriter, req *http.Request) {
+	ctx, span := ah.tracer.Start(req.Context(), "AccoHandler.GetAllAccommodationsByUsername") //tracer
+	defer span.End()
+
 	vars := mux.Vars(req)
 	username := vars["username"]
 
-	accommodations, err := ah.db.GetAllByUsername(username)
+	accommodations, err := ah.db.GetAllByUsername(username, ctx)
 	if err != nil {
 		ah.logger.Print("Database exception: ", err)
 	}
@@ -98,10 +111,13 @@ func (ah *AccoHandler) GetAllAccommodationsByUsername(w http.ResponseWriter, req
 }
 
 func (ah *AccoHandler) GetAllAccommodationsById(w http.ResponseWriter, req *http.Request) {
+	ctx, span := ah.tracer.Start(req.Context(), "AccoHandler.GetAllAccommodationsById") //tracer
+	defer span.End()
+
 	vars := mux.Vars(req)
 	id := vars["id"]
-	log.Println(id)
-	accommodations, err := ah.db.GetAllById(id)
+	ah.logger.Println(id)
+	accommodations, err := ah.db.GetAllById(id, ctx)
 	if err != nil {
 		ah.logger.Print("Database exception: ", err)
 	}
@@ -121,9 +137,12 @@ func (ah *AccoHandler) GetAllAccommodationsById(w http.ResponseWriter, req *http
 }
 
 func (ah *AccoHandler) GetAllAccommodationsByLocation(w http.ResponseWriter, req *http.Request) {
+	ctx, span := ah.tracer.Start(req.Context(), "AccoHandler.GetAllAccommodationsByLocation") //tracer
+	defer span.End()
+
 	vars := mux.Vars(req)
 	locations := vars["locations"]
-	accommodations, err := ah.db.GetAllByLocation(locations)
+	accommodations, err := ah.db.GetAllByLocation(locations, ctx)
 	if err != nil {
 		ah.logger.Print("Database exception: ", err)
 	}
@@ -142,23 +161,78 @@ func (ah *AccoHandler) GetAllAccommodationsByLocation(w http.ResponseWriter, req
 	}
 }
 
+type ReservationDateByDateGet struct {
+	AccoId string `json:"acco_id"`
+}
+
+func (ah *AccoHandler) GetAllAccommodationsByDate(w http.ResponseWriter, req *http.Request) {
+	ctx, span := ah.tracer.Start(req.Context(), "AccoHandler.GetAllAccommodationsByDate") //tracer
+	defer span.End()
+
+	vars := mux.Vars(req)
+	startDate := vars["startDate"]
+	endDate := vars["endDate"]
+	var accommodations Accommodations
+
+	accoIdListResponse, err := ah.db.GetAllAccoFromReservationServiceByDate(startDate, endDate, ctx)
+	if err != nil {
+		ah.logger.Print("Database exception: ", err)
+		http.Error(w, "Error fetching accommodation IDs", http.StatusInternalServerError)
+		return
+	}
+	log.Println(accoIdListResponse)
+
+	var accommodationIdList []ReservationDateByDateGet
+	if err := json.NewDecoder(accoIdListResponse.Body).Decode(&accommodationIdList); err != nil {
+		log.Println("Decoding error, da ne kazem glup si... :", err)
+	}
+	log.Println(accommodationIdList)
+
+	for _, accoID := range accommodationIdList {
+		log.Println(accoID)
+		accommodation, err := ah.db.GetById(accoID.AccoId, ctx)
+		if err != nil {
+			ah.logger.Printf("Error fetching accommodation with ID %d: %v", accoID, err)
+			continue
+		}
+		accommodations = append(accommodations, accommodation)
+	}
+
+	log.Println(accommodations)
+	if accommodations == nil {
+		http.Error(w, "Accommodations with given date not found", http.StatusNotFound)
+		ah.logger.Printf("Accommodations with date: '%s' '%s' not found", startDate, endDate)
+		return
+	}
+
+	err = accommodations.ToJSON(w)
+	if err != nil {
+		http.Error(w, "Unable to convert to json", http.StatusInternalServerError)
+		ah.logger.Fatal("Unable to convert to json :", err)
+		return
+	}
+}
+
 func (ah *AccoHandler) DeleteAccommodationGrade(res http.ResponseWriter, req *http.Request) {
+	ctx, span := ah.tracer.Start(req.Context(), "AccoHandler.DeleteAccommodationGrade") //tracer
+	defer span.End()
+
 	vars := mux.Vars(req)
 	id := vars["id"]
 
 	userId, ok := req.Context().Value("userId").(string)
 	if !ok {
-		log.Println("Error retrieving userId from context")
+		ah.logger.Println("Error retrieving userId from context")
 		sendErrorWithMessage1(res, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
-	log.Println("UserId:", userId)
-	log.Println("AccommodationGradeId:", id)
+	ah.logger.Println("UserId:", userId)
+	ah.logger.Println("AccommodationGradeId:", id)
 
-	err := ah.db.DeleteAccommodationGrade(userId, id)
+	err := ah.db.DeleteAccommodationGrade(userId, id, ctx)
 	if err != nil {
-		log.Println("Error2:", err)
+		ah.logger.Println("Error2:", err)
 		sendErrorWithMessage(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -167,19 +241,22 @@ func (ah *AccoHandler) DeleteAccommodationGrade(res http.ResponseWriter, req *ht
 }
 
 func (ah *AccoHandler) DeleteAccommodation(res http.ResponseWriter, req *http.Request) {
+	ctx, span := ah.tracer.Start(req.Context(), "AccoHandler.DeleteAccommodation") //tracer
+	defer span.End()
+
 	vars := mux.Vars(req)
 	username := vars["username"]
 
-	err := ah.db.Delete(username)
+	err := ah.db.Delete(username, ctx)
 	if err != nil {
-		log.Println("Error when tried to delete accommodation:", err)
+		ah.logger.Println("Error when tried to delete accommodation:", err)
 		sendErrorWithMessage1(res, "Error when tried to delete accommodation", http.StatusInternalServerError)
 		return
 	}
 	sendErrorWithMessage1(res, "User succesfully deleted", http.StatusOK)
 }
 
-func (rh *AccoHandler) MiddlewareRoleCheck00(client *http.Client, breaker *gobreaker.CircuitBreaker) mux.MiddlewareFunc {
+func (ah *AccoHandler) MiddlewareRoleCheck00(client *http.Client, breaker *gobreaker.CircuitBreaker) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
@@ -210,17 +287,17 @@ func (rh *AccoHandler) MiddlewareRoleCheck00(client *http.Client, breaker *gobre
 				return client.Do(req)
 			})
 			if err != nil {
-				rh.logger.Println(err)
+				ah.logger.Println(err)
 				sendErrorWithMessage(w, "Service is not working", http.StatusInternalServerError)
 				return
 			}
 
 			resp := cbResp.(*http.Response)
 			resBody, err := io.ReadAll(resp.Body)
-			rh.logger.Println("User Id:", string(resBody))
+			ah.logger.Println("User Id:", string(resBody))
 			if resp.StatusCode != http.StatusOK {
-				rh.logger.Println("Error in auth response " + strconv.Itoa(resp.StatusCode))
-				rh.logger.Println("status " + resp.Status)
+				ah.logger.Println("Error in auth response " + strconv.Itoa(resp.StatusCode))
+				ah.logger.Println("status " + resp.Status)
 				sendErrorWithMessage(w, "Lavor", resp.StatusCode)
 				return
 			}
@@ -231,7 +308,7 @@ func (rh *AccoHandler) MiddlewareRoleCheck00(client *http.Client, breaker *gobre
 
 			newReq, err := http.NewRequestWithContext(ctx, r.Method, r.URL.String(), r.Body)
 			if err != nil {
-				rh.logger.Println("Error creating new request:", err)
+				ah.logger.Println("Error creating new request:", err)
 				sendErrorWithMessage(w, "Error creating new request:"+err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -239,8 +316,8 @@ func (rh *AccoHandler) MiddlewareRoleCheck00(client *http.Client, breaker *gobre
 
 			newReq.Header.Set("Content-Type", "application/json")
 
-			log.Println("Token:", token)
-			log.Println("AccessToken:", accessToken)
+			ah.logger.Println("Token:", token)
+			ah.logger.Println("AccessToken:", accessToken)
 
 			next.ServeHTTP(w, newReq)
 		})
@@ -248,29 +325,35 @@ func (rh *AccoHandler) MiddlewareRoleCheck00(client *http.Client, breaker *gobre
 }
 
 func (ah *AccoHandler) GetAllAccommodationGrades(res http.ResponseWriter, req *http.Request) {
+	//ctx, span := ah.tracer.Start(req.Context(), "AccoHandler.GetAllAccommodationGrades") //tracer
+	//defer span.End()
+
 	vars := mux.Vars(req)
 	accommodationId := vars["id"]
 
 	accommodationGrades, err := ah.db.GetAllAccommodationGrades(accommodationId)
 	if err != nil {
-		log.Println("Error1:", err.Error())
+		ah.logger.Println("Error1:", err.Error())
 		sendErrorWithMessage(res, "Error in GetAllAccommodationGrades method", http.StatusInternalServerError)
 		return
 	}
 
 	err = accommodationGrades.ToJSON(res)
 	if err != nil {
-		log.Println("Unable to convert to json :", err)
+		ah.logger.Println("Unable to convert to json :", err)
 		sendErrorWithMessage(res, "Unable to convert to json", http.StatusInternalServerError)
 		return
 	}
 }
 
 func (ah *AccoHandler) GetAllAccommodationsByNoGuests(w http.ResponseWriter, req *http.Request) {
+	ctx, span := ah.tracer.Start(req.Context(), "AccoHandler.GetAllAccommodationsByNoGuests") //tracer
+	defer span.End()
+
 	vars := mux.Vars(req)
 	noGuests := vars["noGuests"]
 
-	accommodations, err := ah.db.GetAllByNoGuests(noGuests)
+	accommodations, err := ah.db.GetAllByNoGuests(noGuests, ctx)
 	if err != nil {
 		ah.logger.Print("Database exception: ", err)
 	}
@@ -290,8 +373,10 @@ func (ah *AccoHandler) GetAllAccommodationsByNoGuests(w http.ResponseWriter, req
 }
 
 func (ah *AccoHandler) getAllAccommodations(rw http.ResponseWriter, req *http.Request) {
+	ctx, span := ah.tracer.Start(req.Context(), "AccoHandler.getAllAccommodations") //tracer
+	defer span.End()
 
-	accommodations, err := ah.db.GetAll()
+	accommodations, err := ah.db.GetAll(ctx)
 	if err != nil {
 		ah.logger.Print("Database exception: ", err)
 	}
@@ -340,7 +425,7 @@ func (ah *AccoHandler) MiddlewareRoleCheck(client *http.Client, breaker *gobreak
 				return
 			}
 
-			log.Println(fields)
+			ah.logger.Println(fields)
 
 			accessToken := fields[1]
 
@@ -379,18 +464,21 @@ func (ah *AccoHandler) MiddlewareRoleCheck(client *http.Client, breaker *gobreak
 }
 
 func (ah *AccoHandler) GradeAccommodation(res http.ResponseWriter, req *http.Request) {
-	log.Println("Request Body:", req.Body)
+	ctx, span := ah.tracer.Start(req.Context(), "AccoHandler.GradeAccommodation") //tracer
+	defer span.End()
+
+	ah.logger.Println("Request Body:", req.Body)
 	accommodationGrade, err := decodeAccommodatioGradeBody(req.Body)
 	if err != nil {
-		log.Println("Cant decode body")
+		ah.logger.Println("Cant decode body")
 		sendErrorWithMessage(res, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	userId, ok := req.Context().Value("userId").(string)
 	if !ok {
-		log.Println("Error retrieving userId from context")
-		sendErrorWithMessage1(res, "Internal Server Error", http.StatusInternalServerError)
+		ah.logger.Println("Error retrieving userId from context")
+		sendErrorWithMessage(res, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
@@ -399,18 +487,18 @@ func (ah *AccoHandler) GradeAccommodation(res http.ResponseWriter, req *http.Req
 	accommodationGrade.CreatedAt = formattedTime
 	accommodationGrade.ID = randstr.String(20)
 	accommodationGrade.UserId = strings.Trim(userId, `"`)
-	log.Println("HostGrade:", accommodationGrade)
+	ah.logger.Println("HostGrade:", accommodationGrade)
 
 	tocken, ok := req.Context().Value("accessToken").(string)
 	if !ok {
-		log.Println("Error retrieving tocken from context")
-		sendErrorWithMessage1(res, "", http.StatusInternalServerError)
+		ah.logger.Println("Error retrieving tocken from context", err)
+		sendErrorWithMessage(res, "", http.StatusInternalServerError)
 		return
 	}
 
-	err = ah.db.CreateGrade(accommodationGrade, tocken)
+	err = ah.db.CreateGrade(accommodationGrade, tocken, ctx)
 	if err != nil {
-		log.Println("Error in inserting accommodation grade")
+		ah.logger.Println("Error in inserting accommodation grade", err)
 		sendErrorWithMessage(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -478,4 +566,11 @@ func sendErrorWithMessage1(w http.ResponseWriter, message string, statusCode int
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(message))
 	w.WriteHeader(statusCode)
+}
+
+func (ah *AccoHandler) ExtractTraceInfoMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }

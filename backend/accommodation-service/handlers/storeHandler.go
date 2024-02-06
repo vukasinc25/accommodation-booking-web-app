@@ -3,11 +3,13 @@ package handlers
 import (
 	"encoding/json"
 	"io/ioutil"
-	"log"
+
+	// "log"
 	"net/http"
 	"strings"
 
 	"github.com/gorilla/mux"
+	log "github.com/sirupsen/logrus"
 	"github.com/vukasinc25/fst-airbnb/cache"
 	"github.com/vukasinc25/fst-airbnb/storage"
 )
@@ -121,7 +123,7 @@ func (s *StorageHandler) ReadFileFromStorage(rw http.ResponseWriter, h *http.Req
 	// io.WriteString(rw, fileContent)
 	rw.Header().Set("Content-Type", "image/jpeg")
 	rw.Write([]byte(fileContent))
-	log.Printf("Content of file %s: %s\n", fileName, fileContent)
+	// log.Printf("Content of file %s: %s\n", fileName, fileContent)
 
 }
 

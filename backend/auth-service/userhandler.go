@@ -5,9 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 	"io"
 	"io/ioutil"
-	"log"
+
+	// "log"
 	"mime"
 	"net/http"
 	"strings"
@@ -15,6 +19,7 @@ import (
 
 	"github.com/gorilla/mux"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/thanhpk/randstr"
 	"github.com/vukasinc25/fst-airbnb/mail"
 	"github.com/vukasinc25/fst-airbnb/token"
@@ -26,14 +31,17 @@ type UserHandler struct {
 	logger   *log.Logger
 	db       *UserRepo
 	jwtMaker token.Maker
+	tracer   trace.Tracer
 }
 
 // NewUserHandler creates a new UserHandler.
-func NewUserHandler(l *log.Logger, r *UserRepo, jwtMaker token.Maker) *UserHandler {
-	return &UserHandler{l, r, jwtMaker}
+func NewUserHandler(l *log.Logger, r *UserRepo, jwtMaker token.Maker, t trace.Tracer) *UserHandler {
+	return &UserHandler{l, r, jwtMaker, t}
 }
 
 func (uh *UserHandler) Auth(w http.ResponseWriter, r *http.Request) {
+	//ctx, span := uh.tracer.Start(r.Context(), "UserHandler.Auth") //tracer
+	//defer span.End()
 
 	uh.logger.Println("req received")
 
@@ -70,10 +78,13 @@ func (uh *UserHandler) Auth(w http.ResponseWriter, r *http.Request) {
 
 // createUser handles user creation requests.
 func (uh *UserHandler) createUser(w http.ResponseWriter, req *http.Request) {
+	ctx, span := uh.tracer.Start(req.Context(), "UserHandler.createUser") //tracer
+	defer span.End()
+
 	contentType := req.Header.Get("Content-Type")
 	mediatype, _, err := mime.ParseMediaType(contentType)
 	if err != nil {
-		log.Println("Error cant mimi.ParseMediaType")
+		uh.logger.Println("Error cant mimi.ParseMediaType")
 		sendErrorWithMessage(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -84,7 +95,7 @@ func (uh *UserHandler) createUser(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	log.Println("Pre decodeBody")
+	uh.logger.Println("Pre decodeBody")
 	rt, err := decodeBody(req.Body)
 	if err != nil {
 		if strings.Contains(err.Error(), "Key: 'User.Username' Error:Field validation for 'Username' failed on the 'min' tag") {
@@ -100,6 +111,7 @@ func (uh *UserHandler) createUser(w http.ResponseWriter, req *http.Request) {
 	}
 
 	rt.IsEmailVerified = false
+	rt.AverageGrade = 0.0
 
 	sanitizedUsername := sanitizeInput(rt.Username)
 	sanitizedPassword := sanitizeInput(rt.Password)
@@ -112,31 +124,31 @@ func (uh *UserHandler) createUser(w http.ResponseWriter, req *http.Request) {
 	// Fetch the blacklist
 	blacklist, err := NewBlacklistFromURL()
 	if err != nil {
-		log.Println("Error fetching blacklist: %v\n", err)
+		uh.logger.Println("Error fetching blacklist: %v\n", err)
 		return
 	}
 
-	log.Println(sanitizedUsername)
-	log.Println(sanitizedPassword)
-	log.Println(sanitizedRole)
+	uh.logger.Println(sanitizedUsername)
+	uh.logger.Println(sanitizedPassword)
+	uh.logger.Println(sanitizedRole)
 
 	// Check if the password is blacklisted
 	if blacklist.IsBlacklisted(rt.Password) {
 		w.WriteHeader(http.StatusBadRequest)
-		log.Println("Password is not good")
+		uh.logger.Println("Password is not good")
 		return
 	}
 
-	log.Println("Not hashed Password: %w", rt.Password)
+	uh.logger.Println("Not hashed Password: %w", rt.Password)
 	// Hash the password before storing
 	hashedPassword, err := HashPassword(rt.Password)
 	if err != nil {
 		sendErrorWithMessage(w, "", http.StatusInternalServerError)
 	}
 	rt.Password = hashedPassword
-	log.Println("Hashed Password: %w", rt.Password)
+	uh.logger.Println("Hashed Password: %w", rt.Password)
 
-	response, err := uh.db.Insert(rt)
+	response, err := uh.db.Insert(rt, ctx)
 	if err != nil {
 		if strings.Contains(err.Error(), "username") {
 			sendErrorWithMessage(w, "Provide different username", http.StatusConflict)
@@ -148,7 +160,7 @@ func (uh *UserHandler) createUser(w http.ResponseWriter, req *http.Request) {
 
 	responseBody, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		log.Println("Error reading response body:", err)
+		uh.logger.Println("Error reading response body:", err)
 		sendErrorWithMessage(w, "Error reading response body", http.StatusInternalServerError)
 		return
 	}
@@ -170,9 +182,11 @@ func (uh *UserHandler) createUser(w http.ResponseWriter, req *http.Request) {
 
 // getAllUsers handles requests to retrieve all users.
 func (uh *UserHandler) getAllUsers(w http.ResponseWriter, req *http.Request) {
+	ctx, span := uh.tracer.Start(req.Context(), "UserHandler.getAllUsers") //tracer
+	defer span.End()
+
 	// Retrieve all users from the database
-	users, err := uh.db.GetAll()
-	ctx := req.Context()
+	users, err := uh.db.GetAll(ctx)
 
 	if err != nil {
 		uh.logger.Print("Database exception: ", err)
@@ -204,8 +218,33 @@ func (uh *UserHandler) getAllUsers(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func (uh *UserHandler) GetUserIdByUsername(w http.ResponseWriter, req *http.Request) {
+	ctx, span := uh.tracer.Start(req.Context(), "UserHandler.GetUserIdByUsername") //tracer
+	defer span.End()
+
+	vars := mux.Vars(req)
+	username := vars["username"]
+
+	user, err := uh.db.GetByUsername(username, ctx)
+	if err != nil {
+		uh.logger.Println("mongo: no documents in result: no user")
+		sendErrorWithMessage(w, "No such user", http.StatusBadRequest)
+		return
+	}
+
+	err = user.ToJSON(w)
+	if err != nil {
+		sendErrorWithMessage(w, "Unable to convert to json", http.StatusInternalServerError)
+		uh.logger.Fatal("Unable to convert to json :", err)
+		return
+	}
+}
+
 // loginUser handles user login requests.
 func (uh *UserHandler) loginUser(w http.ResponseWriter, req *http.Request) {
+	ctx, span := uh.tracer.Start(req.Context(), "UserHandler.loginUser") //tracer
+	defer span.End()
+
 	rt, err := decodeLoginBody(req.Body)
 	if err != nil {
 		sendErrorWithMessage(w, err.Error(), http.StatusBadRequest)
@@ -213,15 +252,15 @@ func (uh *UserHandler) loginUser(w http.ResponseWriter, req *http.Request) {
 	}
 	username := rt.Username
 	password := rt.Password
-	user, err := uh.db.GetByUsername(username)
+	user, err := uh.db.GetByUsername(username, ctx)
 	if err != nil {
-		log.Println("mongo: no documents in result: treba da se registuje neko")
+		uh.logger.Println("mongo: no documents in result: treba da se registuje neko")
 		sendErrorWithMessage(w, "No such user", http.StatusBadRequest)
 		return
 	}
 
 	// prooveravamo da li korisnik ima verifikovan mejl 169,170,171,172,173,174
-	log.Println(user.IsEmailVerified)
+	uh.logger.Println(user.IsEmailVerified)
 	if !user.IsEmailVerified {
 		sendErrorWithMessage(w, "Email is not verified", http.StatusBadRequest)
 		return
@@ -249,7 +288,10 @@ func (uh *UserHandler) loginUser(w http.ResponseWriter, req *http.Request) {
 }
 
 func (uh *UserHandler) sendEmail(newUser *User, contentStr string, subjectStr string, isVerificationEmail bool, email string) error { // ako isVerificationEmial is true than VrificationEmail is sending and if is false ForgottenPasswordEmial is sending
-	log.Println("SendEmail()")
+	//ctx, span := uh.tracer.Start(req.Context(), "UserHandler.Auth") //tracer
+	//defer span.End()
+
+	uh.logger.Println("SendEmail()")
 
 	randomCode := randstr.String(20)
 
@@ -257,7 +299,7 @@ func (uh *UserHandler) sendEmail(newUser *User, contentStr string, subjectStr st
 		InsecureSkipVerify: true,
 	}
 
-	log.Println(tlsConfig)
+	uh.logger.Println(tlsConfig)
 
 	err := uh.isVerificationEmail(newUser, randomCode, isVerificationEmail)
 	if err != nil {
@@ -269,11 +311,11 @@ func (uh *UserHandler) sendEmail(newUser *User, contentStr string, subjectStr st
 	content := fmt.Sprintf(contentStr, randomCode)
 	to := []string{email}
 	attachFiles := []string{}
-	log.Println("Pre SendEmail(subject, content, to, nil, nil, attachFiles)")
+	uh.logger.Println("Pre SendEmail(subject, content, to, nil, nil, attachFiles)")
 	err = sender.SendEmail(subject, content, to, nil, nil, attachFiles)
 	if err != nil {
 		// http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Println("Cant send email")
+		uh.logger.Println("Cant send email")
 		return err
 	}
 
@@ -285,18 +327,21 @@ func (uh *UserHandler) sendEmail(newUser *User, contentStr string, subjectStr st
 }
 
 func (uh *UserHandler) sendForgottenPasswordEmail(w http.ResponseWriter, req *http.Request) {
-	log.Println("Usli u sendForgottenPasswordEmail")
+	ctx, span := uh.tracer.Start(req.Context(), "UserHandler.sendForgottenPasswordEmail") //tracer
+	defer span.End()
+
+	uh.logger.Println("Usli u sendForgottenPasswordEmail")
 	vars := mux.Vars(req)
 	email := vars["email"]
 
-	allValidEmails, err := uh.db.GetAllVerificationEmailsByEmail(email) // provera ako neko probad a posalje mejl a nije registrovan
+	allValidEmails, err := uh.db.GetAllVerificationEmailsByEmail(email, ctx) // provera ako neko probad a posalje mejl a nije registrovan
 	if err != nil {
 		sendErrorWithMessage(w, "Error in geting AllVerificationEmails"+err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	log.Println(email)
-	log.Println(allValidEmails)
+	uh.logger.Println(email)
+	uh.logger.Println(allValidEmails)
 	if len(allValidEmails) == 0 {
 		sendErrorWithMessage(w, "No valid verification emails found for the given email 1", http.StatusBadRequest)
 		return
@@ -311,7 +356,7 @@ func (uh *UserHandler) sendForgottenPasswordEmail(w http.ResponseWriter, req *ht
 	}
 
 	if succes {
-		log.Println("Usli u succes")
+		uh.logger.Println("Usli u succes")
 		content := `
 				<h1>Reset Your Password</h1>
 				<h1>This is a password reset message from AirBnb</h1>
@@ -333,7 +378,8 @@ func (uh *UserHandler) sendForgottenPasswordEmail(w http.ResponseWriter, req *ht
 	}
 }
 func (uh *UserHandler) isVerificationEmail(newUser *User, randomCode string, isVerificationEmail bool) error {
-	log.Println("Usli u isVerificationEmail")
+
+	uh.logger.Println("Usli u isVerificationEmail")
 	if isVerificationEmail {
 		verificationEmail := VerifyEmail{
 			Username:   newUser.Username,
@@ -344,11 +390,11 @@ func (uh *UserHandler) isVerificationEmail(newUser *User, randomCode string, isV
 			ExpiredAt:  time.Now().Add(15 * time.Minute), // moras da promenis da je trajanje 15 min
 		}
 
-		log.Println("Verifikacioni mejl: ", verificationEmail)
+		uh.logger.Println("Verifikacioni mejl: ", verificationEmail)
 
 		err := uh.db.CreateVerificationEmail(verificationEmail)
 		if err != nil {
-			log.Println("Cant save verification email in SendEmail()method")
+			uh.logger.Println("Cant save verification email in SendEmail()method")
 			return err
 		}
 	} else {
@@ -360,10 +406,10 @@ func (uh *UserHandler) isVerificationEmail(newUser *User, randomCode string, isV
 			ExpiredAt:  time.Now().Add(15 * time.Minute), // moras da promenis da je trajanje 15 min
 		}
 
-		log.Println("ForgottenPassword mejl: ", forgottenPasswordEmail)
+		uh.logger.Println("ForgottenPassword mejl: ", forgottenPasswordEmail)
 		err := uh.db.CreateForgottenPasswordEmail(forgottenPasswordEmail)
 		if err != nil {
-			log.Println("Cant save forgotten password email in SendEmail()method")
+			uh.logger.Println("Cant save forgotten password email in SendEmail()method")
 			return err
 		}
 	}
@@ -371,7 +417,8 @@ func (uh *UserHandler) isVerificationEmail(newUser *User, randomCode string, isV
 }
 
 func (uh *UserHandler) ChangePassword(res http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
+	ctx, span := uh.tracer.Start(req.Context(), "UserHandler.ChangePassword") //tracer
+	defer span.End()
 
 	authPayload, ok := ctx.Value(AuthorizationPayloadKey).(*token.Payload)
 	if !ok || authPayload == nil {
@@ -389,9 +436,9 @@ func (uh *UserHandler) ChangePassword(res http.ResponseWriter, req *http.Request
 		return
 	}
 
-	user, err := uh.db.GetByUsername(authPayload.Username)
+	user, err := uh.db.GetByUsername(authPayload.Username, ctx)
 	if err != nil {
-		log.Println("Error in getting user by username", err)
+		uh.logger.Println("Error in getting user by username", err)
 		sendErrorWithMessage(res, "Cant get user by username", http.StatusBadRequest)
 		return
 	}
@@ -407,22 +454,22 @@ func (uh *UserHandler) ChangePassword(res http.ResponseWriter, req *http.Request
 		return
 	}
 
-	log.Println("Not hashed Password: %w", newPassword.NewPassword)
+	uh.logger.Println("Not hashed Password: %w", newPassword.NewPassword)
 	// Hash the password before storing
 	hashedPassword, err := HashPassword(newPassword.NewPassword)
 	if err != nil {
 		sendErrorWithMessage(res, "Hash: "+err.Error(), http.StatusInternalServerError)
 	}
 
-	log.Println("Hashed Password: %w", hashedPassword)
+	uh.logger.Println("Hashed Password: %w", hashedPassword)
 
 	userA := UserA{
 		Email:    user.Email,
 		Password: hashedPassword,
 	}
-	err = uh.db.UpdateUsersPassword(&userA)
+	err = uh.db.UpdateUsersPassword(&userA, ctx)
 	if err != nil {
-		log.Println("Error in uodating password", err)
+		uh.logger.Println("Error in uodating password", err)
 		sendErrorWithMessage(res, "Cant update password", http.StatusInternalServerError)
 		return
 	}
@@ -431,6 +478,9 @@ func (uh *UserHandler) ChangePassword(res http.ResponseWriter, req *http.Request
 }
 
 func (uh *UserHandler) changeForgottenPassword(w http.ResponseWriter, req *http.Request) {
+	ctx, span := uh.tracer.Start(req.Context(), "UserHandler.changeForgottenPassword") //tracer
+	defer span.End()
+
 	rt, err := decodeForgottenPasswordBody(req.Body)
 	if err != nil {
 		if strings.Contains(err.Error(), "Key: 'ForgottenPassword.NewPassword' Error:Field validation for 'NewPassword' failed on the 'newPassword' tag") {
@@ -450,16 +500,16 @@ func (uh *UserHandler) changeForgottenPassword(w http.ResponseWriter, req *http.
 
 	forgottenPasswordEmail, err := uh.db.GetForgottenPasswordEmailByCode(rt.Code)
 	if err != nil {
-		log.Println("Error in getting Email by code:", err)
+		uh.logger.Println("Error in getting Email by code:", err)
 		sendErrorWithMessage(w, "Code is not valid", http.StatusBadRequest)
 		return
 	}
 
 	if forgottenPasswordEmail != nil {
 		if !forgottenPasswordEmail.IsUsed {
-			isActive, err := uh.db.IsForgottenPasswordEmailActive(rt.Code)
+			isActive, err := uh.db.IsForgottenPasswordEmailActive(rt.Code, ctx)
 			if err != nil {
-				log.Println("Error Code is not active")
+				uh.logger.Println("Error Code is not active")
 				sendErrorWithMessage(w, err.Error(), http.StatusBadRequest)
 				return
 			}
@@ -471,12 +521,12 @@ func (uh *UserHandler) changeForgottenPassword(w http.ResponseWriter, req *http.
 
 				blacklist, err := NewBlacklistFromURL()
 				if err != nil {
-					log.Println("Error fetching blacklist: %v\n", err)
+					uh.logger.Println("Error fetching blacklist: %v\n", err)
 					return
 				}
 
 				if blacklist.IsBlacklisted(rt.NewPassword) {
-					log.Println("Password is too weak, blacklist")
+					uh.logger.Println("Password is too weak, blacklist")
 					sendErrorWithMessage(w, "Password is too weak", http.StatusBadRequest)
 					return
 				}
@@ -495,16 +545,16 @@ func (uh *UserHandler) changeForgottenPassword(w http.ResponseWriter, req *http.
 
 				user.Password = hashedPassword
 
-				err = uh.db.UpdateUsersPassword(user)
+				err = uh.db.UpdateUsersPassword(user, ctx)
 				if err != nil {
-					log.Println("Error when updating password")
+					uh.logger.Println("Error when updating password")
 					sendErrorWithMessage(w, "Error when updating password "+err.Error(), http.StatusBadRequest)
 					return
 				}
 
-				err = uh.db.UpdateForgottenPasswordEmail(rt.Code)
+				err = uh.db.UpdateForgottenPasswordEmail(rt.Code, ctx)
 				if err != nil {
-					log.Println("Error in trying to update VerificationEmail")
+					uh.logger.Println("Error in trying to update VerificationEmail")
 					sendErrorWithMessage(w, "Error in trying to update VerificationEmail", http.StatusInternalServerError)
 					return
 				}
@@ -523,23 +573,24 @@ func (uh *UserHandler) changeForgottenPassword(w http.ResponseWriter, req *http.
 }
 
 func (uh *UserHandler) UpdateUser(res http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
+	ctx, span := uh.tracer.Start(req.Context(), "UserHandler.UpdateUser") //tracer
+	defer span.End()
 
 	authPayload, ok := ctx.Value(AuthorizationPayloadKey).(*token.Payload)
 	if !ok || authPayload == nil {
 		sendErrorWithMessage(res, "Authorization payload not found", http.StatusInternalServerError)
 		return
 	}
-	log.Println("AuthPayload:", authPayload)
+	uh.logger.Println("AuthPayload:", authPayload)
 
-	log.Println("Usli u UpdateUser metodu")
+	uh.logger.Println("Usli u UpdateUser metodu")
 	user, err := decodeProfInfoBody(req.Body) // trebao bi da je citav UserB
 	if err != nil {
 		sendErrorWithMessage(res, "Cant decode body", http.StatusBadRequest)
 		return
 	}
 
-	log.Println("Userr:", authPayload.Role)
+	uh.logger.Println("Userr:", authPayload.Role)
 	userRole := authPayload.Role
 	var role Role
 	switch userRole {
@@ -552,10 +603,10 @@ func (uh *UserHandler) UpdateUser(res http.ResponseWriter, req *http.Request) {
 	user.Username = authPayload.Username
 	user.Role = role
 
-	log.Println("UserB:", user)
+	uh.logger.Println("UserB:", user)
 
 	// proveravamo da li postoji user sa usernejmom ako postoji
-	userUsername, err := uh.db.GetByUsername(user.Username)
+	userUsername, err := uh.db.GetByUsername(user.Username, ctx)
 	if err != nil {
 		sendErrorWithMessage(res, "Cant get user by email", http.StatusInternalServerError)
 		return
@@ -569,7 +620,7 @@ func (uh *UserHandler) UpdateUser(res http.ResponseWriter, req *http.Request) {
 	if userUsername.Email != user.Email {
 		userId, err := primitive.ObjectIDFromHex(user.ID)
 		if err != nil {
-			// Handle the error, e.g., log it or return an error
+			// Handle the error, e.g., uh.logger it or return an error
 			fmt.Println("Error parsing ObjectID:", err)
 			return
 		}
@@ -579,15 +630,15 @@ func (uh *UserHandler) UpdateUser(res http.ResponseWriter, req *http.Request) {
 			Email: user.Email,
 		}
 
-		log.Println("NewUser: ", newUser)
-		err = uh.db.UpdateEmail(&newUser)
+		uh.logger.Println("NewUser: ", newUser)
+		err = uh.db.UpdateEmail(&newUser, ctx)
 		if err != nil {
 			sendErrorWithMessage(res, "Cant update user by email", http.StatusInternalServerError)
 			return
 		}
 	}
 
-	response, err := uh.db.UpdateProfileServiceUser(user)
+	response, err := uh.db.UpdateProfileServiceUser(user, ctx)
 	if err != nil {
 		sendErrorWithMessage(res, "Error in updating user in prof service", http.StatusInternalServerError)
 		return
@@ -595,45 +646,48 @@ func (uh *UserHandler) UpdateUser(res http.ResponseWriter, req *http.Request) {
 
 	responseBody, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		log.Println("Error reading response body:", err)
+		uh.logger.Println("Error reading response body:", err)
 		sendErrorWithMessage(res, "Error reading response body", http.StatusInternalServerError)
 		return
 	}
 
-	log.Println("Response from prof-service:", string(responseBody))
+	uh.logger.Println("Response from prof-service:", string(responseBody))
 	sendErrorWithMessage(res, string(responseBody), response.StatusCode)
 }
 
 func (uh *UserHandler) verifyEmail(w http.ResponseWriter, req *http.Request) {
+	ctx, span := uh.tracer.Start(req.Context(), "UserHandler.Auth") //tracer
+	defer span.End()
+
 	vars := mux.Vars(req)
 	code := vars["code"]
 
-	verificationEmail, err := uh.db.GetVerificationEmailByCode(code)
+	verificationEmail, err := uh.db.GetVerificationEmailByCode(code, ctx)
 	if err != nil {
-		log.Println("Error in getting verificationEmail:", err)
+		uh.logger.Println("Error in getting verificationEmail:", err)
 		sendErrorWithMessage(w, "Error in getting verificationEmail", http.StatusInternalServerError)
 		return
 	}
 
 	if verificationEmail != nil {
 		if !verificationEmail.IsUsed {
-			isActive, err := uh.db.IsVerificationEmailActive(code)
+			isActive, err := uh.db.IsVerificationEmailActive(code, ctx)
 			if err != nil {
-				log.Println("Error Verification code is not active")
+				uh.logger.Println("Error Verification code is not active")
 				sendErrorWithMessage(w, err.Error(), http.StatusBadRequest)
 				return
 			}
 			if isActive {
-				err = uh.db.UpdateUsersVerificationEmail(verificationEmail.Username)
+				err = uh.db.UpdateUsersVerificationEmail(verificationEmail.Username, ctx)
 				if err != nil {
-					log.Println("Error in trying to update UsersVerificationEmail")
+					uh.logger.Println("Error in trying to update UsersVerificationEmail")
 					sendErrorWithMessage(w, "Error in trying to update UsersVerificationEmail", http.StatusInternalServerError)
 					return
 				}
 
-				err = uh.db.UpdateVerificationEmail(code)
+				err = uh.db.UpdateVerificationEmail(code, ctx)
 				if err != nil {
-					log.Println("Error in trying to update VerificationEmail")
+					uh.logger.Println("Error in trying to update VerificationEmail")
 					sendErrorWithMessage(w, "Error in trying to update VerificationEmail", http.StatusInternalServerError)
 					return
 				}
@@ -654,7 +708,7 @@ func jwtToken(user *User, w http.ResponseWriter, uh *UserHandler) {
 	durationStr := "15m" // Should be a constant outside the function
 	duration, err := time.ParseDuration(durationStr)
 	if err != nil {
-		log.Println("Cannot parse duration")
+		uh.logger.Println("Cannot parse duration")
 		return
 	}
 
@@ -729,6 +783,367 @@ func decodeNewPassword(r io.Reader) (*NewPassword, error) {
 	return &rt, nil
 }
 
+func (uh *UserHandler) GetUserById(res http.ResponseWriter, req *http.Request) {
+	ctx, span := uh.tracer.Start(req.Context(), "UserHandler.GetUserById") //tracer
+	defer span.End()
+
+	vars := mux.Vars(req)
+	id := vars["id"]
+
+	user, err := uh.db.GetById(id, ctx)
+	if err != nil {
+		uh.logger.Println("Error in getting user", err)
+		sendErrorWithMessage(res, "No such user", http.StatusBadRequest)
+		return
+	}
+
+	if user.AverageGrade >= 4.7 {
+		response, err := uh.db.IsHostFeatured(id, ctx)
+		if err != nil {
+			uh.logger.Println("Error reading response body for IsHostFeatured is GetUserById func:", err)
+			sendErrorWithMessage(res, "Error reading response body", http.StatusInternalServerError)
+			return
+		}
+
+		responseBody, err := ioutil.ReadAll(response.Body)
+		if err != nil {
+			uh.logger.Println("Error reading response body for IsHostFeatured is GetUserById func:", err)
+			sendErrorWithMessage(res, "Error reading response body", http.StatusInternalServerError)
+			return
+		}
+
+		defer response.Body.Close()
+		if string(responseBody) == "true" {
+			featuredUser := FeaturedUser{
+				Userr: Userr{
+					Username:     user.Username,
+					Email:        user.Email,
+					AverageGrade: user.AverageGrade,
+				},
+				IsHostFeatured: true,
+			}
+			log.Println("Host1:", featuredUser)
+			renderJSON(res, featuredUser)
+			return
+		} else {
+			featuredUser := FeaturedUser{
+				Userr: Userr{
+					Username:     user.Username,
+					Email:        user.Email,
+					AverageGrade: user.AverageGrade,
+				},
+				IsHostFeatured: false,
+			}
+			log.Println("Host2:", featuredUser)
+			renderJSON(res, featuredUser)
+			return
+			// sendErrorWithMessage(res, string(responseBody), response.StatusCode)
+		}
+	}
+
+	featuredUser := FeaturedUser{
+		Userr: Userr{
+			Username:     user.Username,
+			Email:        user.Email,
+			AverageGrade: user.AverageGrade,
+		},
+		IsHostFeatured: false,
+	}
+	renderJSON(res, featuredUser)
+}
+
+func (uh *UserHandler) DeleteUser(res http.ResponseWriter, req *http.Request) {
+	ctx, span := uh.tracer.Start(req.Context(), "UserHandler.DeleteUser") //tracer
+	defer span.End()
+
+	authPayload, ok := ctx.Value(AuthorizationPayloadKey).(*token.Payload)
+	if !ok || authPayload == nil {
+		sendErrorWithMessage(res, "Authorization payload not found", http.StatusInternalServerError)
+		return
+	}
+
+	token, ok := ctx.Value(AccessTokenKey).(string)
+	if !ok {
+		sendErrorWithMessage(res, "Authorization token not found", http.StatusInternalServerError)
+		return
+	}
+
+	if authPayload.Role == "GUEST" {
+		response, err := uh.db.GetAllReservatinsForUser(token, ctx)
+		if err != nil {
+			uh.logger.Println("Error in getting reservations by user:", err)
+			sendErrorWithMessage(res, "Ovde:"+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		body, err := ioutil.ReadAll(response.Body)
+		if err != nil {
+			uh.logger.Println("Error in reading response body")
+			sendErrorWithMessage(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		uh.logger.Println("Response", body)
+
+		if len(body) == 0 {
+			err = uh.db.DeleteUser(authPayload.Username, ctx)
+			if err != nil {
+				uh.logger.Println("Can't delete user", err)
+				sendErrorWithMessage(res, "Can't delete user", http.StatusBadRequest)
+				return
+			}
+			sendErrorWithMessage(res, "User successfully deleted", http.StatusOK)
+			return
+		}
+
+		var reservations Reservations
+		err = json.Unmarshal(body, &reservations)
+		if err != nil {
+			uh.logger.Println("Error in unmarshaling reservation")
+			sendErrorWithMessage(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		var isDatePassedd = false
+		for _, element := range reservations {
+			uh.logger.Println("Reservation:", element)
+			response, err := isDatePassed(element.EndDate)
+			if err != nil {
+				uh.logger.Println("Error in isDatePassed:", err)
+				sendErrorWithMessage(res, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			isDatePassedd = response
+			if !response {
+				break
+			}
+		}
+
+		uh.logger.Println(isDatePassedd)
+
+		if isDatePassedd {
+			responseProf, err := uh.db.DeleteUserInProfService(authPayload.ID.Hex(), ctx)
+			if err != nil {
+				uh.logger.Println("Can't delete user", err)
+				sendErrorWithMessage(res, "Can't delete user", http.StatusBadRequest)
+				return
+			}
+
+			bodyProf, err := ioutil.ReadAll(responseProf.Body)
+			if err != nil {
+				uh.logger.Println("Error in reading response body")
+				sendErrorWithMessage(res, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			if string(bodyProf) == "User succesfully deleted" {
+				err = uh.db.DeleteUser(authPayload.Username, ctx)
+				if err != nil {
+					uh.logger.Println("Can't delete user", err)
+					sendErrorWithMessage(res, "Can't delete user", http.StatusBadRequest)
+					return
+				}
+				sendErrorWithMessage(res, "User successfully deleted", http.StatusOK)
+				return
+			}
+
+			sendErrorWithMessage(res, string(bodyProf), responseProf.StatusCode)
+			return
+		}
+
+		sendErrorWithMessage(res, "Cant delete user because he has active reservations", http.StatusBadRequest)
+	} else {
+		response, err := uh.db.GetAllReservatinsDatesByHostId(authPayload.ID.Hex(), ctx)
+		if err != nil {
+			uh.logger.Println("Error in getting reservations by user:", err)
+			sendErrorWithMessage(res, "Ovde:"+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		body, err := ioutil.ReadAll(response.Body)
+		if err != nil {
+			uh.logger.Println("Error in reading response body")
+			sendErrorWithMessage(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if strings.Contains(string(body), "There is no active reservations for accommodations of this host") {
+			deletedAcco, err := uh.db.DeleteAccommdation(authPayload.Username, ctx)
+			if err != nil {
+				uh.logger.Println("Error when tried to delete accommodation in DeleteAccommdation", err)
+				sendErrorWithMessage(res, "Error when tried to delete accommodation in DeleteAccommdation", http.StatusInternalServerError)
+				return
+			}
+
+			body, err := ioutil.ReadAll(deletedAcco.Body)
+			if err != nil {
+				uh.logger.Println("Error in reading response body")
+				sendErrorWithMessage(res, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			uh.logger.Println("Body:", string(body))
+
+			responseProf, err := uh.db.DeleteUserInProfService(authPayload.ID.Hex(), ctx)
+			if err != nil {
+				uh.logger.Println("Can't delete user", err)
+				sendErrorWithMessage(res, "Can't delete user", http.StatusBadRequest)
+				return
+			}
+
+			bodyProf, err := ioutil.ReadAll(responseProf.Body)
+			if err != nil {
+				uh.logger.Println("Error in reading response body")
+				sendErrorWithMessage(res, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			if string(bodyProf) == "User succesfully deleted" {
+				err = uh.db.DeleteUser(authPayload.Username, ctx)
+				if err != nil {
+					uh.logger.Println("Can't delete user", err)
+					sendErrorWithMessage(res, "Can't delete user", http.StatusBadRequest)
+					return
+				}
+				sendErrorWithMessage(res, "User successfully deleted", http.StatusOK)
+				return
+			}
+
+			sendErrorWithMessage(res, string(bodyProf), responseProf.StatusCode)
+			return
+		} else if strings.Contains(string(body), "There is active reservations for accommodations of this host") {
+			sendErrorWithMessage(res, "Cant delete user because there are active reservations", http.StatusBadRequest)
+			return
+		} else if strings.Contains(string(body), "There is no availability dates for that accommodation") {
+			deletedAcco, err := uh.db.DeleteAccommdation(authPayload.Username, ctx)
+			if err != nil {
+				uh.logger.Println("Error when tried to delete accommodation in DeleteAccommdation", err)
+				sendErrorWithMessage(res, "Error when tried to delete accommodation in DeleteAccommdation", http.StatusInternalServerError)
+				return
+			}
+
+			body, err := ioutil.ReadAll(deletedAcco.Body)
+			if err != nil {
+				uh.logger.Println("Error in reading response body")
+				sendErrorWithMessage(res, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			uh.logger.Println("Body:", string(body))
+
+			responseProf, err := uh.db.DeleteUserInProfService(authPayload.ID.Hex(), ctx)
+			if err != nil {
+				uh.logger.Println("Can't delete user", err)
+				sendErrorWithMessage(res, "Can't delete user", http.StatusBadRequest)
+				return
+			}
+
+			bodyProf, err := ioutil.ReadAll(responseProf.Body)
+			if err != nil {
+				uh.logger.Println("Error in reading response body")
+				sendErrorWithMessage(res, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			if string(bodyProf) == "User succesfully deleted" {
+				err = uh.db.DeleteUser(authPayload.Username, ctx)
+				if err != nil {
+					uh.logger.Println("Can't delete user", err)
+					sendErrorWithMessage(res, "Can't delete user", http.StatusBadRequest)
+					return
+				}
+				sendErrorWithMessage(res, "User successfully deleted", http.StatusOK)
+				return
+			}
+
+			sendErrorWithMessage(res, string(bodyProf), responseProf.StatusCode)
+			return
+		} else if strings.Contains(string(body), "There is not reservations for hosts accommodations") {
+			deletedAcco, err := uh.db.DeleteAccommdation(authPayload.Username, ctx)
+			if err != nil {
+				uh.logger.Println("Error when tried to delete accommodation in DeleteAccommdation", err)
+				sendErrorWithMessage(res, "Error when tried to delete accommodation in DeleteAccommdation", http.StatusInternalServerError)
+				return
+			}
+
+			body, err := ioutil.ReadAll(deletedAcco.Body)
+			if err != nil {
+				uh.logger.Println("Error in reading response body")
+				sendErrorWithMessage(res, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			uh.logger.Println("Body:", string(body))
+
+			responseProf, err := uh.db.DeleteUserInProfService(authPayload.ID.Hex(), ctx)
+			if err != nil {
+				uh.logger.Println("Can't delete user", err)
+				sendErrorWithMessage(res, "Can't delete user", http.StatusBadRequest)
+				return
+			}
+
+			bodyProf, err := ioutil.ReadAll(responseProf.Body)
+			if err != nil {
+				uh.logger.Println("Error in reading response body")
+				sendErrorWithMessage(res, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			if string(bodyProf) == "User succesfully deleted" {
+				err = uh.db.DeleteUser(authPayload.Username, ctx)
+				if err != nil {
+					uh.logger.Println("Can't delete user", err)
+					sendErrorWithMessage(res, "Can't delete user", http.StatusBadRequest)
+					return
+				}
+				sendErrorWithMessage(res, "User successfully deleted", http.StatusOK)
+				return
+			}
+
+			sendErrorWithMessage(res, string(bodyProf), responseProf.StatusCode)
+			return
+		} else {
+			sendErrorWithMessage(res, string(body), http.StatusOK)
+			return
+		}
+
+	}
+}
+
+func (uh *UserHandler) UpdateUserGrade(res http.ResponseWriter, req *http.Request) {
+	ctx, span := uh.tracer.Start(req.Context(), "UserHandler.UpdateUserGrade") //tracer
+	defer span.End()
+
+	uh.logger.Println("Usli u UpdateGrade")
+	averageGrade, err := decodeAverageGrade(req.Body)
+	if err != nil {
+		uh.logger.Println("Error in decoding body: ", err)
+		sendErrorWithMessage1(res, "Error in decoding body", http.StatusBadRequest)
+		return
+	}
+
+	log.Println("UserId", averageGrade.UserId)
+	log.Println("AverageGrade:", averageGrade.AverageGrade)
+
+	err = uh.db.UpdateGrade(averageGrade.UserId, averageGrade.AverageGrade, ctx)
+	if err != nil {
+		uh.logger.Println("Error in updating grade", err)
+		sendErrorWithMessage1(res, "Error in updating user average grade", http.StatusInternalServerError)
+		return
+	}
+
+	sendErrorWithMessage1(res, "grade updated", http.StatusOK)
+}
+
+func decodeAverageGrade(r io.Reader) (*AverageGrade, error) {
+	dec := json.NewDecoder(r)
+	dec.DisallowUnknownFields()
+
+	var rt AverageGrade
+	if err := dec.Decode(&rt); err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	return &rt, nil
+}
+
 // decodeLoginBody decodes the request body into a LoginUser struct.
 func decodeLoginBody(r io.Reader) (*LoginUser, error) {
 	dec := json.NewDecoder(r)
@@ -778,259 +1193,6 @@ func renderJSON(w http.ResponseWriter, v interface{}) {
 	w.Write(js)
 }
 
-func (uh *UserHandler) DeleteUser(res http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
-
-	authPayload, ok := ctx.Value(AuthorizationPayloadKey).(*token.Payload)
-	if !ok || authPayload == nil {
-		sendErrorWithMessage(res, "Authorization payload not found", http.StatusInternalServerError)
-		return
-	}
-
-	token, ok := ctx.Value(AccessTokenKey).(string)
-	if !ok {
-		sendErrorWithMessage(res, "Authorization token not found", http.StatusInternalServerError)
-		return
-	}
-
-	if authPayload.Role == "GUEST" {
-		response, err := uh.db.GetAllReservatinsForUser(token)
-		if err != nil {
-			log.Println("Error in getting reservations by user:", err)
-			sendErrorWithMessage(res, "Ovde:"+err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		body, err := ioutil.ReadAll(response.Body)
-		if err != nil {
-			log.Println("Error in reading response body")
-			sendErrorWithMessage(res, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		log.Println("Response", body)
-
-		if len(body) == 0 {
-			err = uh.db.DeleteUser(authPayload.Username)
-			if err != nil {
-				log.Println("Can't delete user", err)
-				sendErrorWithMessage(res, "Can't delete user", http.StatusBadRequest)
-				return
-			}
-			sendErrorWithMessage(res, "User successfully deleted", http.StatusOK)
-			return
-		}
-
-		var reservations Reservations
-		err = json.Unmarshal(body, &reservations)
-		if err != nil {
-			log.Println("Error in unmarshaling reservation")
-			sendErrorWithMessage(res, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		var isDatePassedd = false
-		for _, element := range reservations {
-			log.Println("Reservation:", element)
-			response, err := isDatePassed(element.EndDate)
-			if err != nil {
-				log.Println("Error in isDatePassed:", err)
-				sendErrorWithMessage(res, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			isDatePassedd = response
-			if !response {
-				break
-			}
-		}
-
-		log.Println(isDatePassedd)
-
-		if isDatePassedd {
-			responseProf, err := uh.db.DeleteUserInProfService(authPayload.ID.Hex())
-			if err != nil {
-				log.Println("Can't delete user", err)
-				sendErrorWithMessage(res, "Can't delete user", http.StatusBadRequest)
-				return
-			}
-
-			bodyProf, err := ioutil.ReadAll(responseProf.Body)
-			if err != nil {
-				log.Println("Error in reading response body")
-				sendErrorWithMessage(res, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			if string(bodyProf) == "User succesfully deleted" {
-				err = uh.db.DeleteUser(authPayload.Username)
-				if err != nil {
-					log.Println("Can't delete user", err)
-					sendErrorWithMessage(res, "Can't delete user", http.StatusBadRequest)
-					return
-				}
-				sendErrorWithMessage(res, "User successfully deleted", http.StatusOK)
-				return
-			}
-
-			sendErrorWithMessage(res, string(bodyProf), responseProf.StatusCode)
-			return
-		}
-
-		sendErrorWithMessage(res, "Cant delete user because he has active reservations", http.StatusBadRequest)
-	} else {
-		response, err := uh.db.GetAllReservatinsDatesByHostId(authPayload.ID.Hex())
-		if err != nil {
-			log.Println("Error in getting reservations by user:", err)
-			sendErrorWithMessage(res, "Ovde:"+err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		body, err := ioutil.ReadAll(response.Body)
-		if err != nil {
-			log.Println("Error in reading response body")
-			sendErrorWithMessage(res, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		if strings.Contains(string(body), "There is no active reservations for accommodations of this host") {
-			deletedAcco, err := uh.db.DeleteAccommdation(authPayload.Username)
-			if err != nil {
-				log.Println("Error when tried to delete accommodation in DeleteAccommdation", err)
-				sendErrorWithMessage(res, "Error when tried to delete accommodation in DeleteAccommdation", http.StatusInternalServerError)
-				return
-			}
-
-			body, err := ioutil.ReadAll(deletedAcco.Body)
-			if err != nil {
-				log.Println("Error in reading response body")
-				sendErrorWithMessage(res, err.Error(), http.StatusInternalServerError)
-				return
-			}
-
-			log.Println("Body:", string(body))
-
-			responseProf, err := uh.db.DeleteUserInProfService(authPayload.ID.Hex())
-			if err != nil {
-				log.Println("Can't delete user", err)
-				sendErrorWithMessage(res, "Can't delete user", http.StatusBadRequest)
-				return
-			}
-
-			bodyProf, err := ioutil.ReadAll(responseProf.Body)
-			if err != nil {
-				log.Println("Error in reading response body")
-				sendErrorWithMessage(res, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			if string(bodyProf) == "User succesfully deleted" {
-				err = uh.db.DeleteUser(authPayload.Username)
-				if err != nil {
-					log.Println("Can't delete user", err)
-					sendErrorWithMessage(res, "Can't delete user", http.StatusBadRequest)
-					return
-				}
-				sendErrorWithMessage(res, "User successfully deleted", http.StatusOK)
-				return
-			}
-
-			sendErrorWithMessage(res, string(bodyProf), responseProf.StatusCode)
-			return
-		} else if strings.Contains(string(body), "There is active reservations for accommodations of this host") {
-			sendErrorWithMessage(res, "Cant delete user because there are active reservations", http.StatusBadRequest)
-			return
-		} else if strings.Contains(string(body), "There is no availability dates for that accommodation") {
-			deletedAcco, err := uh.db.DeleteAccommdation(authPayload.Username)
-			if err != nil {
-				log.Println("Error when tried to delete accommodation in DeleteAccommdation", err)
-				sendErrorWithMessage(res, "Error when tried to delete accommodation in DeleteAccommdation", http.StatusInternalServerError)
-				return
-			}
-
-			body, err := ioutil.ReadAll(deletedAcco.Body)
-			if err != nil {
-				log.Println("Error in reading response body")
-				sendErrorWithMessage(res, err.Error(), http.StatusInternalServerError)
-				return
-			}
-
-			log.Println("Body:", string(body))
-
-			responseProf, err := uh.db.DeleteUserInProfService(authPayload.ID.Hex())
-			if err != nil {
-				log.Println("Can't delete user", err)
-				sendErrorWithMessage(res, "Can't delete user", http.StatusBadRequest)
-				return
-			}
-
-			bodyProf, err := ioutil.ReadAll(responseProf.Body)
-			if err != nil {
-				log.Println("Error in reading response body")
-				sendErrorWithMessage(res, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			if string(bodyProf) == "User succesfully deleted" {
-				err = uh.db.DeleteUser(authPayload.Username)
-				if err != nil {
-					log.Println("Can't delete user", err)
-					sendErrorWithMessage(res, "Can't delete user", http.StatusBadRequest)
-					return
-				}
-				sendErrorWithMessage(res, "User successfully deleted", http.StatusOK)
-				return
-			}
-
-			sendErrorWithMessage(res, string(bodyProf), responseProf.StatusCode)
-			return
-		} else if strings.Contains(string(body), "There is not reservations for hosts accommodations") {
-			deletedAcco, err := uh.db.DeleteAccommdation(authPayload.Username)
-			if err != nil {
-				log.Println("Error when tried to delete accommodation in DeleteAccommdation", err)
-				sendErrorWithMessage(res, "Error when tried to delete accommodation in DeleteAccommdation", http.StatusInternalServerError)
-				return
-			}
-
-			body, err := ioutil.ReadAll(deletedAcco.Body)
-			if err != nil {
-				log.Println("Error in reading response body")
-				sendErrorWithMessage(res, err.Error(), http.StatusInternalServerError)
-				return
-			}
-
-			log.Println("Body:", string(body))
-
-			responseProf, err := uh.db.DeleteUserInProfService(authPayload.ID.Hex())
-			if err != nil {
-				log.Println("Can't delete user", err)
-				sendErrorWithMessage(res, "Can't delete user", http.StatusBadRequest)
-				return
-			}
-
-			bodyProf, err := ioutil.ReadAll(responseProf.Body)
-			if err != nil {
-				log.Println("Error in reading response body")
-				sendErrorWithMessage(res, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			if string(bodyProf) == "User succesfully deleted" {
-				err = uh.db.DeleteUser(authPayload.Username)
-				if err != nil {
-					log.Println("Can't delete user", err)
-					sendErrorWithMessage(res, "Can't delete user", http.StatusBadRequest)
-					return
-				}
-				sendErrorWithMessage(res, "User successfully deleted", http.StatusOK)
-				return
-			}
-
-			sendErrorWithMessage(res, string(bodyProf), responseProf.StatusCode)
-			return
-		} else {
-			sendErrorWithMessage(res, string(body), http.StatusOK)
-			return
-		}
-
-	}
-}
-
 // ToJSON converts a Users object to JSON and writes it to the response writer.
 func (u *Users) ToJSON(w io.Writer) error {
 	e := json.NewEncoder(w)
@@ -1053,4 +1215,17 @@ func sendErrorWithMessage(w http.ResponseWriter, message string, statusCode int)
 	w.WriteHeader(statusCode)
 	errorResponse := map[string]string{"message": message}
 	json.NewEncoder(w).Encode(errorResponse)
+}
+
+func sendErrorWithMessage1(w http.ResponseWriter, message string, statusCode int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(message))
+	w.WriteHeader(statusCode)
+}
+
+func (uh *UserHandler) ExtractTraceInfoMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }

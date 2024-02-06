@@ -3,7 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/jaeger"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"net/http"
 	"os"
 	"os/signal"
@@ -11,10 +15,36 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	lumberjack "github.com/natefinch/lumberjack"
+	log "github.com/sirupsen/logrus"
 	"github.com/sony/gobreaker"
+	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 )
 
 func main() {
+
+	logger := log.New()
+
+	// Set up log rotation with Lumberjack
+	lumberjackLogger := &lumberjack.Logger{
+		Filename:   "/prof/file.log",
+		MaxSize:    10, // MB
+		MaxBackups: 3,
+		LocalTime:  true, // Use local time
+	}
+	logger.SetOutput(lumberjackLogger)
+
+	// Handle log rotation gracefully on program exit
+	defer func() {
+		if err := lumberjackLogger.Close(); err != nil {
+			log.Error("Error closing log file:", err)
+		}
+	}()
+
+	// ... (rest of your code)
+
+	// Example log statements
+	logger.Info("lavor1")
 
 	authClient := &http.Client{
 		Transport: &http.Transport{
@@ -40,17 +70,36 @@ func main() {
 
 	config := loadConfig()
 
+	//TRACING
+	tracerProvider, err := NewTracerProvider(config["jaeger"])
+	if err != nil {
+		log.Fatal("JaegerTraceProvider failed to Initialize", err)
+	}
+	tracer := tracerProvider.Tracer("prof-service")
+	//
+
 	//Initialize the logger we are going to use, with prefix and datetime for every log
-	logger := log.New(os.Stdout, "[product-api] ", log.LstdFlags)
+	// logger := log.New(os.Stdout, "[product-api] ", log.LstdFlags)
+	// logger := log.New()
+
+	// lumberjackLogger := &lumberjack.Logger{
+	// 	Filename:   "/cert/misc.log",
+	// 	MaxSize:    10,
+	// 	MaxBackups: 3,
+	// 	MaxAge:     3,
+	// 	LocalTime:  true,
+	// }
+	// logger.SetOutput(lumberjackLogger)
 
 	// NoSQL: Initialize Product Repository store
-	store, err := New(logger, config["conn_reservation_service_address"])
+	store, err := New(logger, config["conn_reservation_service_address"], config["conn_auth_service_address"], tracer)
 	if err != nil {
 		logger.Fatal(err)
 	}
 
-	service := NewUserHandler(logger, store)
+	service := NewUserHandler(logger, store, tracer)
 
+	router.Use(service.ExtractTraceInfoMiddleware)
 	// router.HandleFunc("/api/prof/email/{code}", service.verifyEmail).Methods("POST") // for sending verification mail
 	router.HandleFunc("/api/prof/create", service.createUser).Methods("POST")
 	router.HandleFunc("/api/prof/users/", service.getAllUsers).Methods("GET")
@@ -60,7 +109,7 @@ func main() {
 	router.Methods(http.MethodPatch).Subrouter()
 	getAllHostGrades := router.Methods(http.MethodGet).Subrouter()
 	getAllHostGrades.HandleFunc("/api/prof/hostGrades/{id}", service.GetAllHostGrades) // treba authorisation
-	// getAllHostGrades.Use(service.MiddlewareRoleCheck00(authClient, authBreaker))
+	getAllHostGrades.Use(service.MiddlewareRoleCheck00(authClient, authBreaker))
 	createHostGrade := router.Methods(http.MethodPost).Subrouter()
 	createHostGrade.HandleFunc("/api/prof/hostGrade", service.CreateHostGrade) // treba authorisation
 	createHostGrade.Use(service.MiddlewareRoleCheck0(authClient, authBreaker))
@@ -71,42 +120,57 @@ func main() {
 	router.HandleFunc("/api/prof/delete/{id}", service.DeleteUser).Methods("DELETE")
 
 	// srv := &http.Server{Addr: config["address"], Handler: router}
-	server := http.Server{
+	server := &http.Server{
 		Addr:         ":" + "8000",
 		Handler:      router,
 		IdleTimeout:  120 * time.Second,
 		ReadTimeout:  120 * time.Second,
 		WriteTimeout: 120 * time.Second,
+		// TLSConfig: &tls.Config{
+		// 	InsecureSkipVerify: true, // samo za testiranje
+		// 	MinVersion:         tls.VersionTLS12,
+		// 	CipherSuites:       []uint16{tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384},
+		// },
 	}
 	go func() {
-		log.Println("server starting")
-		if err := server.ListenAndServe(); err != nil {
-			if err != http.ErrServerClosed {
-				log.Fatal(err)
-			}
+		logger.Info("lavor4")
+		err := server.ListenAndServe()
+		// err := server.ListenAndServeTLS("/cert/prof-service.crt", "/cert/prof-service.key")
+		if err != nil {
+			logger.Println("Error starting server", err)
+			// logMessage(fmt.Sprintf("Error starting server: %s", err), logrus.ErrorLevel)
 		}
 	}()
 
 	<-quit
 
-	log.Println("service shutting down ...")
+	// logMessage("Service shutting down...", logrus.InfoLevel)
+	logger.Println("Service shutting down...")
 
 	// gracefully stop server
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if err := server.Shutdown(ctx); err != nil {
-		log.Fatal(err)
+		// logMessage(fmt.Sprintf("Error shutting down server: %s", err), logrus.ErrorLevel)
+		logger.Println("Error shutting down server", err)
 	}
-	log.Println("server stopped")
+	// logMessage("Server stopped", logrus.InfoLevel)
+	logger.Println("Server stopped")
 
 }
 
-func handleErr(err error) {
-	if err != nil {
-		log.Fatalln(err)
-	}
-}
+//	func handleErr(err error) {
+//		if err != nil {
+//			logger.Fatalln(err)
+//		}
+//	}
+// func handleErr(err error) {
+// 	if err != nil {
+// 		// logMessage(fmt.Sprintf("Error: %s", err), logrus.ErrorLevel)
+// 		logger.Println(err.Error())
+// 	}
+// }
 
 func loadConfig() map[string]string {
 	config := make(map[string]string)
@@ -115,5 +179,28 @@ func loadConfig() map[string]string {
 	config["address"] = fmt.Sprintf(":%s", os.Getenv("PORT"))
 	config["mondo_db_uri"] = os.Getenv("MONGO_DB_URI")
 	config["conn_reservation_service_address"] = fmt.Sprintf("http://%s:%s", os.Getenv("RESERVATION_SERVICE_HOST"), os.Getenv("RESERVATION_SERVICE_PORT"))
+	config["conn_auth_service_address"] = fmt.Sprintf("http://%s:%s", os.Getenv("AUTH_SERVICE_HOST"), os.Getenv("AUTH_SERVICE_PORT"))
+	config["address"] = fmt.Sprintf(":%s", os.Getenv("PORT"))
+	config["jaeger"] = os.Getenv("JAEGER_ADDRESS")
 	return config
+}
+
+func NewTracerProvider(collectorEndpoint string) (*sdktrace.TracerProvider, error) {
+	exporter, err := jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(collectorEndpoint)))
+	if err != nil {
+		return nil, fmt.Errorf("unable to initialize exporter due: %w", err)
+	}
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithSampler(sdktrace.AlwaysSample()),
+		sdktrace.WithBatcher(exporter),
+		sdktrace.WithResource(resource.NewWithAttributes(
+			semconv.SchemaURL,
+			semconv.ServiceNameKey.String("prof-service"),
+			semconv.DeploymentEnvironmentKey.String("development"),
+		)),
+	)
+	otel.SetTracerProvider(tp)
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
+
+	return tp, nil
 }

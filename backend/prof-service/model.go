@@ -68,6 +68,11 @@ type RequestId struct {
 
 type Users []*User
 
+type AverageGrade struct {
+	UserId       string  `json:"userId"`
+	AverageGrade float64 `json:"averageGrade"`
+}
+
 func ValidateUser(user *User) error {
 	if user.Username == "" {
 		return errors.New("username is required")

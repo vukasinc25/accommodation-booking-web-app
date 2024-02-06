@@ -5,12 +5,14 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"log"
+
+	// "log"
 	"os"
 	"strings"
 	"time"
 
 	redis "github.com/go-redis/redis/v8"
+	log "github.com/sirupsen/logrus"
 )
 
 type ProductCache struct {
@@ -40,7 +42,7 @@ func (pc *ProductCache) Ping() {
 }
 
 func (pc *ProductCache) Post(image []byte, imageName string) error {
-	log.Println("Image:", image)
+	log.Println("Usli u Post")
 	key := strings.TrimSpace(imageName)
 
 	// Encode the image data to base64

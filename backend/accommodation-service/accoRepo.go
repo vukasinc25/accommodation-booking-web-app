@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
+	"go.opentelemetry.io/otel/trace"
 	"net/http"
 	"os"
 	"strconv"
@@ -14,6 +14,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
+	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -24,9 +25,10 @@ type AccoRepo struct {
 	cli                         *mongo.Client
 	logger                      *log.Logger
 	reservation_service_address string
+	tracer                      trace.Tracer
 }
 
-func New(ctx context.Context, logger *log.Logger, conn_reservation_service_address string) (*AccoRepo, error) {
+func New(ctx context.Context, logger *log.Logger, conn_reservation_service_address string, tracer trace.Tracer) (*AccoRepo, error) {
 
 	dburi := os.Getenv("MONGO_DB_URI")
 
@@ -39,6 +41,7 @@ func New(ctx context.Context, logger *log.Logger, conn_reservation_service_addre
 		cli:                         client,
 		logger:                      logger,
 		reservation_service_address: conn_reservation_service_address,
+		tracer:                      tracer,
 	}, nil
 }
 
@@ -68,7 +71,9 @@ func (ar *AccoRepo) Ping() {
 	fmt.Println(databases)
 }
 
-func (ar *AccoRepo) GetAll() (Accommodations, error) {
+func (ar *AccoRepo) GetAll(ctx context.Context) (Accommodations, error) {
+	ctx, span := ar.tracer.Start(ctx, "AccoRepo.GetAll")
+	defer span.End()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -88,7 +93,9 @@ func (ar *AccoRepo) GetAll() (Accommodations, error) {
 	return accommodations, nil
 }
 
-func (ar *AccoRepo) GetAllByUsername(username string) (Accommodations, error) {
+func (ar *AccoRepo) GetAllByUsername(username string, ctx context.Context) (Accommodations, error) {
+	ctx, span := ar.tracer.Start(ctx, "AccoRepo.GetAllByUsername")
+	defer span.End()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -109,7 +116,9 @@ func (ar *AccoRepo) GetAllByUsername(username string) (Accommodations, error) {
 	return accommodations, nil
 }
 
-func (ar *AccoRepo) GetAllById(id string) (Accommodations, error) {
+func (ar *AccoRepo) GetAllById(id string, ctx context.Context) (Accommodations, error) {
+	ctx, span := ar.tracer.Start(ctx, "AccoRepo.Insert")
+	defer span.End()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -130,7 +139,10 @@ func (ar *AccoRepo) GetAllById(id string) (Accommodations, error) {
 	return accommodations, nil
 }
 
-func (ar *AccoRepo) Delete(username string) error {
+func (ar *AccoRepo) Delete(username string, ctx context.Context) error {
+	ctx, span := ar.tracer.Start(ctx, "AccoRepo.Delete")
+	defer span.End()
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	patientsCollection := ar.getCollection()
@@ -146,7 +158,9 @@ func (ar *AccoRepo) Delete(username string) error {
 	return nil
 }
 
-func (ar *AccoRepo) GetById(id string) (*Accommodation, error) {
+func (ar *AccoRepo) GetById(id string, ctx context.Context) (*Accommodation, error) {
+	ctx, span := ar.tracer.Start(ctx, "AccoRepo.GetById")
+	defer span.End()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -163,7 +177,10 @@ func (ar *AccoRepo) GetById(id string) (*Accommodation, error) {
 	return &accommodation, nil
 }
 
-func (ar *AccoRepo) GetAllByLocation(location string) (*Accommodations, error) {
+func (ar *AccoRepo) GetAllByLocation(location string, ctx context.Context) (*Accommodations, error) {
+	ctx, span := ar.tracer.Start(ctx, "AccoRepo.GetAllByLocation")
+	defer span.End()
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -183,7 +200,33 @@ func (ar *AccoRepo) GetAllByLocation(location string) (*Accommodations, error) {
 	return &accommodations, nil
 }
 
-func (ar *AccoRepo) DeleteAccommodationGrade(userId string, id string) error {
+// Gets all acco_ids from the reservation service
+func (ar *AccoRepo) GetAllAccoFromReservationServiceByDate(beginReservationDate string, endReservationDate string, ctx context.Context) (*http.Response, error) {
+	ctx, span := ar.tracer.Start(ctx, "AccoRepo.GetAllAccoFromReservationServiceByDate")
+	defer span.End()
+
+	url := ar.reservation_service_address + "/api/reservations/search_by_date/" + beginReservationDate + "/" + endReservationDate
+	log.Println(url)
+
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	httpResp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return httpResp, nil
+}
+
+func (ar *AccoRepo) DeleteAccommodationGrade(userId string, id string, ctx context.Context) error {
+	ctx, span := ar.tracer.Start(ctx, "AccoRepo.DeleteAccommodationGrade")
+	defer span.End()
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	accommodationGradeCollection := ar.getCollectionForAccommodationGrade()
@@ -223,7 +266,9 @@ func (ar *AccoRepo) DeleteAccommodationGrade(userId string, id string) error {
 	return nil
 }
 
-func (ar *AccoRepo) GetAllByNoGuests(noGuestsString string) (*Accommodations, error) {
+func (ar *AccoRepo) GetAllByNoGuests(noGuestsString string, ctx context.Context) (*Accommodations, error) {
+	ctx, span := ar.tracer.Start(ctx, "AccoRepo.GetAllByNoGuests")
+	defer span.End()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -251,6 +296,9 @@ func (ar *AccoRepo) GetAllByNoGuests(noGuestsString string) (*Accommodations, er
 }
 
 func (ar *AccoRepo) CreateAverageRating(id string) error {
+	//ctx, span := ar.tracer.Start(ctx, "AccoRepo.Insert")
+	//defer span.End()
+
 	log.Println("Usli u metodu")
 	var averageRating float64
 	grades, err := ar.GetAllAccommodationGrades(id)
@@ -299,7 +347,10 @@ func (ar *AccoRepo) CreateAverageRating(id string) error {
 	return nil
 }
 
-func (ar *AccoRepo) Insert(accommodation *Accommodation) error {
+func (ar *AccoRepo) Insert(accommodation *Accommodation, ctx context.Context) error {
+	ctx, span := ar.tracer.Start(ctx, "AccoRepo.Insert")
+	defer span.End()
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	accommodationCollection, err := ar.getCollection1()
@@ -332,10 +383,12 @@ func (ar *AccoRepo) SendRequestToReservationService(token string) (*http.Respons
 		return nil, err
 	}
 	return httpResp, nil
-
 }
 
 func (ar *AccoRepo) GetAllAccommodationGrades(id string) (*AccommodationGrades, error) {
+	//ctx, span := ar.tracer.Start(ctx, "AccoRepo.Insert")
+	//defer span.End()
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -355,7 +408,10 @@ func (ar *AccoRepo) GetAllAccommodationGrades(id string) (*AccommodationGrades, 
 	return &accommodationGrades, nil
 }
 
-func (ar *AccoRepo) InsertAccommodationImg(id string, images []string) error {
+func (ar *AccoRepo) InsertAccommodationImg(id string, images []string, ctx context.Context) error {
+	ctx, span := ar.tracer.Start(ctx, "AccoRepo.InsertAccommodationImg")
+	defer span.End()
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -399,7 +455,10 @@ func (ar *AccoRepo) getCollection() *mongo.Collection {
 	return accommodationCollection
 }
 
-func (ar *AccoRepo) CreateGrade(accommodatioGrade *AccommodationGrade, token string) error {
+func (ar *AccoRepo) CreateGrade(accommodatioGrade *AccommodationGrade, token string, ctx context.Context) error {
+	ctx, span := ar.tracer.Start(ctx, "AccoRepo.CreateGrade")
+	defer span.End()
+
 	log.Println("Usli u CreateGrade")
 	response, err := ar.SendRequestToReservationService(token)
 	if err != nil {
