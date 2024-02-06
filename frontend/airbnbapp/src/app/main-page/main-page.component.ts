@@ -9,6 +9,7 @@ import { NgbDate } from '@ng-bootstrap/ng-bootstrap';
 import { ReservationService } from '../service/reservation.service';
 import { ReservationByDateSearch } from '../model/reservationByDateSearch';
 import { AmenityType } from '../model/amenityType';
+import { ToastRef, ToastrService } from 'ngx-toastr';
 
 @Component({
   selector: 'app-main-page',
@@ -52,7 +53,8 @@ export class MainPageComponent implements OnInit, OnDestroy {
     private router: Router,
     private accommodationService: AccommodationService,
     private authService: AuthService,
-    private reservationService: ReservationService
+    private reservationService: ReservationService,
+    private toastr: ToastrService
   ) {
     this.logSub = this.authService.isLoggedin.subscribe(
       (data) => (this.isLoggedin = data)
@@ -124,10 +126,10 @@ export class MainPageComponent implements OnInit, OnDestroy {
               }
             }
           },
-          // error: (err) => {
-          //   alert("No Accommodations Found")
-          // } unsinc
         });
+      }
+      if (this.priceAccommodations.length <= 0) {
+        this.toastr.info("No accommodations in that price range have been found")
       }
       this.priceFrom = 0;
       this.priceTo = 0;
@@ -146,6 +148,9 @@ export class MainPageComponent implements OnInit, OnDestroy {
           }
         }
       }
+      if (this.amenitiesAccommodations.length <= 0) {
+        this.toastr.info("No accommodations with those amenities have been found")
+      }
       this.amenities = [];
     }
 
@@ -163,6 +168,9 @@ export class MainPageComponent implements OnInit, OnDestroy {
             })
           }
         })
+      }
+      if (this.featuredHostAccommodations.length <= 0){
+        this.toastr.info("No accommodations with featured hosts have been found")
       }
     }
     this.displayFilteredAccos()
@@ -265,18 +273,26 @@ export class MainPageComponent implements OnInit, OnDestroy {
       : of([]);
 
     forkJoin([locationObservable, noGuestsObservable, dateObservable])
-    // .pipe(
-    //   catchError(error => {
-    //     console.error('Error occurred in one of the observables:', error);
-    //     return of([[], [], []]); // Return default values for all observables
-    //   })
-    // )
     .subscribe({
       next: ([locations, noGuests, accoDate]: [Accommodation[], Accommodation[], ReservationByDateSearch[]]) => {
         this.accommodationsByLocation = locations as Accommodation[];
         this.accommodationsByNoGuest = noGuests as Accommodation[];
         this.accommodationsByDate = accoDate as Accommodation[];
-        console.log(this.accommodationsByDate)
+
+        if (this.accommodationsByLocation == null) {
+          this.toastr.info("No accommodations with that location have been found")
+          this.accommodations = []
+        }
+
+        if (this.accommodationsByDate == null) {
+          this.toastr.info("No accommodations with those reservation dates have been found")
+          this.accommodations = []
+        }
+
+        if (this.accommodationsByNoGuest == null) {
+          this.toastr.info("No accommodations with that number of guests have been found")
+          this.accommodations = []
+        }
 
         if (this.accommodationsByLocation.length > 0 && this.accommodationsByNoGuest.length == 0 && this.accommodationsByDate.length == 0) {
           console.log("Search by location only");

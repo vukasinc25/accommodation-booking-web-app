@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../service/auth.service';
+import { ToastrService } from 'ngx-toastr';
 
 @Component({
   selector: 'app-verify-email',
@@ -13,7 +14,8 @@ export class VerifyEmailComponent {
   constructor(
     private fb: FormBuilder,
     private router: Router,
-    private authService: AuthService
+    private authService: AuthService,
+    private toastr: ToastrService
   ) {
     this.verifyEmail = this.fb.group({
       code: ['', [Validators.required]],
@@ -26,12 +28,12 @@ export class VerifyEmailComponent {
       this.authService.sendVerifyingEmail(code).subscribe({
         next: (data) => {
           console.log('Email sent successfully');
-          alert('Email verifyed successfully.');
+          this.toastr.success('Email verified successfully.');
           this.router.navigate(['login']);
         },
         error: (err) => {
           console.log(err.error.message);
-          alert(err.error.message);
+          this.toastr.error(err.error.message);
         },
       });
     } else {
