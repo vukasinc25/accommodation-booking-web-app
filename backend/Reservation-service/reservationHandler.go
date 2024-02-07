@@ -458,15 +458,15 @@ func (rh *reservationHandler) CreateReservationDateForDate(res http.ResponseWrit
 
 func (rh *reservationHandler) CreateReservationForAcco(res http.ResponseWriter, req *http.Request) {
 	log.Println("CreateReservationForAcco")
-	ctx, span := rh.tracer.Start(req.Context(), "reservationHandler.CreateReservationForAcco") //tracer
-	defer span.End()
+	//ctx, span := rh.tracer.Start(req.Context(), "reservationHandler.CreateReservationForAcco") //tracer
+	//defer span.End()
 	reservation, err := decodeReservationBody(req.Body)
 	if err != nil {
 		rh.logger.Println("Error in decoding body")
 		sendErrorWithMessage(res, "Error in decoding body", http.StatusBadRequest)
 		return
 	}
-	err = rh.repo.InsertReservationByAcco(reservation, ctx)
+	err = rh.repo.InsertReservationByAcco(reservation)
 	if err != nil {
 		rh.logger.Print("Database exception: ", err)
 		sendErrorWithMessage(res, "Cant create reservation", http.StatusBadRequest)
@@ -484,7 +484,7 @@ func (rh *reservationHandler) CreateReservationForUser(res http.ResponseWriter, 
 		sendErrorWithMessage(res, "Cant decode body", http.StatusBadRequest)
 		return
 	}
-  
+
 	log.Println("Reservation:", reservationUser)
 	err = rh.repo.InsertReservationByUser(reservationUser, ctx)
 	if err != nil {

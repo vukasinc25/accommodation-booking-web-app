@@ -384,9 +384,9 @@ func (uh *userHandler) CreateHostGrade(res http.ResponseWriter, req *http.Reques
 	hostGrade.ID = randstr.String(20)
 	uh.logger.Info("HostGrade:", hostGrade)
 
-//   response, err := uh.db.GetAllReservatinsForUserByHostId(hostGrade.UserId, hostGrade.HostId, ctx)
+	//   response, err := uh.db.GetAllReservatinsForUserByHostId(hostGrade.UserId, hostGrade.HostId, ctx)
 
-	grades, err := uh.db.GetAllHostGradesByHostId(hostGrade.HostId)
+	grades, err := uh.db.GetAllHostGradesByHostId(hostGrade.HostId, ctx)
 	if err != nil {
 		uh.logger.Info("HostGrade lavor")
 		// sendErrorWithMessage1(res, "Lavor when tryed to update HostGrade", http.StatusBadRequest)
@@ -394,7 +394,7 @@ func (uh *userHandler) CreateHostGrade(res http.ResponseWriter, req *http.Reques
 	}
 
 	if len(grades) == 0 {
-		response, err := uh.db.GetAllReservatinsForUserByHostId(hostGrade.UserId, hostGrade.HostId)
+		response, err := uh.db.GetAllReservatinsForUserByHostId(hostGrade.UserId, hostGrade.HostId, ctx)
 		if err != nil {
 			uh.logger.Info("Error in method GetAllReservatinsForUserByHostId", err)
 			sendErrorWithMessage1(res, "Error in getting reservations for user", http.StatusBadRequest)
@@ -415,7 +415,7 @@ func (uh *userHandler) CreateHostGrade(res http.ResponseWriter, req *http.Reques
 			sendErrorWithMessage1(res, "There is no reservations for hosts accommodations", http.StatusBadRequest)
 			return
 		} else if strings.Contains(string(body), "There is some reservtions for this user") {
-			err = uh.db.CreateHostGrade(hostGrade)
+			err = uh.db.CreateHostGrade(hostGrade, ctx)
 			if err != nil {
 				uh.logger.Info("HostGrade lavor")
 				sendErrorWithMessage1(res, "Lavor when tryed to save HostGrade", http.StatusBadRequest)
@@ -439,7 +439,7 @@ func (uh *userHandler) CreateHostGrade(res http.ResponseWriter, req *http.Reques
 	for _, grade := range grades {
 		uh.logger.Println("Grade: ", grade)
 		if strings.TrimSpace(grade.UserId) != strings.TrimSpace(hostGrade.UserId) {
-			response, err := uh.db.GetAllReservatinsForUserByHostId(hostGrade.UserId, hostGrade.HostId)
+			response, err := uh.db.GetAllReservatinsForUserByHostId(hostGrade.UserId, hostGrade.HostId, ctx)
 			if err != nil {
 				uh.logger.Info("Error in method GetAllReservatinsForUserByHostId", err)
 				sendErrorWithMessage1(res, "Error in getting reservations for user", http.StatusBadRequest)
@@ -460,7 +460,7 @@ func (uh *userHandler) CreateHostGrade(res http.ResponseWriter, req *http.Reques
 				sendErrorWithMessage1(res, "There is no reservations for hosts accommodations", http.StatusBadRequest)
 				return
 			} else if strings.Contains(string(body), "There is some reservtions for this user") {
-				err = uh.db.CreateHostGrade(hostGrade)
+				err = uh.db.CreateHostGrade(hostGrade, ctx)
 				if err != nil {
 					uh.logger.Info("HostGrade lavor")
 					sendErrorWithMessage1(res, "Lavor when tryed to save HostGrade", http.StatusBadRequest)
@@ -580,7 +580,7 @@ func (uh *userHandler) GetAllHostGrades(res http.ResponseWriter, req *http.Reque
 			return
 		}
 	} else {
-		response, err := uh.db.UpdateUserGrade(id, 0)
+		response, err := uh.db.UpdateUserGrade(id, 0, ctx)
 		if err != nil {
 			uh.logger.Println("Error in updating grade", err)
 			sendErrorWithMessage1(res, "Error in updating grade", http.StatusInternalServerError)

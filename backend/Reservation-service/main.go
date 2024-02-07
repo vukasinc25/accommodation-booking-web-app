@@ -24,7 +24,7 @@ import (
 	saga "github.com/vukasinc25/fst-airbnb/utility/saga/messaging"
 	nats "github.com/vukasinc25/fst-airbnb/utility/saga/messaging/nats"
 	// handlers "github.com/vukasinc25/fst-airbnb/handlers"
-  semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 )
 
 const (
@@ -236,9 +236,9 @@ func initCreateOrderHandler(store *ReservationRepo, replyPublisher saga.Publishe
 	if err != nil {
 		log.Fatal("Ovde1: ", err)
 	}
-
 	return something
-  
+}
+
 func loadConfig() map[string]string {
 	config := make(map[string]string)
 	config["host"] = os.Getenv("HOST")
