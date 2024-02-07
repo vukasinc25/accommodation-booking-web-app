@@ -5,10 +5,12 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"io"
+
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
-	"io"
+
 	// "log"
 	"net/http"
 	"strconv"
@@ -34,19 +36,24 @@ type AccoHandler struct {
 	logger         *log.Logger
 	db             *AccoRepo
 	storageHandler *handlers.StorageHandler
-  tracer         trace.Tracer
+	tracer         trace.Tracer
 	orchestrator   *CreateAccommodationOrchestrator
 }
 
 func NewAccoHandler(l *log.Logger, r *AccoRepo, sh *handlers.StorageHandler, orcestrator *CreateAccommodationOrchestrator, t trace.Tracer) *AccoHandler {
 
-	return &AccoHandler{l, r, sh, orcestrator, t}
+	return &AccoHandler{l, r, sh, t, orcestrator}
 }
 
 func (ah *AccoHandler) createAccommodation(rw http.ResponseWriter, req *http.Request) {
 	ctx, span := ah.tracer.Start(req.Context(), "AccoHandler.createAccommodation") //tracer
 	defer span.End()                                                               //tracer
 
+	payload, ok := ctx.Value("payload").(*token.Payload)
+	if !ok {
+		sendErrorWithMessage(rw, "Authorization token not found", http.StatusInternalServerError)
+		return
+	}
 	hostId, ok := ctx.Value("userId").(string)
 	if !ok {
 		sendErrorWithMessage(rw, "Authorization token not found", http.StatusInternalServerError)
@@ -92,9 +99,9 @@ func (ah *AccoHandler) createAccommodation(rw http.ResponseWriter, req *http.Req
 
 	accommodation1.Approved = "false"
 
-	err = ah.db.Insert(accommodation1)
+	// err = ah.db.Insert(accommodation1)
 	accommodation.AverageGrade = 0
-	err := ah.db.Insert(accommodation, ctx)
+	err = ah.db.Insert(accommodation1, ctx)
 	if err != nil {
 		ah.logger.Println("error:1", err.Error())
 		if strings.Contains(err.Error(), "duplicate key") {
@@ -301,6 +308,9 @@ func (ah *AccoHandler) GetAllAccommodationsById(w http.ResponseWriter, req *http
 }
 
 func (ah *AccoHandler) UpdateAccommodationGrade(res http.ResponseWriter, req *http.Request) {
+	ctx, span := ah.tracer.Start(req.Context(), "AccoHandler.UpdateAccommodationGrade") //tracer
+	defer span.End()
+
 	vars := mux.Vars(req)
 	id := vars["id"]
 
@@ -314,7 +324,7 @@ func (ah *AccoHandler) UpdateAccommodationGrade(res http.ResponseWriter, req *ht
 	ah.logger.Println("UserId:", userId)
 	ah.logger.Println("AccommodationGradeId:", id)
 
-	err := ah.db.DeleteAccommodationGrade(userId, id)
+	err := ah.db.DeleteAccommodationGrade(userId, id, ctx)
 	if err != nil {
 		ah.logger.Println("Error2:", err)
 		sendErrorWithMessage(res, err.Error(), http.StatusInternalServerError)
