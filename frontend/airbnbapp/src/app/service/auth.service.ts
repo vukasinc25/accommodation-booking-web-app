@@ -166,6 +166,14 @@ export class AuthService {
       responseType: 'json',
     });
   }
+
+  getUserByUsername(username: string): Observable<any> {
+    return this.http.get(`${'/api/users/username/'}${username}`, {
+      headers: this.headers,
+      responseType: 'json',
+    });
+  }
+
   sendVerifyingEmail(code: string): Observable<any> {
     return this.http.post(
       `${'/api/users/email/'}${code}`,

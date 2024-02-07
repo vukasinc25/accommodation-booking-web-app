@@ -28,6 +28,19 @@ export class AccommodationService {
     });
   }
 
+  getAllRecommended(list: string[]): Observable<any> {
+    return this.http.post(
+      '/api/accommodations/recommendations',
+      {
+        list,
+      },
+      {
+        headers: this.headers,
+        responseType: 'json',
+      }
+    );
+  }
+
   getAllByUsername(id: string): Observable<any> {
     return this.http.get('/api/accommodations/myAccommodations/' + id, {
       headers: this.headers,
@@ -56,6 +69,20 @@ export class AccommodationService {
     return this.http.get('/api/accommodations/search_by_location/' + location, {
       headers: this.headers,
       responseType: 'json',
+    });
+  }
+
+  getAllByNoGuests(noGuests: string): Observable<any> {
+    return this.http.get('/api/accommodations/search_by_noGuests/' + noGuests, {
+      headers: this.headers,
+      responseType: 'json',
+    });
+  }
+
+  getAllByDate(startDate: string, endDate: string): Observable<any> {
+    return this.http.get('/api/accommodations/search_by_date/' + startDate + "/" + endDate, {
+      headers: this.header,
+      responseType: 'json'
     });
   }
 

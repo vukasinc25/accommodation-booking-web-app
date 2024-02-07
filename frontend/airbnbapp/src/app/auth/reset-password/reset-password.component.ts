@@ -8,6 +8,7 @@ import {
 import { AuthService } from '../../service/auth.service';
 import { group } from '@angular/animations';
 import { Router } from '@angular/router';
+import { ToastrService } from 'ngx-toastr';
 
 @Component({
   selector: 'app-reset-password',
@@ -20,7 +21,8 @@ export class ResetPasswordComponent {
   constructor(
     private fb: FormBuilder,
     private router: Router,
-    private authService: AuthService
+    private authService: AuthService,
+    private toastr: ToastrService
   ) {
     this.resetForm = this.fb.group(
       {
@@ -52,12 +54,12 @@ export class ResetPasswordComponent {
         .subscribe({
           next: (data) => {
             console.log('Usli u resetPassword');
-            alert('Uspesno ste izmenili lozinku.');
+            this.toastr.success('Successfully changed password');
             this.router.navigate(['login']);
           },
           error: (err) => {
             console.log(err.error.message);
-            alert(err.error.message);
+            this.toastr.error(err.error.message);
           },
         });
     } else {

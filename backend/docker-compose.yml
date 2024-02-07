@@ -17,8 +17,11 @@ services:
       RESERVATION_SERVICE_PORT: ${RESERVATION_SERVICE_PORT}
       ACCOMMODATION_SERVICE_HOST: ${ACCOMMODATIONS_SERVICE_HOST}
       ACCOMMODATION_SERVICE_PORT: ${ACCOMMODATIONS_SERVICE_PORT}
+      JAEGER_ADDRESS: ${JAEGER_ADDRESS}
     depends_on:
       mongo:
+        condition: service_healthy
+      jaeger:
         condition: service_healthy
     volumes:
       - auth_log:/auth
@@ -43,8 +46,11 @@ services:
       RESERVATION_SERVICE_PORT: ${RESERVATION_SERVICE_PORT}
       AUTH_SERVICE_HOST: ${AUTH_SERVICE_HOST}
       AUTH_SERVICE_PORT: ${AUTH_SERVICE_PORT}
+      JAEGER_ADDRESS: ${JAEGER_ADDRESS}
     depends_on:
       consul:
+        condition: service_healthy
+      jaeger:
         condition: service_healthy
     volumes:
       - prof_log:/prof
@@ -76,6 +82,7 @@ services:
       NATS_PASS: ${NATS_PASS}
       CREATE_ACCOMMODATION_COMMAND_SUBJECT: ${CREATE_ACCOMMODATION_COMMAND_SUBJECT}
       CREATE_ACCOMMODATION_REPLY_SUBJECT: ${CREATE_ACCOMMODATION_REPLY_SUBJECT}
+      JAEGER_ADDRESS: ${JAEGER_ADDRESS}
     depends_on:
       mongo:
         condition: service_healthy
@@ -88,6 +95,8 @@ services:
       datanode3:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      jaeger:
         condition: service_healthy
     volumes:
       - acco_log:/acco
@@ -105,7 +114,10 @@ services:
       HOST: ${NOTIFICATION_SERVICE_HOST}
       PORT: ${NOTIFICATION_SERVICE_PORT}
       MONGO_DB_URI: ${MONGO_DB_URI}
+      JAEGER_ADDRESS: ${JAEGER_ADDRESS}
     depends_on:
+      jaeger:
+        condition: service_healthy
       mongo:
         condition: service_healthy
     networks:
@@ -130,11 +142,63 @@ services:
       NATS_PASS: ${NATS_PASS}
       CREATE_ACCOMMODATION_COMMAND_SUBJECT: ${CREATE_ACCOMMODATION_COMMAND_SUBJECT}
       CREATE_ACCOMMODATION_REPLY_SUBJECT: ${CREATE_ACCOMMODATION_REPLY_SUBJECT}
+      HOST: ${RESERVATION_SERVICE_HOST}
+      PORT: ${RESERVATION_SERVICE_PORT}
+      CASS_DB: ${CASS_DB}
+      JAEGER_ADDRESS: ${JAEGER_ADDRESS}
     depends_on:
       cassandra:
         condition: service_healthy
+      jaeger:
+        condition: service_healthy
     volumes:
       - res_log:/res
+    networks:
+      - network
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - "6831:6831/udp"
+      - "16686:16686"
+    restart: on-failure
+    healthcheck:
+      test: [ "CMD", "nc", "-z", "localhost", "16686" ]
+      interval: 10s
+      retries: 3
+      timeout: 5s
+    networks:
+      - network
+
+  collector:
+    image: otel/opentelemetry-collector:0.69.0
+    command: [ "--config=/etc/otel-collector-config.yaml" ]
+    volumes:
+      - ./api-gateway/otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    networks:
+      - network
+
+  recommendation-service:
+    build:
+      context: .
+      dockerfile: ./recommendation-service/Dockerfile
+    restart: always
+    hostname: "recommendation-service"
+    #Mapping ports
+#    ports:
+      # <port_on_local>:<port_in_machine>
+#      - 8000:8000
+    #Will be accessible through os.Getenv("PORT")
+    environment:
+      - PORT=8000
+      # NoSQL: environment variable holding connection URI for Neo4J database
+      # Local DB instance
+      - NEO4J_DB=bolt://neo4j:7687
+      - NEO4J_USERNAME=neo4j
+      - NEO4J_PASS=passwordds
+    depends_on:
+      neo4j:
+        condition: service_healthy
     networks:
       - network
 
@@ -151,6 +215,8 @@ services:
       - accommodation-service
       - prof-service
       - reservation-service
+      - notification-service
+      - recommendation-service
     networks:
       - network
 
@@ -185,7 +251,7 @@ services:
     networks:
       - network
 
-  # NoSQL: MognoExpress
+  # NoSQL: MongoExpress
   mongo-express:
     image: mongo-express
     restart: always
@@ -205,7 +271,7 @@ services:
     networks:
       - network
 
-    # NoSQL: CassandraDB
+  # NoSQL: CassandraDB
   cassandra:
     image: cassandra
     restart: always
@@ -225,7 +291,7 @@ services:
     networks:
       - network
 
-  #   NoSQL: Consul
+  # NoSQL: Consul
   consul:
     image: hashicorp/consul:latest
     ports:
@@ -315,6 +381,34 @@ services:
     networks:
       - network
 
+  neo4j:
+    image: neo4j
+    restart: always
+    ports:
+      # bolt
+      - "7687:7687"
+      # http
+      - "7474:7474"
+      # https
+      - "7473:7473"
+    # Docker healtcheck - checks if database is "alive"
+    healthcheck:
+      # test: [ "CMD-SHELL", "echo RETURN 1 | cypher-shell -a <NEO4J_dbms_connector_bolt_listen__address> -u <user defined username> -p <user defined password> || exit 1" ]
+      test:
+        [
+          "CMD-SHELL",
+          "echo RETURN 1 | cypher-shell -a bolt://neo4j:7687 -u neo4j -p passwordds || exit 1",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    environment:
+      - NEO4J_AUTH=neo4j/passwordds
+    volumes:
+      - neo4j_data:/data
+    networks:
+      - network
+
 volumes:
   mongo_store:
   mongo_express_data:
@@ -329,6 +423,7 @@ volumes:
   prof_log:
   acco_log:
   res_log:
+  neo4j_data:
 
 networks:
   network:

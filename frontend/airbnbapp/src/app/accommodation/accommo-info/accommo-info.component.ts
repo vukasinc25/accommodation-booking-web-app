@@ -5,8 +5,8 @@ import { Accommodation } from '../../model/accommodation';
 import { NgbDate, NgbDateStruct } from '@ng-bootstrap/ng-bootstrap';
 import { AuthService } from '../../service/auth.service';
 import { ReservationService } from '../../service/reservation.service';
-import { ResDateRange } from '../../model/dateRange';
-import { DisabledDateRange } from '../../model/disabledDateRange';
+import { NormalDateRange } from '../../model/normalDateRange';
+import { NgbDateRange } from '../../model/NgbDateRange';
 import {
   FormBuilder,
   FormGroup,
@@ -16,6 +16,8 @@ import {
 import { ProfServiceService } from '../../service/prof.service.service';
 import { NotificationService } from '../../service/notification.service';
 import { Notification1 } from '../../model/notification';
+import { ToastrService } from 'ngx-toastr';
+import { RecommendationService } from 'src/app/service/recommendation.service';
 
 @Component({
   selector: 'app-accommo-info',
@@ -37,7 +39,9 @@ export class AccommoInfoComponent implements OnInit {
     private accommodationService: AccommodationService,
     private authService: AuthService,
     private reservationService: ReservationService,
-    private notificationService: NotificationService
+    private notificationService: NotificationService,
+    private toastr: ToastrService,
+    private recommendationService: RecommendationService
   ) {
     this.form = this.fb.group({
       grade: [
@@ -55,29 +59,39 @@ export class AccommoInfoComponent implements OnInit {
 
   role: string = '';
   username: string = '';
-  startDate: NgbDate | null = null;
-  endDate: NgbDate | null = null;
 
   id: number = 0;
   reservationId: string = '';
   accommodation: Accommodation = {};
   hostId: string = '';
-  dateList: ResDateRange[] = [];
-  blackDateList: DisabledDateRange[] = [];
-  isDataEmpty = false;
-
-  hoveredDate: NgbDate | null = null;
-  fromDate: NgbDate | null = null;
-  toDate: NgbDate | null = null;
   accommodationImages: any[string] = [];
 
-  fromDisDate: NgbDate | null = null;
-  toDisDate: NgbDate | null = null;
+  isDataEmpty = false;
 
   notification: Notification1 = {
     hostId: '',
     description: '',
   };
+
+  dateList: NormalDateRange[] = [];
+
+  fromDisDate: NgbDate | null = null;
+  toDisDate: NgbDate | null = null;
+  startDate: NgbDate | null = null;
+  endDate: NgbDate | null = null;
+  hoveredDate: NgbDate | null = null;
+  fromDate: NgbDate | null = null;
+  toDate: NgbDate | null = null;
+
+  //Lista dostupnih termina
+  allDateAvailabilityList: NgbDateRange[] = [];
+
+  //lista zakazanih termina
+  disabledDateList: NgbDateRange[] = [];
+
+  //prvi i poslednji dostupni datumi
+  firstAvailableDate: NgbDate | null = null;
+  lastAvailableDate: NgbDate | null = null;
 
   ngOnInit(): void {
     this.accommodationForm = this.fb.group({
@@ -90,18 +104,19 @@ export class AccommoInfoComponent implements OnInit {
     this.route.params.subscribe((params) => {
       this.id = params['id'];
     });
+
     this.role = this.authService.getRole();
     this.username = this.authService.getUsername();
 
     this.accommodationService.getById(this.id).subscribe({
       next: (data) => {
         this.accommodation = data;
-        console.log('Accommodatin:', this.accommodation);
+        console.log('Accommodation:', this.accommodation);
         for (const image of data.images) {
-          console.log(image);
+          // console.log(image);
           this.accommodationService.getAccommodationImage(image).subscribe(
             (blob: Blob) => {
-              console.log('Blob:', blob);
+              // console.log('Blob:', blob);
               const reader = new FileReader();
               reader.onloadend = () => {
                 const dataUrl = reader.result as string;
@@ -123,8 +138,7 @@ export class AccommoInfoComponent implements OnInit {
         // console.log(data);
       },
       error: (err) => {
-        alert(err.error.message);
-        console.log(err);
+        this.toastr.error(err.error.message);
         this.isDataEmpty = true;
         this.router.navigate(['']);
       },
@@ -137,55 +151,69 @@ export class AccommoInfoComponent implements OnInit {
           console.log('Available dates: ', data);
           this.reservationId = data[0].reservationId;
           this.hostId = data[0].userId;
-          console.log('HostId1:', this.hostId);
+          // console.log('HostId1:', this.hostId);
           this.profService.getAllHostGrades(this.hostId).subscribe({
             next: (data) => {
-              console.log(data);
+              // console.log(data);
               this.grades = data;
             },
             error: (err) => {
-              alert(err.error.message);
+              this.toastr.error(err.error.message);
             },
           });
           this.accommodationService
             .getAllAccommodationGrades(this.id)
             .subscribe({
               next: (data) => {
-                console.log(data);
+                // console.log(data);
                 this.accommodationGrades = data;
               },
               error: (err) => {
-                alert(err.error.message);
+                this.toastr.error(err.error.message);
               },
             });
           this.authService.getUserById(this.hostId).subscribe({
             next: (data) => {
-              console.log('host:', data);
+              // console.log('host:', data);
               this.hostAverageGrade = data.averageGrade;
             },
             error: (err) => {
-              alert(err.error.message);
+              this.toastr.error(err.error.message);
             },
           });
-          this.startDate = new NgbDate(
-            new Date(data[0].startDate).getFullYear(),
-            new Date(data[0].startDate).getUTCMonth() + 1,
-            new Date(data[0].startDate).getUTCDate()
-          );
-          this.endDate = new NgbDate(
-            new Date(data[0].endDate).getFullYear(),
-            new Date(data[0].endDate).getUTCMonth() + 1,
-            new Date(data[0].endDate).getUTCDate()
-          );
-          console.log('Role: ', this.role);
-          // this.startDate = new Date(data[0].startDate);
-          // this.endDate = new Date(data[0].endDate);
-          // console.log(this.startDate);
-          // console.log(this.endDate);
+          //pretvori sve termine iz baze u ngbDate
+          for (let availableDatePeriod of data) {
+            let startDate = new NgbDate(
+              new Date(availableDatePeriod.startDate).getFullYear(),
+              new Date(availableDatePeriod.startDate).getUTCMonth() + 1,
+              new Date(availableDatePeriod.startDate).getUTCDate()
+            );
+
+            let endDate = new NgbDate(
+              new Date(availableDatePeriod.endDate).getFullYear(),
+              new Date(availableDatePeriod.endDate).getUTCMonth() + 1,
+              new Date(availableDatePeriod.endDate).getUTCDate()
+            );
+
+            //jedan termin dostupnosti
+            let newAvailablePeriod: NgbDateRange = { startDate, endDate };
+
+            this.allDateAvailabilityList.push(newAvailablePeriod);
+          }
+
+          if (this.allDateAvailabilityList.length != 0) {
+            this.firstAvailableDate =
+              this.allDateAvailabilityList[0].startDate!;
+
+            this.lastAvailableDate =
+              this.allDateAvailabilityList[
+                this.allDateAvailabilityList.length - 1
+              ].endDate!;
+          }
         },
         error: (err) => {
           console.log(err);
-          alert(err.error.message);
+          this.toastr.error(err.error.message);
           // this.router.navigate(['']);
         },
       });
@@ -193,7 +221,7 @@ export class AccommoInfoComponent implements OnInit {
       next: (data) => {
         // console.log(data);
         if (data != null) {
-          this.dateList = data as ResDateRange[];
+          this.dateList = data as NormalDateRange[];
           for (let dateRange of this.dateList) {
             let startDate = new NgbDate(
               new Date(dateRange.begin_accomodation_date!).getFullYear(),
@@ -205,36 +233,55 @@ export class AccommoInfoComponent implements OnInit {
               new Date(dateRange.end_accomodation_date!).getUTCMonth() + 1,
               new Date(dateRange.end_accomodation_date!).getUTCDate()
             );
-            let blackDateRange: DisabledDateRange = { startDate, endDate };
-            this.blackDateList.push(blackDateRange);
+            let disabledDateRange: NgbDateRange = { startDate, endDate };
+            this.disabledDateList.push(disabledDateRange);
           }
-          console.log(this.blackDateList);
+          console.log(this.disabledDateList);
         }
       },
       error: (err) => {
         console.log(err);
-        alert(err.error.messa);
+        this.toastr.error(err.error.messa);
       },
     });
   }
 
   isDisabled = (date: NgbDate, current?: { month: number }) => {
-    for (let dateRange of this.blackDateList) {
+    //provera za rezervisane datume
+    for (let dateRange of this.disabledDateList) {
+      if (
+        (date.after(dateRange.startDate) && date.before(dateRange.endDate)) ||
+        date.equals(dateRange.startDate) ||
+        date.equals(dateRange.endDate)
+      )
+        return true;
+    }
+
+    let counter = 1;
+
+    //provera za slobodne datume
+    for (let dateRange of this.allDateAvailabilityList) {
       if (
         (date.after(dateRange.startDate) && date.before(dateRange.endDate)) ||
         date.equals(dateRange.startDate) ||
         date.equals(dateRange.endDate)
       ) {
-        return true;
+        break;
+      } else {
+        if (counter < this.allDateAvailabilityList.length) {
+          counter++;
+          continue;
+        } else return true;
       }
     }
-
-    return date.after(this.fromDisDate) && date.before(this.toDisDate);
+    return (
+      date.before(this.firstAvailableDate) && date.after(this.lastAvailableDate)
+    );
   };
 
   onDateSelection(date: NgbDate) {
-    if (this.blackDateList.length > 0) {
-      for (let blackDateRange of this.blackDateList) {
+    if (this.disabledDateList.length > 0) {
+      for (let blackDateRange of this.disabledDateList) {
         if (!this.fromDate && !this.toDate) {
           this.fromDate = date;
         } else if (
@@ -299,12 +346,12 @@ export class AccommoInfoComponent implements OnInit {
   submitGrade() {
     this.profService.gradeHost(this.hostId, this.form.value.grade).subscribe({
       next: (data) => {
-        alert('Host graded');
+        this.toastr.success('Host graded');
         this.form.reset();
         this.ngOnInit();
       },
       error: (err) => {
-        alert(err.error.message);
+        this.toastr.error(err.error.message);
         this.form.reset();
       },
     });
@@ -322,13 +369,20 @@ export class AccommoInfoComponent implements OnInit {
       )
       .subscribe({
         next: (data) => {
+          this.toastr.success('Successfully reserved accommodation');
+          this.recommendationService.insert(this.accommodation).subscribe({
+            next: (data) => {
+              console.log('Sent to Recommendation service');
+            },
+            error: (err) => {
+              console.log(err);
+            },
+          });
           alert('Reserved');
           this.router.navigate(['']);
         },
         error: (err) => {
-          console.log(err.error.message);
-          alert(err.error.message);
-          // this.ngOnInit();
+          this.toastr.error(err.error.message);
         },
       });
 
@@ -337,11 +391,11 @@ export class AccommoInfoComponent implements OnInit {
   deleteHostGrade(id: any) {
     this.profService.deleteHostGrades(id).subscribe({
       next: (data) => {
-        alert('Grade deleted');
+        this.toastr.success('Deleted host review');
         this.ngOnInit();
       },
       error: (err) => {
-        alert(err.error.message);
+        this.toastr.error(err.error.message);
       },
     });
 
@@ -350,11 +404,11 @@ export class AccommoInfoComponent implements OnInit {
   deleteAccommodationGrade(id: any) {
     this.accommodationService.deleteAccommodationGrade(id).subscribe({
       next: (data) => {
-        alert('Accommodation deleted');
+        this.toastr.success('Deleted accommodation review');
         this.ngOnInit();
       },
       error: (err) => {
-        alert(err.error.message);
+        this.toastr.error(err.error.message);
       },
     });
     this.createNotification(
@@ -367,13 +421,13 @@ export class AccommoInfoComponent implements OnInit {
       .gradeAccommodation(this.id, this.formAccommodation.value.grade)
       .subscribe({
         next: (data) => {
-          alert('Accommodation graded');
+          this.toastr.success('Successfully created accommodation review');
           this.formAccommodation.reset();
           this.ngOnInit();
         },
         error: (err) => {
           this.formAccommodation.reset();
-          alert(err.error.message);
+          this.toastr.error(err.error.message);
         },
       });
 
@@ -387,10 +441,10 @@ export class AccommoInfoComponent implements OnInit {
     this.notification.description = description;
     this.notificationService.createNotification(this.notification).subscribe({
       next: (data) => {
-        alert('Notification Sent');
+        console.log('Notification Sent');
       },
       error: (err) => {
-        alert(err.error.message);
+        this.toastr.warning(err.error.message);
       },
     });
   }
@@ -404,13 +458,11 @@ export class AccommoInfoComponent implements OnInit {
       )
       .subscribe({
         next: (data) => {
-          console.log('Reservation is successfully created');
-          alert('Reservation is successfully created.');
+          this.toastr.success('Reservation is successfully created.');
           this.router.navigate(['accommodations/myAccommodations']);
         },
         error: (err) => {
-          console.log(err.error.message);
-          alert(err.error.message);
+          this.toastr.error(err.error);
         },
       });
   }

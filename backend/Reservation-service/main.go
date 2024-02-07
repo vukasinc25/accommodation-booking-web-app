@@ -2,6 +2,12 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/jaeger"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 
 	// "log"
 	"net/http"
@@ -18,6 +24,7 @@ import (
 	saga "github.com/vukasinc25/fst-airbnb/utility/saga/messaging"
 	nats "github.com/vukasinc25/fst-airbnb/utility/saga/messaging/nats"
 	// handlers "github.com/vukasinc25/fst-airbnb/handlers"
+  semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 )
 
 const (
@@ -27,7 +34,7 @@ const (
 func main() {
 
 	logger := log.New()
-
+	config := loadConfig()
 	// Set up log rotation with Lumberjack
 	lumberjackLogger := &lumberjack.Logger{
 		Filename:   "/res/file.log",
@@ -43,6 +50,8 @@ func main() {
 			log.Error("Error closing log file:", err)
 		}
 	}()
+
+	//config := loadConfig()
 
 	// ... (rest of your code)
 
@@ -63,6 +72,19 @@ func main() {
 			MaxRequests: 1,
 			Timeout:     10 * time.Second,
 			Interval:    0,
+			ReadyToTrip: func(counts gobreaker.Counts) bool {
+				return counts.ConsecutiveFailures > 2
+			},
+			OnStateChange: func(name string, from gobreaker.State, to gobreaker.State) {
+				log.Printf("Circuit Breaker '%s' changed from '%s' to, %s'\n", name, from, to)
+			},
+			IsSuccessful: func(err error) bool {
+				if err == nil {
+					return true
+				}
+				errResp, ok := err.(ErrResp)
+				return ok && errResp.StatusCode >= 400 && errResp.StatusCode < 500
+			},
 		})
 
 	port := os.Getenv("PORT")
@@ -70,12 +92,20 @@ func main() {
 		port = "8000"
 	}
 
+	//TRACING
+	tracerProvider, err := NewTracerProvider(config["jaeger"])
+	if err != nil {
+		log.Fatal("JaegerTraceProvider failed to Initialize", err)
+	}
+	tracer := tracerProvider.Tracer("Reservation-service")
+	//
+
 	timeoutContext, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	// logger := log.New(os.Stdout, "[reservation-api] ", log.LstdFlags)
 	// storeLogger := log.New(os.Stdout, "[reservation-store] ", log.LstdFlags)
 
-	store, err := New(logger)
+	store, err := New(logger, tracer)
 	if err != nil {
 		logger.Fatal(err)
 	}
@@ -87,32 +117,38 @@ func main() {
 	handel := initCreateOrderHandler(store, replyPublisher, commandSubscriber)                         // commandHandle
 
 	log.Println("Reservation handel method:", handel)
-	reservationHandler := NewReservationHandler(logger, store)
+	reservationHandler := NewReservationHandler(logger, store, tracer)
 	router := mux.NewRouter()
+	router.Use(reservationHandler.ExtractTraceInfoMiddleware)
 
 	getReservationIds := router.Methods(http.MethodGet).Subrouter()
 	getReservationIds.HandleFunc("/api/reservations/", reservationHandler.GetAllReservationIds)
+	getReservationIds.Use(reservationHandler.ExtractTraceInfoMiddleware)
 
 	getReservationsByAcco := router.Methods(http.MethodGet).Subrouter()
 	getReservationsByAcco.HandleFunc("/api/reservations/by_acco/{id}", reservationHandler.GetAllReservationsByAccommodationId)
 	getReservationsByAcco.Use(reservationHandler.MiddlewareRoleCheck1(authClient, authBreaker))
+	getReservationsByAcco.Use(reservationHandler.ExtractTraceInfoMiddleware)
 
 	getReservationsByUser := router.Methods(http.MethodGet).Subrouter()
 	getReservationsByUser.HandleFunc("/api/reservations/by_user", reservationHandler.GetAllReservationsByUserId)
 	getReservationsByUser.Use(reservationHandler.MiddlewareRoleCheck0(authClient, authBreaker))
+	getReservationsByUser.Use(reservationHandler.ExtractTraceInfoMiddleware)
 
 	postReservationForAcco := router.Methods(http.MethodPost).Subrouter()
 	postReservationForAcco.HandleFunc("/api/reservations/for_user", reservationHandler.CreateReservationForUser)
 	postReservationForAcco.Use(reservationHandler.MiddlewareRoleCheck(authClient, authBreaker))
+	postReservationForAcco.Use(reservationHandler.ExtractTraceInfoMiddleware)
 
 	patchReservationForAcco := router.Methods(http.MethodPatch).Subrouter()
 	patchReservationForAcco.HandleFunc("/api/reservations/for_user", reservationHandler.UpdateReservationByUser)
 	patchReservationForAcco.Use(reservationHandler.MiddlewareRoleCheck(authClient, authBreaker))
+	patchReservationForAcco.Use(reservationHandler.ExtractTraceInfoMiddleware)
 
 	postReservationForUser := router.Methods(http.MethodPost).Subrouter()
 	postReservationForUser.HandleFunc("/api/reservations/for_acco", reservationHandler.CreateReservationForAcco)
 	postReservationForUser.Use(reservationHandler.MiddlewareRoleCheck(authClient, authBreaker))
-
+	postReservationForUser.Use(reservationHandler.ExtractTraceInfoMiddleware)
 	// postReservationDateByAccomodation := router.Methods(http.MethodPost).Subrouter()
 	// postReservationDateByAccomodation.HandleFunc("/api/reservations/date_for_acoo", reservationHandler.CreateReservationDateForAccommodation)
 	// postReservationDateByAccomodation.Use(reservationHandler.MiddlewareRoleCheck1(authClient, authBreaker))
@@ -120,18 +156,23 @@ func main() {
 	getReservationDatesByAccomodationId := router.Methods(http.MethodGet).Subrouter()
 	getReservationDatesByAccomodationId.HandleFunc("/api/reservations/dates_by_acco_id/{id}", reservationHandler.GetReservationDatesByAccommodationId)
 	getReservationDatesByAccomodationId.Use(reservationHandler.MiddlewareRoleCheck1(authClient, authBreaker))
+	getReservationDatesByAccomodationId.Use(reservationHandler.ExtractTraceInfoMiddleware)
 
 	getReservationDatesByDate := router.Methods(http.MethodGet).Subrouter()
 	getReservationDatesByDate.HandleFunc("/api/reservations/search_by_date/{startDate}/{endDate}", reservationHandler.GetAllReservationsDatesByDate)
+	getReservationDatesByDate.Use(reservationHandler.ExtractTraceInfoMiddleware)
 
 	postReservationDateByDate := router.Methods(http.MethodPost).Subrouter()
 	postReservationDateByDate.HandleFunc("/api/reservations/date_for_date", reservationHandler.CreateReservationDateForDate)
+	postReservationDateByDate.Use(reservationHandler.ExtractTraceInfoMiddleware)
 
 	getReservatinsDatesByHostId := router.Methods(http.MethodGet).Subrouter()
 	getReservatinsDatesByHostId.HandleFunc("/api/reservations/for_host_id/{id}", reservationHandler.GetAllReservationsDatesByHostId)
+	getReservatinsDatesByHostId.Use(reservationHandler.ExtractTraceInfoMiddleware)
 
 	getReservatinsForUserByHostId := router.Methods(http.MethodGet).Subrouter()
 	getReservatinsForUserByHostId.HandleFunc("/api/reservations/by_user_for_host_id/{userId}/{hostId}", reservationHandler.GetAllReservationsForUserIdByHostId)
+	getReservatinsForUserByHostId.Use(reservationHandler.ExtractTraceInfoMiddleware)
 
 	router.HandleFunc("/api/reservations/host/{id}", reservationHandler.IsHostProminent).Methods("GET")
 
@@ -197,4 +238,33 @@ func initCreateOrderHandler(store *ReservationRepo, replyPublisher saga.Publishe
 	}
 
 	return something
+  
+func loadConfig() map[string]string {
+	config := make(map[string]string)
+	config["host"] = os.Getenv("HOST")
+	config["port"] = os.Getenv("PORT")
+	config["address"] = fmt.Sprintf(":%s", os.Getenv("PORT"))
+	config["jaeger"] = os.Getenv("JAEGER_ADDRESS")
+	config["conn_reservation_service_address"] = fmt.Sprintf("http://%s:%s", os.Getenv("RESERVATION_SERVICE_HOST"), os.Getenv("RESERVATION_SERVICE_PORT"))
+	return config
+}
+
+func NewTracerProvider(collectorEndpoint string) (*sdktrace.TracerProvider, error) {
+	exporter, err := jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(collectorEndpoint)))
+	if err != nil {
+		return nil, fmt.Errorf("unable to initialize exporter due: %w", err)
+	}
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithSampler(sdktrace.AlwaysSample()),
+		sdktrace.WithBatcher(exporter),
+		sdktrace.WithResource(resource.NewWithAttributes(
+			semconv.SchemaURL,
+			semconv.ServiceNameKey.String("Reservation-service"),
+			semconv.DeploymentEnvironmentKey.String("development"),
+		)),
+	)
+	otel.SetTracerProvider(tp)
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
+
+	return tp, nil
 }

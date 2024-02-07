@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { AuthService } from '../../service/auth.service';
 import { Router } from '@angular/router';
+import { ToastrService } from 'ngx-toastr';
 
 @Component({
   selector: 'app-password-email-recovery',
@@ -13,7 +14,8 @@ export class PasswordEmailRecoveryComponent {
   constructor(
     private fb: FormBuilder,
     private router: Router,
-    private authService: AuthService
+    private authService: AuthService,
+    private toastr: ToastrService
   ) {
     this.emailForm = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
@@ -25,12 +27,12 @@ export class PasswordEmailRecoveryComponent {
       this.authService.sendForgottenPasswordEmail(email).subscribe({
         next: (data) => {
           console.log('Email sent successfully');
-          alert('Email sent successfully.');
+          this.toastr.success('Email sent successfully.');
           this.router.navigate(['reset-password']);
         },
         error: (err) => {
           console.log(err.error.message);
-          alert(err.error.message);
+          this.toastr.error(err.error.message);
         },
       });
     } else {

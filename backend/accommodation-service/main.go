@@ -3,6 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/jaeger"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/resource"
 
 	// "log"
 	"net/http"
@@ -23,6 +27,8 @@ import (
 	"github.com/sony/gobreaker"
 	"github.com/vukasinc25/fst-airbnb/token"
 	nats "github.com/vukasinc25/fst-airbnb/utility/saga/messaging/nats"
+  sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 )
 
 const (
@@ -70,7 +76,28 @@ func main() {
 			MaxRequests: 1,
 			Timeout:     10 * time.Second,
 			Interval:    0,
+			ReadyToTrip: func(counts gobreaker.Counts) bool {
+				return counts.ConsecutiveFailures > 2
+			},
+			OnStateChange: func(name string, from gobreaker.State, to gobreaker.State) {
+				log.Printf("Circuit Breaker '%s' changed from '%s' to, %s'\n", name, from, to)
+			},
+			IsSuccessful: func(err error) bool {
+				if err == nil {
+					return true
+				}
+				errResp, ok := err.(ErrResp)
+				return ok && errResp.StatusCode >= 400 && errResp.StatusCode < 500
+			},
 		})
+
+	//TRACING
+	tracerProvider, err := NewTracerProvider(config["jaeger"])
+	if err != nil {
+		log.Fatal("JaegerTraceProvider failed to Initialize", err)
+	}
+	tracer := tracerProvider.Tracer("accommodation-service")
+	//
 
 	timeoutContext, cancel := context.WithTimeout(context.Background(), 50*time.Second)
 	defer cancel()
@@ -80,7 +107,7 @@ func main() {
 	// storageLogger := log.New(os.Stdout, "[file-storage] ", log.LstdFlags)
 	// loggerCache := log.New(os.Stdout, "[redis-cache] ", log.LstdFlags)
 	//pub := InitPubSub()
-	store, err := New(timeoutContext, logger, config["conn_reservation_service_address"])
+	store, err := New(timeoutContext, logger, config["conn_reservation_service_address"], tracer)
 	if err != nil {
 		logger.Fatal("Ovde5: ", err)
 	}
@@ -128,7 +155,7 @@ func main() {
 	//router.StrictSlash(true)
 	cors := gorillaHandlers.CORS(gorillaHandlers.AllowedOrigins([]string{"*"}))
 
-	service := NewAccoHandler(logger, store, storageHandler, orchestrator)
+  service := NewAccoHandler(logger, store, storageHandler, orchestrator, tracer)
 
 	tokenMaker, err := token.NewJWTMaker("12345678901234567890123456789012")
 	if err != nil {
@@ -136,17 +163,20 @@ func main() {
 	}
 
 	router.Use(service.MiddlewareContentTypeSet)
+	router.Use(service.ExtractTraceInfoMiddleware)
 
 	postRouter := router.Methods(http.MethodPost).Subrouter()
 	postRouter.HandleFunc("/api/accommodations/create", service.createAccommodation)
 	postRouter.Use(service.MiddlewareRoleCheck(authClient, authBreaker, tokenMaker))
 	postRouter.Use(service.MiddlewareAccommodationDeserialization)
+	postRouter.Use(service.ExtractTraceInfoMiddleware)
 
 	router.HandleFunc("/api/accommodations/", service.getAllAccommodations).Methods("GET")
 	router.HandleFunc("/api/accommodations/{id}", service.GetAccommodationById).Methods("GET")
 	router.HandleFunc("/api/accommodations/myAccommodations/{username}", service.GetAllAccommodationsByUsername).Methods("GET")
 	router.HandleFunc("/api/accommodations/search_by_location/{locations}", service.GetAllAccommodationsByLocation).Methods("GET")
 	router.HandleFunc("/api/accommodations/search_by_noGuests/{noGuests}", service.GetAllAccommodationsByNoGuests).Methods("GET")
+	router.HandleFunc("/api/accommodations/search_by_date/{startDate}/{endDate}", service.GetAllAccommodationsByDate).Methods("GET")
 	router.HandleFunc("/api/accommodations/get_all_acco_by_id/{id}", service.GetAllAccommodationsById).Methods("GET")
 	router.HandleFunc("/api/accommodations/delete/{username}", service.DeleteAccommodation).Methods("DELETE")
 	createAccommodationGrade := router.Methods(http.MethodPost).Subrouter()
@@ -159,6 +189,8 @@ func main() {
 	deleteAccommodationGrade := router.Methods(http.MethodDelete).Subrouter()
 	deleteAccommodationGrade.HandleFunc("/api/accommodations/deleteAccommodationGrade/{id}", service.DeleteAccommodationGrade)
 	deleteAccommodationGrade.Use(service.MiddlewareRoleCheck00(authClient, authBreaker))
+
+	router.HandleFunc("/api/accommodations/recommendations", service.GetAllRecommended).Methods("POST")
 
 	router.HandleFunc("/api/accommodations/copy", storageHandler.CopyFileToStorage).Methods("POST")
 
@@ -207,6 +239,7 @@ func loadConfig() map[string]string {
 	config["host"] = os.Getenv("HOST")
 	config["port"] = os.Getenv("PORT")
 	config["address"] = fmt.Sprintf(":%s", os.Getenv("PORT"))
+  config["jaeger"] = os.Getenv("JAEGER_ADDRESS")
 	config["conn_reservation_service_address"] = fmt.Sprintf("https://%s:%s", os.Getenv("RESERVATION_SERVICE_HOST"), os.Getenv("RESERVATION_SERVICE_PORT"))
 	return config
 }
@@ -248,4 +281,24 @@ func initCreateAccommodationOrchestrator(publisher saga.Publisher, subscriber sa
 		log.Fatal("Ovde4: ", err)
 	}
 	return orchestrator
+}
+
+func NewTracerProvider(collectorEndpoint string) (*sdktrace.TracerProvider, error) {
+	exporter, err := jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(collectorEndpoint)))
+	if err != nil {
+		return nil, fmt.Errorf("unable to initialize exporter due: %w", err)
+	}
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithSampler(sdktrace.AlwaysSample()),
+		sdktrace.WithBatcher(exporter),
+		sdktrace.WithResource(resource.NewWithAttributes(
+			semconv.SchemaURL,
+			semconv.ServiceNameKey.String("accommodation-service"),
+			semconv.DeploymentEnvironmentKey.String("development"),
+		)),
+	)
+	otel.SetTracerProvider(tp)
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
+
+	return tp, nil
 }

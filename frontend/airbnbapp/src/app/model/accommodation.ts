@@ -10,5 +10,5 @@ export interface Accommodation {
   amenities?: AmenityType[];
   username?: string;
   AverageGrade?: string;
-  // price?: string;
+  // images: string[];
 }

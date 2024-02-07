@@ -14,7 +14,6 @@ import { ProfileComponent } from './profile/profile.component';
 import { TokenInterceptor } from './auth/interceptor/token.interceptor';
 import { NgxCaptchaModule } from 'ngx-captcha';
 import { AccommoInfoComponent } from './accommodation/accommo-info/accommo-info.component';
-import { EmailVerificationPopupComponent } from './auth/email-verification-popup/email-verification-popup.component';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 // import { MatDialogModule } from '@angular/material/dialog';
 import { PasswordEmailRecoveryComponent } from './auth/password-email-recovery/password-email-recovery.component';
@@ -27,7 +26,7 @@ import { ReservationsComponent } from './reservations/reservations.component';
 
 //FA
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
-
+import { ToastrModule } from 'ngx-toastr';
 import { NotificationComponent } from './notification/notification.component';
 
 @NgModule({
@@ -40,7 +39,6 @@ import { NotificationComponent } from './notification/notification.component';
     AccommoAddComponent,
     ProfileComponent,
     AccommoInfoComponent,
-    EmailVerificationPopupComponent,
     PasswordEmailRecoveryComponent,
     ResetPasswordComponent,
     VerifyEmailComponent,
@@ -59,6 +57,8 @@ import { NotificationComponent } from './notification/notification.component';
     BrowserAnimationsModule,
     NgbModule,
     FontAwesomeModule,
+    BrowserAnimationsModule,
+    ToastrModule.forRoot(),
     // MatDialogModule,
   ],
   providers: [

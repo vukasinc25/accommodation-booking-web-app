@@ -9,10 +9,11 @@ import {
   Validators,
 } from '@angular/forms';
 import { Router } from '@angular/router';
-import { AccommodationService } from 'src/app/service/accommodation.service';
+import { AccommodationService } from '../../service/accommodation.service';
 import { Accommodation } from '../../model/accommodation';
 import { AmenityType } from '../../model/amenityType';
 import { AuthService } from '../../service/auth.service';
+import { ToastrService } from 'ngx-toastr';
 
 @Component({
   selector: 'app-accommo-add',
@@ -67,7 +68,8 @@ export class AccommoAddComponent implements OnInit {
     private fb: FormBuilder,
     private router: Router,
     private accommodationService: AccommodationService,
-    private authService: AuthService
+    private authService: AuthService,
+    private toastr: ToastrService
   ) {}
 
   ngOnInit(): void {

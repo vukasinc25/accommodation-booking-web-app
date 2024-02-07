@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -71,6 +72,16 @@ type Users []*User
 type AverageGrade struct {
 	UserId       string  `json:"userId"`
 	AverageGrade float64 `json:"averageGrade"`
+}
+
+type ErrResp struct {
+	URL        string
+	Method     string
+	StatusCode int
+}
+
+func (e ErrResp) Error() string {
+	return fmt.Sprintf("error [status code %d] for request: HTTP %s\t%s", e.StatusCode, e.Method, e.URL)
 }
 
 func ValidateUser(user *User) error {

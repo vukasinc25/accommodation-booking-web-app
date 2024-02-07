@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { NotificationService } from '../service/notification.service';
 import { AuthService } from '../service/auth.service';
 import { Notification1 } from '../model/notification';
+import { ToastrService } from 'ngx-toastr';
 
 @Component({
   selector: 'app-notification',
@@ -13,7 +14,8 @@ export class NotificationComponent implements OnInit{
 
   constructor(
     private notificationService: NotificationService,
-    private authService: AuthService
+    private authService: AuthService,
+    private toastr: ToastrService
     ) {}
 
   ngOnInit(): void {
@@ -23,11 +25,10 @@ export class NotificationComponent implements OnInit{
   loadNotifications(): void {
     this.notificationService.getAllByHostId(this.authService.getUserId()).subscribe(
       (data) => {
-        console.log(data)
         this.notifications = data
       },
       (error) => {
-        console.error('Error getting notifications')
+        this.toastr.error('Error getting notifications')
       }
     )
   }
