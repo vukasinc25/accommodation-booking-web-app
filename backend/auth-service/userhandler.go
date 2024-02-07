@@ -113,6 +113,7 @@ func (uh *UserHandler) createUser(w http.ResponseWriter, req *http.Request) {
 	rt.IsEmailVerified = false
 	rt.AverageGrade = 0.0
 
+	//XSS ATTACK
 	sanitizedUsername := sanitizeInput(rt.Username)
 	sanitizedPassword := sanitizeInput(rt.Password)
 	sanitizedRole := sanitizeInput(string(rt.Role))

@@ -292,6 +292,17 @@ func (uh *userHandler) createUser(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	//XSS
+	sanitizedEmail := sanitizeInput(rt.Email)
+	sanitizedUsername := sanitizeInput(rt.Username)
+	sanitizedFirstname := sanitizeInput(rt.FirstName)
+	sanitizedLastname := sanitizeInput(rt.LastName)
+
+	rt.Email = sanitizedEmail
+	rt.Username = sanitizedUsername
+	rt.FirstName = sanitizedFirstname
+	rt.LastName = sanitizedLastname
+
 	err = uh.db.Insert(rt, ctx)
 	if err != nil {
 		uh.logger.Info("User not saved")
@@ -656,6 +667,12 @@ func (u *ResponseUser) ToJSON(w io.Writer) error {
 	e := json.NewEncoder(w)
 	return e.Encode(u)
 }
+
+func sanitizeInput(input string) string {
+	sanitizedInput := strings.ReplaceAll(input, "<", "&lt;")
+	return sanitizedInput
+}
+
 func (uh *userHandler) UpdateUser(res http.ResponseWriter, req *http.Request) {
 	ctx, span := uh.tracer.Start(req.Context(), "userHandler.UpdateUser") //tracer
 	defer span.End()
@@ -669,6 +686,17 @@ func (uh *userHandler) UpdateUser(res http.ResponseWriter, req *http.Request) {
 		sendErrorWithMessage1(res, "Cant decode body", http.StatusBadRequest)
 		return
 	}
+
+	//XSS ATTACK
+	sanitizedFirstName := sanitizeInput(user.FirstName)
+	sanitizedLastName := sanitizeInput(user.LastName)
+	sanitizedEmail := sanitizeInput(user.Email)
+	sanitizedUsername := sanitizeInput(user.Username)
+
+	user.FirstName = sanitizedFirstName
+	user.LastName = sanitizedLastName
+	user.Email = sanitizedEmail
+	user.Username = sanitizedUsername
 
 	userDb, err := uh.db.Get(user.ID, ctx)
 	if err != nil {
