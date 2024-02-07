@@ -143,6 +143,7 @@ services:
     networks:
       - network
 
+<<<<<<< Updated upstream
   jaeger:
     image: jaegertracing/all-in-one:latest
     ports:
@@ -162,9 +163,7 @@ services:
     command: [ "--config=/etc/otel-collector-config.yaml" ]
     volumes:
       - ./api-gateway/otel-collector-config.yaml:/etc/otel-collector-config.yaml
-    networks:
-      - network
-
+=======
   recommendation-service:
     build:
       context: .
@@ -186,6 +185,7 @@ services:
     depends_on:
       neo4j:
         condition: service_healthy
+>>>>>>> Stashed changes
     networks:
       - network
 
@@ -202,8 +202,11 @@ services:
       - accommodation-service
       - prof-service
       - reservation-service
+<<<<<<< Updated upstream
       - notification-service
+=======
       - recommendation-service
+>>>>>>> Stashed changes
     networks:
       - network
 
