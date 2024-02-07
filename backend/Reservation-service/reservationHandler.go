@@ -5,10 +5,11 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"io"
+
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
-	"io"
 
 	// "log"
 	"net/http"
@@ -529,8 +530,6 @@ func (rh *reservationHandler) UpdateReservationByUser(res http.ResponseWriter, r
 }
 
 func (rh *reservationHandler) UpdateReservationByAcco(res http.ResponseWriter, req *http.Request) {
-	//ctx, span := rh.tracer.Start(req.Context(), "reservationHandler.UpdateReservationByAcco") //tracer
-	//defer span.End()
 
 	vars := mux.Vars(req)
 	accoId := vars["accoId"]

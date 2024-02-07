@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/jaeger"
 	"go.opentelemetry.io/otel/propagation"
@@ -23,6 +24,7 @@ import (
 	"github.com/sony/gobreaker"
 	saga "github.com/vukasinc25/fst-airbnb/utility/saga/messaging"
 	nats "github.com/vukasinc25/fst-airbnb/utility/saga/messaging/nats"
+
 	// handlers "github.com/vukasinc25/fst-airbnb/handlers"
 	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 )

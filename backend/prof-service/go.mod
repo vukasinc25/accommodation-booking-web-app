@@ -5,6 +5,7 @@ go 1.21
 // replace github.com/vukasinc25/fst-airbnb/utility => ../utility
 
 require (
+	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/google/uuid v1.5.0
 	github.com/gorilla/mux v1.8.1
 	github.com/hashicorp/consul/api v1.27.0

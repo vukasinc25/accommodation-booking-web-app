@@ -6,11 +6,12 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"errors"
+	"io"
+	"io/ioutil"
+
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
-	"io"
-	"io/ioutil"
 
 	// "log"
 	"mime"
@@ -23,6 +24,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/sony/gobreaker"
 	"github.com/thanhpk/randstr"
+	"github.com/vukasinc25/fst-airbnb/token"
 )
 
 type userHandler struct {
@@ -115,7 +117,7 @@ func (rh *userHandler) MiddlewareRoleCheck(client *http.Client, breaker *gobreak
 	}
 }
 
-func (rh *userHandler) MiddlewareRoleCheck0(client *http.Client, breaker *gobreaker.CircuitBreaker) mux.MiddlewareFunc {
+func (rh *userHandler) MiddlewareRoleCheck0(client *http.Client, breaker *gobreaker.CircuitBreaker, tokenMaker token.Maker) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
@@ -173,6 +175,15 @@ func (rh *userHandler) MiddlewareRoleCheck0(client *http.Client, breaker *gobrea
 				return
 			}
 
+			payload, err := tokenMaker.VerifyToken(accessToken)
+			if err != nil {
+				// If the token verification fails, return an error
+				writeError(w, http.StatusUnauthorized, err)
+				return
+			}
+
+			ctx = context.WithValue(ctx, "payload", payload)
+
 			userID = strings.Trim(userID, `"`)
 			requestBody["userId"] = userID
 
@@ -198,7 +209,7 @@ func (rh *userHandler) MiddlewareRoleCheck0(client *http.Client, breaker *gobrea
 	}
 }
 
-func (rh *userHandler) MiddlewareRoleCheck00(client *http.Client, breaker *gobreaker.CircuitBreaker) mux.MiddlewareFunc {
+func (rh *userHandler) MiddlewareRoleCheck00(client *http.Client, breaker *gobreaker.CircuitBreaker, tokenMaker token.Maker) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
@@ -246,6 +257,15 @@ func (rh *userHandler) MiddlewareRoleCheck00(client *http.Client, breaker *gobre
 				w.WriteHeader(resp.StatusCode)
 				return
 			}
+
+			payload, err := tokenMaker.VerifyToken(accessToken)
+			if err != nil {
+				// If the token verification fails, return an error
+				writeError(w, http.StatusUnauthorized, err)
+				return
+			}
+
+			ctx = context.WithValue(ctx, "payload", payload)
 
 			userID := string(resBody)
 			ctx = context.WithValue(ctx, "userId", userID)
@@ -343,6 +363,12 @@ func (uh *userHandler) DeleteUser(res http.ResponseWriter, req *http.Request) {
 	sendErrorWithMessage(res, "User succesfully deleted", http.StatusOK)
 }
 
+func writeError(w http.ResponseWriter, statusCode int, err error) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	json.NewEncoder(w).Encode(map[string]interface{}{"error": err.Error()})
+}
+
 func decodeBody(r io.Reader) (*User, error) {
 	dec := json.NewDecoder(r)
 	dec.DisallowUnknownFields()
@@ -369,6 +395,17 @@ func renderJSON(w http.ResponseWriter, v interface{}) {
 func (uh *userHandler) CreateHostGrade(res http.ResponseWriter, req *http.Request) {
 	ctx, span := uh.tracer.Start(req.Context(), "userHandler.CreateHostGrade") //tracer
 	defer span.End()
+
+	payload, ok := ctx.Value("payload").(*token.Payload)
+	if !ok {
+		sendErrorWithMessage(res, "payload not found", http.StatusInternalServerError)
+		return
+	}
+
+	if payload.Role == "HOST" {
+		sendErrorWithMessage(res, "Unauthorized access", http.StatusUnauthorized)
+		return
+	}
 
 	uh.logger.Info(req.Body)
 	hostGrade, err := decodeHostGradeBody(req.Body)
@@ -491,6 +528,17 @@ func (uh *userHandler) CreateHostGrade(res http.ResponseWriter, req *http.Reques
 func (uh *userHandler) DeleteHostGrade(res http.ResponseWriter, req *http.Request) {
 	ctx, span := uh.tracer.Start(req.Context(), "userHandler.DeleteHostGrade") //tracer
 	defer span.End()
+
+	payload, ok := ctx.Value("payload").(*token.Payload)
+	if !ok {
+		sendErrorWithMessage(res, "payload not found", http.StatusInternalServerError)
+		return
+	}
+
+	if payload.Role == "HOST" {
+		sendErrorWithMessage(res, "Unauthorized access", http.StatusUnauthorized)
+		return
+	}
 
 	vars := mux.Vars(req)
 	id := vars["id"]

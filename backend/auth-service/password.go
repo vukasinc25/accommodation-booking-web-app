@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -49,6 +50,10 @@ func NewBlacklistFromURL() (Blacklist, error) {
 		// Add the item to the blacklist
 		bl.Add(item)
 	}
+
+	bl.Add("Siifra123@")
+
+	log.Println("Bl: ", bl)
 
 	return bl, nil
 }

@@ -314,6 +314,17 @@ func (ah *AccoHandler) UpdateAccommodationGrade(res http.ResponseWriter, req *ht
 	vars := mux.Vars(req)
 	id := vars["id"]
 
+	payload, ok := ctx.Value("payload").(*token.Payload)
+	if !ok {
+		sendErrorWithMessage(res, "Authorization token not found", http.StatusInternalServerError)
+		return
+	}
+
+	if payload.Role == "HOST" {
+		sendErrorWithMessage(res, "Unauthorized access", http.StatusUnauthorized)
+		return
+	}
+
 	userId, ok := req.Context().Value("userId").(string)
 	if !ok {
 		ah.logger.Println("Error retrieving userId from context")
@@ -449,6 +460,17 @@ func (ah *AccoHandler) DeleteAccommodationGrade(res http.ResponseWriter, req *ht
 	vars := mux.Vars(req)
 	id := vars["id"]
 
+	payload, ok := ctx.Value("payload").(*token.Payload)
+	if !ok {
+		sendErrorWithMessage(res, "Authorization token not found", http.StatusInternalServerError)
+		return
+	}
+
+	if payload.Role == "HOST" {
+		sendErrorWithMessage(res, "Unauthorized access", http.StatusUnauthorized)
+		return
+	}
+
 	userId, ok := req.Context().Value("userId").(string)
 	if !ok {
 		ah.logger.Println("Error retrieving userId from context")
@@ -476,6 +498,17 @@ func (ah *AccoHandler) DeleteAccommodation(res http.ResponseWriter, req *http.Re
 	vars := mux.Vars(req)
 	username := vars["username"]
 
+	payload, ok := ctx.Value("payload").(*token.Payload)
+	if !ok {
+		sendErrorWithMessage(res, "Authorization token not found", http.StatusInternalServerError)
+		return
+	}
+
+	if payload.Role == "GUEST" {
+		sendErrorWithMessage(res, "Unauthorized access", http.StatusUnauthorized)
+		return
+	}
+
 	err := ah.db.Delete(username, ctx)
 	if err != nil {
 		ah.logger.Println("Error when tried to delete accommodation:", err)
@@ -485,7 +518,7 @@ func (ah *AccoHandler) DeleteAccommodation(res http.ResponseWriter, req *http.Re
 	sendErrorWithMessage1(res, "User succesfully deleted", http.StatusOK)
 }
 
-func (ah *AccoHandler) MiddlewareRoleCheck00(client *http.Client, breaker *gobreaker.CircuitBreaker) mux.MiddlewareFunc {
+func (ah *AccoHandler) MiddlewareRoleCheck00(client *http.Client, breaker *gobreaker.CircuitBreaker, tokenMaker token.Maker) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
@@ -535,14 +568,14 @@ func (ah *AccoHandler) MiddlewareRoleCheck00(client *http.Client, breaker *gobre
 				sendErrorWithMessage(w, "Lavor", resp.StatusCode)
 				return
 			}
+			payload, err := tokenMaker.VerifyToken(accessToken)
+			if err != nil {
+				// If the token verification fails, return an error
+				writeError(w, http.StatusUnauthorized, err)
+				return
+			}
 
-			// accessToken := fields[1]
-			// payload, err := tokenMaker.VerifyToken(accessToken)
-			// if err != nil {
-			// 	// If the token verification fails, return an error
-			// 	writeError(w, http.StatusUnauthorized, err)
-			// 	return
-			// }
+			ctx = context.WithValue(ctx, "payload", payload)
 
 			userID := string(resBody)
 			ctx = context.WithValue(ctx, "userId", userID)
@@ -734,7 +767,7 @@ func (ah *AccoHandler) MiddlewareRoleCheck(client *http.Client, breaker *gobreak
 				writeError(w, http.StatusUnauthorized, err)
 				return
 			}
-			ah.logger.Println("Palyload in middleware: ", payload)
+			ah.logger.Println("Payload in middleware: ", payload)
 
 			ctx = context.WithValue(ctx, "payload", payload)
 
@@ -753,6 +786,17 @@ func (ah *AccoHandler) MiddlewareRoleCheck(client *http.Client, breaker *gobreak
 func (ah *AccoHandler) GradeAccommodation(res http.ResponseWriter, req *http.Request) {
 	ctx, span := ah.tracer.Start(req.Context(), "AccoHandler.GradeAccommodation") //tracer
 	defer span.End()
+
+	payload, ok := ctx.Value("payload").(*token.Payload)
+	if !ok {
+		sendErrorWithMessage(res, "Authorization token not found", http.StatusInternalServerError)
+		return
+	}
+
+	if payload.Role == "HOST" {
+		sendErrorWithMessage(res, "Unauthorized access", http.StatusUnauthorized)
+		return
+	}
 
 	ah.logger.Println("Request Body:", req.Body)
 	accommodationGrade, err := decodeAccommodatioGradeBody(req.Body)

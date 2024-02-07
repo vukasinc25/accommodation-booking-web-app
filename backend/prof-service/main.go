@@ -3,21 +3,23 @@ package main
 import (
 	"context"
 	"fmt"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/jaeger"
-	"go.opentelemetry.io/otel/propagation"
-	"go.opentelemetry.io/otel/sdk/resource"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/jaeger"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+
 	"github.com/gorilla/mux"
 	lumberjack "github.com/natefinch/lumberjack"
 	log "github.com/sirupsen/logrus"
 	"github.com/sony/gobreaker"
+	"github.com/vukasinc25/fst-airbnb/token"
 	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 )
 
@@ -83,6 +85,11 @@ func main() {
 
 	config := loadConfig()
 
+	tokenMaker, err := token.NewJWTMaker("12345678901234567890123456789012")
+	if err != nil {
+		logger.Fatal(err)
+	}
+
 	//TRACING
 	tracerProvider, err := NewTracerProvider(config["jaeger"])
 	if err != nil {
@@ -124,15 +131,15 @@ func main() {
 	router.Methods(http.MethodPatch).Subrouter()
 	getAllHostGrades := router.Methods(http.MethodGet).Subrouter()
 	getAllHostGrades.HandleFunc("/api/prof/hostGrades/{id}", service.GetAllHostGrades) // treba authorisation
-	getAllHostGrades.Use(service.MiddlewareRoleCheck00(authClient, authBreaker))
+	getAllHostGrades.Use(service.MiddlewareRoleCheck00(authClient, authBreaker, tokenMaker))
 
 	createHostGrade := router.Methods(http.MethodPost).Subrouter()
 	createHostGrade.HandleFunc("/api/prof/hostGrade", service.CreateHostGrade) // treba authorisation
-	createHostGrade.Use(service.MiddlewareRoleCheck0(authClient, authBreaker))
+	createHostGrade.Use(service.MiddlewareRoleCheck0(authClient, authBreaker, tokenMaker))
 
 	deleteHostGrade := router.Methods(http.MethodDelete).Subrouter()
 	deleteHostGrade.HandleFunc("/api/prof/hostGrade/{id}", service.DeleteHostGrade) // treba authorisation
-	deleteHostGrade.Use(service.MiddlewareRoleCheck00(authClient, authBreaker))
+	deleteHostGrade.Use(service.MiddlewareRoleCheck00(authClient, authBreaker, tokenMaker))
 
 	router.HandleFunc("/api/prof/update", service.UpdateUser).Methods("PATCH")
 	router.HandleFunc("/api/prof/delete/{id}", service.DeleteUser).Methods("DELETE")

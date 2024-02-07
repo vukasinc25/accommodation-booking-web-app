@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/jaeger"
 	"go.opentelemetry.io/otel/propagation"
@@ -27,7 +28,7 @@ import (
 	"github.com/sony/gobreaker"
 	"github.com/vukasinc25/fst-airbnb/token"
 	nats "github.com/vukasinc25/fst-airbnb/utility/saga/messaging/nats"
-  sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 )
 
@@ -155,7 +156,7 @@ func main() {
 	//router.StrictSlash(true)
 	cors := gorillaHandlers.CORS(gorillaHandlers.AllowedOrigins([]string{"*"}))
 
-  service := NewAccoHandler(logger, store, storageHandler, orchestrator, tracer)
+	service := NewAccoHandler(logger, store, storageHandler, orchestrator, tracer)
 
 	tokenMaker, err := token.NewJWTMaker("12345678901234567890123456789012")
 	if err != nil {
@@ -181,14 +182,14 @@ func main() {
 	router.HandleFunc("/api/accommodations/delete/{username}", service.DeleteAccommodation).Methods("DELETE")
 	createAccommodationGrade := router.Methods(http.MethodPost).Subrouter()
 	createAccommodationGrade.HandleFunc("/api/accommodations/accommodationGrade", service.GradeAccommodation) // treba authorisation
-	createAccommodationGrade.Use(service.MiddlewareRoleCheck00(authClient, authBreaker))
+	createAccommodationGrade.Use(service.MiddlewareRoleCheck00(authClient, authBreaker, tokenMaker))
 	// router.HandleFunc("/api/accommodations/accommodationGrade", service.GradeAccommodation).Methods("POST")
 	getAllAccommodationGrades := router.Methods(http.MethodGet).Subrouter()
 	getAllAccommodationGrades.HandleFunc("/api/accommodations/accommodationGrades/{id}", service.GetAllAccommodationGrades)
 	getAllAccommodationGrades.Use(service.MiddlewareRoleCheck(authClient, authBreaker, tokenMaker))
 	deleteAccommodationGrade := router.Methods(http.MethodDelete).Subrouter()
 	deleteAccommodationGrade.HandleFunc("/api/accommodations/deleteAccommodationGrade/{id}", service.DeleteAccommodationGrade)
-	deleteAccommodationGrade.Use(service.MiddlewareRoleCheck00(authClient, authBreaker))
+	deleteAccommodationGrade.Use(service.MiddlewareRoleCheck00(authClient, authBreaker, tokenMaker))
 
 	router.HandleFunc("/api/accommodations/recommendations", service.GetAllRecommended).Methods("POST")
 
@@ -239,7 +240,7 @@ func loadConfig() map[string]string {
 	config["host"] = os.Getenv("HOST")
 	config["port"] = os.Getenv("PORT")
 	config["address"] = fmt.Sprintf(":%s", os.Getenv("PORT"))
-  config["jaeger"] = os.Getenv("JAEGER_ADDRESS")
+	config["jaeger"] = os.Getenv("JAEGER_ADDRESS")
 	config["conn_reservation_service_address"] = fmt.Sprintf("https://%s:%s", os.Getenv("RESERVATION_SERVICE_HOST"), os.Getenv("RESERVATION_SERVICE_PORT"))
 	return config
 }

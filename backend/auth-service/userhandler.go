@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
+
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
-	"io"
-	"io/ioutil"
 
 	// "log"
 	"mime"
@@ -78,8 +79,8 @@ func (uh *UserHandler) Auth(w http.ResponseWriter, r *http.Request) {
 
 // createUser handles user creation requests.
 func (uh *UserHandler) createUser(w http.ResponseWriter, req *http.Request) {
-	ctx, span := uh.tracer.Start(req.Context(), "UserHandler.createUser") //tracer
-	defer span.End()
+	// ctx, span := uh.tracer.Start(req.Context(), "UserHandler.createUser") //tracer
+	// defer span.End()
 
 	contentType := req.Header.Get("Content-Type")
 	mediatype, _, err := mime.ParseMediaType(contentType)
