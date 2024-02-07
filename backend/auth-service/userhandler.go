@@ -218,7 +218,7 @@ func (uh *UserHandler) getAllUsers(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (uh *UserHandler) GetUserIdByUsername(w http.ResponseWriter, req *http.Request) {
+func (uh *UserHandler) GetUserByUsername(w http.ResponseWriter, req *http.Request) {
 	ctx, span := uh.tracer.Start(req.Context(), "UserHandler.GetUserIdByUsername") //tracer
 	defer span.End()
 

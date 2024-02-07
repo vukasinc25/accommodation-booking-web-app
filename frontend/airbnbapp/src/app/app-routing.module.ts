@@ -44,6 +44,7 @@ const routes: Routes = [
   {
     path: 'accommodations/myAccommodations',
     component: MyAccommoComponent,
+    canActivate: [loginGuard, roleGuard],
   },
   {
     path: 'accommodations/create',
@@ -59,7 +60,7 @@ const routes: Routes = [
     component: VerifyEmailComponent,
   },
   { path: 'reset-password', component: ResetPasswordComponent },
-  { path: 'notifications', component: NotificationComponent },
+  { path: 'notifications', component: NotificationComponent, canActivate: [loginGuard],},
   {
     path: '**',
     redirectTo: '',

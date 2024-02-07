@@ -8,6 +8,7 @@ import {
   FormGroup,
   Validators,
 } from '@angular/forms';
+import { ToastrService } from 'ngx-toastr';
 
 @Component({
   selector: 'app-profile',
@@ -37,7 +38,8 @@ export class ProfileComponent implements OnInit {
     private authService: AuthService,
     private profService: ProfServiceService,
     private router: Router,
-    private fb: FormBuilder
+    private fb: FormBuilder,
+    private toastr: ToastrService
   ) {
     this.resetForm = this.fb.group(
       {
@@ -79,12 +81,12 @@ export class ProfileComponent implements OnInit {
             this.isHostFeatured = data.isHostFeatured;
           },
           error: (err) => {
-            alert(err.error.message);
+            this.toastr.error(err.error.message);
           },
         });
       },
       error: (err) => {
-        alert(err.error.message);
+        this.toastr.error(err.error.message);
       },
     });
 
@@ -115,10 +117,10 @@ export class ProfileComponent implements OnInit {
   submitForm() {
     this.profService.updateUserInfo(this.user).subscribe({
       next: (data) => {
-        alert('User succesfully updated');
+        this.toastr.success('User successfully updated');
       },
       error: (err) => {
-        alert(err.error.message);
+        this.toastr.error(err.error.message);
       },
     });
   }
@@ -144,13 +146,12 @@ export class ProfileComponent implements OnInit {
         .subscribe({
           next: (data) => {
             console.log('Usli u changePassword');
-            alert('Password succesfully changed');
+            this.toastr.success('Password succesfully changed');
             this.authService.logout();
             this.router.navigate(['login']);
           },
           error: (err) => {
-            console.log(err.error.message);
-            alert(err.error.message);
+            this.toastr.error(err.error.message);
           },
         });
     } else {
@@ -168,13 +169,13 @@ export class ProfileComponent implements OnInit {
     this.authService.deleteUser().subscribe({
       next: (data) => {
         console.log('Usli u deleteUser');
-        alert('User succesfully deleted');
+        this.toastr.success('User succesfully deleted');
         this.authService.logout();
         this.router.navigate(['login']);
       },
       error: (err) => {
         console.log(err.error.message);
-        alert(err.error.message);
+        this.toastr.error(err.error.message);
       },
     });
   }

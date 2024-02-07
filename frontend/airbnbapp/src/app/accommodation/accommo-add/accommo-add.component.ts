@@ -13,6 +13,7 @@ import { AccommodationService } from '../../service/accommodation.service';
 import { Accommodation } from '../../model/accommodation';
 import { AmenityType } from '../../model/amenityType';
 import { AuthService } from '../../service/auth.service';
+import { ToastrService } from 'ngx-toastr';
 
 @Component({
   selector: 'app-accommo-add',
@@ -66,7 +67,8 @@ export class AccommoAddComponent implements OnInit {
     private fb: FormBuilder,
     private router: Router,
     private accommodationService: AccommodationService,
-    private authService: AuthService
+    private authService: AuthService,
+    private toastr: ToastrService
   ) {}
 
   ngOnInit(): void {
@@ -117,7 +119,7 @@ export class AccommoAddComponent implements OnInit {
 
     this.accommodationService.insert(accommodation, this.imageNames).subscribe({
       next: (data) => {
-        console.log('create success');
+        this.toastr.error("Successfully created accommodation");
         // this.router.navigate(['']);
       },
       error: (err) => {
@@ -130,8 +132,7 @@ export class AccommoAddComponent implements OnInit {
         this.router.navigate(['']);
       },
       error: (err) => {
-        console.log(err);
-        alert(err.error.message);
+        this.toastr.error(err.error.message);
       },
     });
   }

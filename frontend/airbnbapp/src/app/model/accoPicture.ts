@@ -1,7 +1,7 @@
 import { AmenityType } from './amenityType';
 import { Location } from './location';
 
-export interface Accommodation {
+export interface AccoPicture {
   _id?: number;
   name?: string;
   location?: Location;
@@ -10,5 +10,5 @@ export interface Accommodation {
   amenities?: AmenityType[];
   username?: string;
   AverageGrade?: string;
-  // images: string[];
+  images: string[];
 }

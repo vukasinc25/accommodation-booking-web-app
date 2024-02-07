@@ -3,12 +3,13 @@ import { Accommodation } from '../model/accommodation';
 import { AccommodationService } from '../service/accommodation.service';
 import { Router } from '@angular/router';
 import { AuthService } from '../service/auth.service';
-import { Subscription, catchError, forkJoin, of } from 'rxjs';
+import { Subscription, catchError, forkJoin, of, range } from 'rxjs';
 import { AbstractControl, FormArray, FormControl, FormGroup } from '@angular/forms';
 import { NgbDate } from '@ng-bootstrap/ng-bootstrap';
 import { ReservationService } from '../service/reservation.service';
 import { ReservationByDateSearch } from '../model/reservationByDateSearch';
 import { AmenityType } from '../model/amenityType';
+import { ToastRef, ToastrService } from 'ngx-toastr';
 import { RecommendationService } from '../service/recommendation.service';
 
 @Component({
@@ -46,13 +47,21 @@ export class MainPageComponent implements OnInit, OnDestroy {
   amenities: [] = [];
   userId: number = 0;
   soonToBeAccommodations: Accommodation[] = [];
+  priceAccommodations: Accommodation[] = [];
+  featuredHostAccommodations: Accommodation[] = [];
+  amenitiesAccommodations: Accommodation[] = [];
+  isFilterPrice: boolean = false;
+  isFilterAmenities: boolean = false;
+  isFilterFeaturedHost: boolean = false;
 
   constructor(
     private router: Router,
     private accommodationService: AccommodationService,
     private authService: AuthService,
     private reservationService: ReservationService,
+    private toastr: ToastrService,
     private recommendationService: RecommendationService
+     
   ) {
     this.logSub = this.authService.isLoggedin.subscribe(
       (data) => (this.isLoggedin = data)
@@ -107,7 +116,7 @@ export class MainPageComponent implements OnInit, OnDestroy {
         // console.log(this.accommodations);
       },
       error: (err) => {
-        console.log(err);
+        this.toastr.error(err);
       },
     });
   }
@@ -118,31 +127,155 @@ export class MainPageComponent implements OnInit, OnDestroy {
   }
 
   filterAcco(): void {
+    this.isFilterAmenities = false;
+    this.isFilterFeaturedHost = false;
+    this.isFilterPrice = false;
+    this.soonToBeAccommodations = [];
+    this.featuredHostAccommodations = [];
+    this.amenitiesAccommodations = [];
+    this.priceAccommodations = [];
+
     this.priceFrom = this.filterAccoForm.get('priceFrom')?.value;
     this.priceTo = this.filterAccoForm.get('priceTo')?.value;
     this.amenities = this.filterAccoForm.get('amenities')?.value
     this.isFeatured = this.filterAccoForm.get('isFeatured')?.value;
 
+    const observables = [];
+
     if (this.priceFrom > 0 && this.priceTo > 0) {
+      this.isFilterPrice = true;
       for (const accommodation of this.accommodations){
         this.reservationService.getReservationsByAccoId(accommodation._id).subscribe({
           next: (data) => {
-            console.log(data)
             for (const reservation of data) {
               if ((reservation.priceByAccommodation >= this.priceFrom || reservation.priceByPeople >= this.priceFrom) && (
                   reservation.priceByAccommodation <= this.priceTo || reservation.priceByPeople <= this.priceTo)) {
-                  this.soonToBeAccommodations.push(accommodation)
+                  this.priceAccommodations.push(accommodation)
+              }
+            }
+          },
+        });
+      }
+      if (this.priceAccommodations.length <= 0) {
+        this.toastr.info("No accommodations in that price range have been found")
+      }
+      this.priceFrom = 0;
+      this.priceTo = 0;
+    }
+
+    if (this.amenities.length > 0) {
+      this.isFilterAmenities = true;
+      for (const accommodation of this.accommodations) {
+        if (accommodation.amenities) {
+          for (const amenity of this.amenities) {
+            if (accommodation.amenities.includes(amenity)) {
+              if (!this.amenitiesAccommodations.includes(accommodation)) {
+                this.amenitiesAccommodations.push(accommodation)
               }
             }
           }
-        });
+        }
       }
-      this.accommodations = this.soonToBeAccommodations;
-      // this.reservationService.getReservationsByAccoId()
+      if (this.amenitiesAccommodations.length <= 0) {
+        this.toastr.info("No accommodations with those amenities have been found")
+      }
+      this.amenities = [];
     }
 
-    
-    console.log(this.filterAccoForm.value)
+    if (this.isFeatured == true) {
+      this.isFilterFeaturedHost = true;
+      for (const accommodation of this.accommodations) {
+        this.authService.getUserByUsername(accommodation.username ?? '').subscribe({
+          next: (data) => {
+            this.authService.getUserById(data._id).subscribe({
+              next: (data) => {
+                if (data.isFeatured == true) {
+                  this.featuredHostAccommodations.push(accommodation)
+                }
+              }
+            })
+          }
+        })
+      }
+      if (this.featuredHostAccommodations.length <= 0){
+        this.toastr.info("No accommodations with featured hosts have been found")
+      }
+    }
+    this.displayFilteredAccos()
+  }
+
+  sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  async displayFilteredAccos() {
+    await this.sleep(500);
+    if (this.isFilterPrice == true && this.isFilterAmenities == false && this.isFilterFeaturedHost == false) {
+      console.log("Price Filter")
+      this.accommodations = this.priceAccommodations;
+    }
+    else if (this.isFilterPrice == true && this.isFilterAmenities == true && this.isFilterFeaturedHost == true) {
+      console.log("Everything Filter")
+      for (const accommodation1 of this.priceAccommodations) {
+        for (const accommodation2 of this.featuredHostAccommodations) {
+          for (const accommodation3 of this.amenitiesAccommodations) {
+            if (accommodation1._id == accommodation2._id && accommodation1._id == accommodation3._id) {
+              this.soonToBeAccommodations.push(accommodation1)
+            }
+          }
+        }
+      }
+      this.accommodations = this.soonToBeAccommodations;
+    }
+    else if (this.isFilterPrice == false && this.isFilterAmenities == true && this.isFilterFeaturedHost == false) {
+      console.log("Amenities Filter")
+      this.accommodations = this.amenitiesAccommodations;
+    }
+    else if (this.isFilterPrice == false && this.isFilterAmenities == false && this.isFilterFeaturedHost == true) {
+      console.log("Featured Host Filter")
+      this.accommodations = this.featuredHostAccommodations;
+    }
+    else if (this.isFilterPrice == true && this.isFilterAmenities == true && this.isFilterFeaturedHost == false) {
+      console.log("Price and Amenities")
+      for (const accommodation1 of this.amenitiesAccommodations) {
+        for (const accommodation2 of this.priceAccommodations) {
+          if (accommodation1._id == accommodation2._id) {
+            this.soonToBeAccommodations.push(accommodation1)
+          }
+        }
+      }
+      this.accommodations = this.soonToBeAccommodations;
+    }
+    else if (this.isFilterPrice == true && this.isFilterAmenities == false && this.isFilterFeaturedHost == true) {
+      console.log("Price and Featured Host Filter")
+      for (const accommodation1 of this.priceAccommodations) {
+        for (const accommodation2 of this.featuredHostAccommodations) {
+          if (accommodation1._id == accommodation2._id) {
+            this.soonToBeAccommodations.push(accommodation1)
+          }
+        }
+      }
+      this.accommodations = this.soonToBeAccommodations;
+    }
+    else if (this.isFilterPrice == false && this.isFilterAmenities == true && this.isFilterFeaturedHost == true) {
+      console.log("Featured Host and Amenities Filter")
+      for (const accommodation1 of this.featuredHostAccommodations) {
+        for (const accommodation2 of this.amenitiesAccommodations) {
+          if (accommodation1._id == accommodation2._id) {
+            this.soonToBeAccommodations.push(accommodation1)
+          }
+        }
+      }
+      this.accommodations = this.soonToBeAccommodations;
+    }
+
+    // this.isFilterAmenities = false;
+    // this.isFilterFeaturedHost = false;
+    // this.isFilterPrice = false;
+    // this.soonToBeAccommodations = [];
+    // this.featuredHostAccommodations = [];
+    // this.amenitiesAccommodations = [];
+    // this.priceAccommodations = [];
   }
 
   searchAcco(): void {
@@ -171,20 +304,28 @@ export class MainPageComponent implements OnInit, OnDestroy {
           )
         : of([]);
 
-    forkJoin([
-      locationObservable,
-      noGuestsObservable,
-      reservationsDateObservable,
-    ]).subscribe({
-      next: ([locations, noGuests, accoDate]: [
-        Accommodation[],
-        Accommodation[],
-        ReservationByDateSearch[]
-      ]) => {
+    forkJoin([locationObservable, noGuestsObservable, dateObservable])
+    .subscribe({
+      next: ([locations, noGuests, accoDate]: [Accommodation[], Accommodation[], Accommodation[]]) => {
         this.accommodationsByLocation = locations as Accommodation[];
         this.accommodationsByNoGuest = noGuests as Accommodation[];
-        this.reservationsByDate = accoDate as ReservationByDateSearch[];
-        console.log(this.reservationsByDate);
+        this.accommodationsByDate = accoDate as Accommodation[];
+
+        if (this.accommodationsByLocation == null) {
+          this.toastr.info("No accommodations with that location have been found")
+          this.accommodations = []
+        }
+
+        if (this.accommodationsByDate == null) {
+          this.toastr.info("No accommodations with those reservation dates have been found")
+          this.accommodations = []
+        }
+
+        if (this.accommodationsByNoGuest == null) {
+          this.toastr.info("No accommodations with that number of guests have been found")
+          this.accommodations = []
+        }
+
         if (this.reservationsByDate.length > 0) {
           for (const accoDate of this.reservationsByDate) {
             this.accommodationService.getById(accoDate.acco_id).subscribe({
