@@ -17,7 +17,7 @@ import { ProfServiceService } from '../../service/prof.service.service';
 import { NotificationService } from '../../service/notification.service';
 import { Notification1 } from '../../model/notification';
 import { ToastrService } from 'ngx-toastr';
-import { RecommendationService } from 'src/app/service/recommendation.service';
+import { RecommendationService } from '../../service/recommendation.service';
 
 @Component({
   selector: 'app-accommo-info',

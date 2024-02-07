@@ -21,8 +21,9 @@ export class AccommoListComponent implements OnInit{
 
 
   ngOnInit(): void {
-    this.fillAccommodationWithPictures()
-    this.getAccommodationImage()
+    // this.accommodationImages = []
+    // this.fillAccommodationWithPictures()
+    // this.getAccommodationImage()
   }
 
   sleep(ms: number): Promise<void> {

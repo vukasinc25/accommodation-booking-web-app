@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/sony/gobreaker"
 	"log"
 	"net/http"
 	"os"
@@ -25,22 +26,22 @@ import (
 func main() {
 
 	config := loadConfig()
-	//
-	//authClient := &http.Client{
-	//	Transport: &http.Transport{
-	//		MaxIdleConns:        10,
-	//		MaxIdleConnsPerHost: 10,
-	//		MaxConnsPerHost:     10,
-	//	},
-	//}
-	//
-	//authBreaker := gobreaker.NewCircuitBreaker(
-	//	gobreaker.Settings{
-	//		Name:        "auth",
-	//		MaxRequests: 1,
-	//		Timeout:     10 * time.Second,
-	//		Interval:    0,
-	//	})
+
+	authClient := &http.Client{
+		Transport: &http.Transport{
+			MaxIdleConns:        10,
+			MaxIdleConnsPerHost: 10,
+			MaxConnsPerHost:     10,
+		},
+	}
+
+	authBreaker := gobreaker.NewCircuitBreaker(
+		gobreaker.Settings{
+			Name:        "auth",
+			MaxRequests: 1,
+			Timeout:     10 * time.Second,
+			Interval:    0,
+		})
 
 	tracerProvider, err := NewTracerProvider(config["jaeger"])
 	if err != nil {
@@ -84,6 +85,7 @@ func main() {
 
 	router.Use(service.MiddlewareContentTypeSet)
 	router.Use(service.ExtractTraceInfoMiddleware)
+	router.Use(service.MiddlewareRoleCheck(authClient, authBreaker))
 
 	postRouter := router.Methods(http.MethodPost).Subrouter()
 	postRouter.HandleFunc("/api/notifications/create", service.createNotification)

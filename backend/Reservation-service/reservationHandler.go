@@ -430,6 +430,12 @@ func (rh *reservationHandler) CreateReservationDateForDate(res http.ResponseWrit
 		return
 	}
 
+	sanitizedNesto1 := sanitizeInput(reservationDate.AccoId)
+	//sanitizedNesto2 := sanitizeInput(reservationDate.HostId)
+
+	reservationDate.AccoId = sanitizedNesto1
+	//reservationDate.HostId = sanitizedNesto2
+
 	err = rh.repo.InsertReservationDateByDate(reservationDate, ctx)
 	if err != nil {
 		rh.logger.Print("Database exception: ", err)
@@ -466,6 +472,13 @@ func (rh *reservationHandler) CreateReservationForAcco(res http.ResponseWriter, 
 		sendErrorWithMessage(res, "Error in decoding body", http.StatusBadRequest)
 		return
 	}
+
+	sanitizedNesto1 := sanitizeInput(reservation.AccoId)
+	sanitizedNesto2 := sanitizeInput(reservation.HostId)
+
+	reservation.AccoId = sanitizedNesto1
+	reservation.HostId = sanitizedNesto2
+
 	err = rh.repo.InsertReservationByAcco(reservation)
 	if err != nil {
 		rh.logger.Print("Database exception: ", err)
@@ -484,6 +497,12 @@ func (rh *reservationHandler) CreateReservationForUser(res http.ResponseWriter, 
 		sendErrorWithMessage(res, "Cant decode body", http.StatusBadRequest)
 		return
 	}
+
+	sanitizedNesto1 := sanitizeInput(reservationUser.AccoId)
+	sanitizedNesto2 := sanitizeInput(reservationUser.UserId)
+
+	reservationUser.AccoId = sanitizedNesto1
+	reservationUser.UserId = sanitizedNesto2
 
 	log.Println("Reservation:", reservationUser)
 	err = rh.repo.InsertReservationByUser(reservationUser, ctx)
@@ -513,6 +532,8 @@ func (rh *reservationHandler) UpdateReservationByUser(res http.ResponseWriter, r
 		return
 	}
 
+	//sanitizedNesto := sanitizeInput(reservation.)
+
 	err = rh.repo.UpdateReservationByUser(reservation, ctx)
 	if err != nil {
 		rh.logger.Print("Database exception: ", err)
@@ -540,6 +561,14 @@ func (rh *reservationHandler) UpdateReservationByAcco(res http.ResponseWriter, r
 	var stepenStudija string
 	d := json.NewDecoder(req.Body)
 	d.Decode(&stepenStudija)
+
+	sanitizedAccoId := sanitizeInput(accoId)
+	sanitizedReservationId := sanitizeInput(reservationId)
+	sanitizedPrice := sanitizeInput(price)
+
+	accoId = sanitizedAccoId
+	reservationId = sanitizedReservationId
+	price = sanitizedPrice
 
 	err := rh.repo.UpdateReservationByAcco(accoId, reservationId, price)
 	if err != nil {
@@ -875,6 +904,11 @@ func decodeIdBody(r io.Reader) (*RequestId, error) {
 	}
 
 	return &rt, nil
+}
+
+func sanitizeInput(input string) string {
+	sanitizedInput := strings.ReplaceAll(input, "<", "&lt;")
+	return sanitizedInput
 }
 
 func decodeReservationByUserBody(r io.Reader) (*ReservationByUser, error) {

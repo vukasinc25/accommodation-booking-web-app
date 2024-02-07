@@ -28,6 +28,7 @@ import { ReservationsComponent } from './reservations/reservations.component';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { ToastrModule } from 'ngx-toastr';
 import { NotificationComponent } from './notification/notification.component';
+import { ReservationsHostComponent } from './reservations-host/reservations-host.component';
 
 @NgModule({
   declarations: [
@@ -46,6 +47,7 @@ import { NotificationComponent } from './notification/notification.component';
     AccommoListComponent,
     ReservationsComponent,
     NotificationComponent,
+    ReservationsHostComponent,
   ],
   imports: [
     BrowserModule,

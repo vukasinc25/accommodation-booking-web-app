@@ -135,15 +135,15 @@ export class AccommoAddComponent implements OnInit {
         },
       });
 
-    // this.accommodationService.createImages(this.selectedFiles).subscribe({
-    //   next: (data) => {
-    //     this.router.navigate(['']);
-    //   },
-    //   error: (err) => {
-    //     console.log(err);
-    //     alert(err.error.message);
-    //   },
-    // });
+    this.accommodationService.createImages(this.selectedFiles).subscribe({
+      next: (data) => {
+        this.router.navigate(['']);
+      },
+      error: (err) => {
+        console.log(err);
+        alert(err.error.message);
+      },
+    });
   }
 
   getRange(obj: any) {

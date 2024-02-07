@@ -84,6 +84,16 @@ func (ah *AccoHandler) createAccommodation(rw http.ResponseWriter, req *http.Req
 		}
 	}
 
+	sanitizedName := sanitizeInput(accommodation.Name)
+	//sanitizedNoPeople := sanitizeInput(strconv.Itoa(accommodation.NumberPeople))
+	//sanitizedMaxGuest := sanitizeInput(strconv.Itoa(accommodation.MaxGuests))
+	//sanitizeMinGuest := sanitizeInput(strconv.Itoa(accommodation.MinGuests))
+
+	accommodation.Name = sanitizedName
+	//accommodation.NumberPeople = sanitizedNoPeople;
+	//accommodation.MaxGuests = sanitizedMaxGuest;
+	//accommodation.MinGuests = sanitizeMinGuest;
+
 	id := randstr.String(24)
 	accommodation1 := &Accommodation{
 		ID:           id,
@@ -564,6 +574,11 @@ func (ah *AccoHandler) MiddlewareRoleCheck00(client *http.Client, breaker *gobre
 			next.ServeHTTP(w, newReq)
 		})
 	}
+}
+
+func sanitizeInput(input string) string {
+	sanitizedInput := strings.ReplaceAll(input, "<", "&lt;")
+	return sanitizedInput
 }
 
 func writeError(w http.ResponseWriter, statusCode int, err error) {

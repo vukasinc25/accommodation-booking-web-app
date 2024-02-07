@@ -166,11 +166,7 @@ export class MainPageComponent implements OnInit, OnDestroy {
             },
           });
       }
-      if (this.priceAccommodations.length <= 0) {
-        this.toastr.info(
-          'No accommodations in that price range have been found'
-        );
-      }
+      this.priceToastr()
       this.priceFrom = 0;
       this.priceTo = 0;
     }
@@ -213,17 +209,32 @@ export class MainPageComponent implements OnInit, OnDestroy {
             },
           });
       }
-      if (this.featuredHostAccommodations.length <= 0) {
-        this.toastr.info(
-          'No accommodations with featured hosts have been found'
-        );
-      }
+      this.featuredToastr()
     }
     this.displayFilteredAccos();
   }
 
   sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  async priceToastr() {
+    await this.sleep(300)
+    // console.log(this.ame)
+    if (this.priceAccommodations.length <= 0) {
+      this.toastr.info(
+        'No accommodations with that price range have been found'
+      );
+    }
+  }
+
+  async featuredToastr(){
+    await this.sleep(300)
+    if (this.featuredHostAccommodations.length <= 0) {
+      this.toastr.info(
+        'No accommodations with featured hosts have been found'
+      );
+    }
   }
 
   async displayFilteredAccos() {
