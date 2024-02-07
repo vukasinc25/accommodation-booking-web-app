@@ -87,6 +87,31 @@ func (a *AccommodationGrades) ToJSON(w io.Writer) error {
 	return e.Encode(a)
 }
 
+func ValidateAccommodation(accommodation *Accommodation) error {
+	if accommodation.MaxGuests == 0 {
+		return errors.New("max guests is required")
+	}
+	if accommodation.MinGuests == 0 {
+		return errors.New("min guests is required")
+	}
+	if accommodation.Name == "" {
+		return errors.New("name is required")
+	}
+	if accommodation.Username == "" {
+		return errors.New("username is required")
+	}
+	if accommodation.Location.StreetName == "" {
+		return errors.New("street name is required")
+	}
+	if accommodation.Location.Country == "" {
+		return errors.New("country is required")
+	}
+	if accommodation.Location.StreetNumber == "" {
+		return errors.New("street number is required")
+	}
+	return nil
+}
+
 func ValidateAccommodationGrade(accommodationGrade *AccommodationGrade) error {
 	// if accommodationGrade.UserId == "" {
 	// 	return errors.New("userId is required")

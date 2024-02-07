@@ -524,6 +524,12 @@ func decodeBody(r io.Reader) (*Accommodation, error) {
 	if err := dec.Decode(&rt); err != nil {
 		return nil, err
 	}
+
+	err := ValidateAccommodation(&rt)
+	if err != nil {
+		return nil, err
+	}
+
 	return &rt, nil
 }
 

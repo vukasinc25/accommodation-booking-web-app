@@ -827,6 +827,10 @@ func decodeBody(r io.Reader) (*ReservationDateByDate, error) {
 		log.Println("Error u decode body:", err)
 		return nil, err
 	}
+	err := ValidateReservationDateByDate(&rt)
+	if err != nil {
+		return nil, err
+	}
 
 	return &rt, nil
 }
@@ -838,6 +842,10 @@ func decodeReservationBody(r io.Reader) (*ReservationByAccommodation, error) {
 	var rt ReservationByAccommodation
 	if err := dec.Decode(&rt); err != nil {
 		log.Println("Error u decode body:", err)
+		return nil, err
+	}
+	err := ValidateReservationByAccommodation(&rt)
+	if err != nil {
 		return nil, err
 	}
 

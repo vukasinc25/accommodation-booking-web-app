@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"io"
 	"time"
@@ -33,4 +34,15 @@ func (a *Notification) ToJSON(w io.Writer) error {
 func (a *Notification) FromJSON(r io.Reader) error {
 	d := json.NewDecoder(r)
 	return d.Decode(a)
+}
+
+func ValidateNotification(notification *Notification) error {
+	if notification.Description == "" {
+		return errors.New("description is required")
+	}
+	if notification.HostId == "" {
+		return errors.New("hostId is required")
+	}
+
+	return nil
 }
