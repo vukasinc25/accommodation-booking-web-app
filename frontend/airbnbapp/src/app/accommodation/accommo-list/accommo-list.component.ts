@@ -40,7 +40,6 @@ export class AccommoListComponent implements OnInit{
   async getAccommodationImage(){
     await this.sleep(500)
     for (const accommodation2 of this.accommodationWithPictures) {
-      console.log(accommodation2.images)
       this.accommodationService.getAccommodationImage(accommodation2.images[1]).subscribe(
         (blob: Blob) => {
           const reader = new FileReader();
