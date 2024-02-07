@@ -373,6 +373,8 @@ func (rs *ReservationRepo) InsertReservationByUser(resUser *ReservationByUser) e
 		return errors.New("Dates are already reserved for that accommodation")
 	}
 
+	log.Println("Reservation2:", resUser)
+
 	err = rs.session.Query(
 		`INSERT INTO reservations_by_user (user_id, reservation_id, acco_id, price, 
 			begin_reservation_date, numberOfPeople, end_reservation_date) 

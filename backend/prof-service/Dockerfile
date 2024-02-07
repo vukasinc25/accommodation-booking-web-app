@@ -1,7 +1,7 @@
 FROM golang:alpine as build_container
 WORKDIR /app
 COPY ./prof-service/go.mod ./prof-service/go.sum ./
-COPY /utility ../utility
+# COPY /utility ../utility
 RUN go mod download
 COPY ./prof-service/ .
 RUN go build -o server

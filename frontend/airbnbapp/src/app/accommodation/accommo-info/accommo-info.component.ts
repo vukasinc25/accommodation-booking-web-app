@@ -134,7 +134,7 @@ export class AccommoInfoComponent implements OnInit {
       .getAvailabelDatesForAccomodation(this.id)
       .subscribe({
         next: (data) => {
-          console.log(data);
+          console.log('Available dates: ', data);
           this.reservationId = data[0].reservationId;
           this.hostId = data[0].userId;
           console.log('HostId1:', this.hostId);
@@ -177,6 +177,7 @@ export class AccommoInfoComponent implements OnInit {
             new Date(data[0].endDate).getUTCMonth() + 1,
             new Date(data[0].endDate).getUTCDate()
           );
+          console.log('Role: ', this.role);
           // this.startDate = new Date(data[0].startDate);
           // this.endDate = new Date(data[0].endDate);
           // console.log(this.startDate);
@@ -367,9 +368,11 @@ export class AccommoInfoComponent implements OnInit {
       .subscribe({
         next: (data) => {
           alert('Accommodation graded');
+          this.formAccommodation.reset();
           this.ngOnInit();
         },
         error: (err) => {
+          this.formAccommodation.reset();
           alert(err.error.message);
         },
       });

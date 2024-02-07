@@ -95,6 +95,7 @@ export class AuthService {
 
   getRole(): string {
     let token = localStorage.getItem('jwt');
+    console.log('Token: ', token);
     if (token != null) return this.jwt.decodeToken(token).role;
     else return '';
   }
@@ -159,6 +160,7 @@ export class AuthService {
   }
 
   getUserById(id: string): Observable<any> {
+    console.log('hostId:', id);
     return this.http.get(`${'/api/users/user/'}${id}`, {
       headers: this.headers,
       responseType: 'json',

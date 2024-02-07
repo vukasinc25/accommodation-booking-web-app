@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"io"
 
@@ -420,6 +421,7 @@ func (rh *reservationHandler) CreateReservationDateForDate(res http.ResponseWrit
 // }
 
 func (rh *reservationHandler) CreateReservationForAcco(res http.ResponseWriter, req *http.Request) {
+	log.Println("CreateReservationForAcco")
 	reservation, err := decodeReservationBody(req.Body)
 	if err != nil {
 		rh.logger.Println("Error in decoding body")
@@ -441,6 +443,8 @@ func (rh *reservationHandler) CreateReservationForUser(res http.ResponseWriter, 
 		sendErrorWithMessage(res, "Cant decode body", http.StatusBadRequest)
 		return
 	}
+
+	log.Println("Reservation:", reservationUser)
 	err = rh.repo.InsertReservationByUser(reservationUser)
 	if err != nil {
 		rh.logger.Print("Database exception: ", err)
@@ -535,7 +539,7 @@ func (rh *reservationHandler) MiddlewareRoleCheck(client *http.Client, breaker *
 
 			ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 			defer cancel()
-			reqURL := "http://auth-service:8000/api/users/auth"
+			reqURL := "https://auth-service:8000/api/users/auth"
 
 			authorizationHeader := r.Header.Get("authorization")
 			fields := strings.Fields(authorizationHeader)
@@ -557,6 +561,9 @@ func (rh *reservationHandler) MiddlewareRoleCheck(client *http.Client, breaker *
 				if err != nil {
 					return nil, err
 				}
+				tr := http.DefaultTransport.(*http.Transport).Clone()
+				tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+				client := http.Client{Transport: tr}
 				return client.Do(req)
 			})
 			if err != nil {
@@ -637,7 +644,7 @@ func (rh *reservationHandler) MiddlewareRoleCheck1(client *http.Client, breaker 
 
 			ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 			defer cancel()
-			reqURL := "http://auth-service:8000/api/users/auth"
+			reqURL := "https://auth-service:8000/api/users/auth"
 
 			authorizationHeader := r.Header.Get("authorization")
 			fields := strings.Fields(authorizationHeader)
@@ -659,6 +666,9 @@ func (rh *reservationHandler) MiddlewareRoleCheck1(client *http.Client, breaker 
 				if err != nil {
 					return nil, err
 				}
+				tr := http.DefaultTransport.(*http.Transport).Clone()
+				tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+				client := http.Client{Transport: tr}
 				return client.Do(req)
 			})
 			if err != nil {
@@ -689,7 +699,7 @@ func (rh *reservationHandler) MiddlewareRoleCheck0(client *http.Client, breaker 
 
 			ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 			defer cancel()
-			reqURL := "http://auth-service:8000/api/users/auth"
+			reqURL := "https://auth-service:8000/api/users/auth"
 
 			authorizationHeader := r.Header.Get("authorization")
 			fields := strings.Fields(authorizationHeader)
@@ -711,6 +721,9 @@ func (rh *reservationHandler) MiddlewareRoleCheck0(client *http.Client, breaker 
 				if err != nil {
 					return nil, err
 				}
+				tr := http.DefaultTransport.(*http.Transport).Clone()
+				tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+				client := http.Client{Transport: tr}
 				return client.Do(req)
 			})
 			if err != nil {

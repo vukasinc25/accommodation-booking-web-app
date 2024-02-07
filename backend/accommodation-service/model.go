@@ -5,23 +5,67 @@ import (
 	"errors"
 	"io"
 	"time"
-
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type Accommodation struct {
-	ID           primitive.ObjectID `bson:"_id,omitempty" json:"_id"`
-	Name         string             `bson:"name,omitempty" json:"name"`
-	Location     Location           `bson:"location,omitempty,inline" json:"location"`
-	Amenities    []Amenity          `bson:"amenities,omitempty" json:"amenities"`
-	MinGuests    int                `bson:"minGuests,omitempty" json:"minGuests"`
-	MaxGuests    int                `bson:"maxGuests,omitempty" json:"maxGuests"`
-	Username     string             `bson:"username,omitempty" json:"username"`
-	AverageGrade float64            `bson:"averageGrade,omitempty" json:"averageGrade`
-	Images       []string           `bson:"images,omitempty" json:"images"`
+	ID           string    `bson:"_id,omitempty" json:"_id"`
+	Name         string    `bson:"name,omitempty" json:"name"`
+	Location     Location  `bson:"location,omitempty,inline" json:"location"`
+	Amenities    []Amenity `bson:"amenities,omitempty" json:"amenities"`
+	MinGuests    int       `bson:"minGuests,omitempty" json:"minGuests"`
+	MaxGuests    int       `bson:"maxGuests,omitempty" json:"maxGuests"`
+	Username     string    `bson:"username,omitempty" json:"username"`
+	AverageGrade float64   `bson:"averageGrade,omitempty" json:"averageGrade"`
+	Images       []string  `bson:"images,omitempty" json:"images"`
+	Approved     string    `bson:"approved,omitempty"`
 	// Availability bool   `json:"availability"`
 	// Details      string `json:"details"`
 	//Price     string 			`bson:"price,omitempty" json:"price"`
+}
+type Accommodation2 struct {
+	ID                   string    `bson:"_id,omitempty" json:"_id"`
+	Name                 string    `bson:"name,omitempty" json:"name"`
+	Location             Location  `bson:"location,omitempty,inline" json:"location"`
+	Amenities            []Amenity `bson:"amenities,omitempty" json:"amenities"`
+	MinGuests            int       `bson:"minGuests,omitempty" json:"minGuests"`
+	MaxGuests            int       `bson:"maxGuests,omitempty" json:"maxGuests"`
+	Username             string    `bson:"username,omitempty" json:"username"`
+	AverageGrade         float64   `bson:"averageGrade,omitempty" json:"averageGrade"`
+	Images               []string  `bson:"images,omitempty" json:"images"`
+	NumberPeople         int       `json:"numberPeople"`
+	PriceByPeople        int       `json:"priceByPeople"`
+	PriceByAccommodation int       `json:"priceByAccommodation"`
+	StartDate            string    `json:"startDate"`
+	EndDate              string    `json:"endDate"`
+	// Availability bool   `json:"availability"`
+	// Details      string `json:"details"`
+	//Price     string 			`bson:"price,omitempty" json:"price"`
+}
+
+type ReservationByAccommodation struct { // ako -||-1 radi onda ovaj treba obrisati
+	AccoId               string `json:"accoId"`
+	NumberPeople         int    `json:"numberPeople"`
+	PriceByPeople        int    `json:"priceByPeople"`
+	PriceByAccommodation int    `json:"priceByAccommodation"`
+	StartDate            string `json:"startDate"`
+	EndDate              string `json:"endDate"`
+}
+type ReservationByAccommodation1 struct {
+	AccoId               string    `json:"accoId"`
+	HostId               string    `json:"hostId"`
+	NumberPeople         int       `json:"numberPeople"`
+	PriceByPeople        int       `json:"priceByPeople"`
+	PriceByAccommodation int       `json:"priceByAccommodation"`
+	StartDate            time.Time `json:"startDate"`
+	EndDate              time.Time `json:"endDate"`
+}
+
+type ReservationByUser struct {
+	AccoId         string    `json:"accoId" validate:"required"`
+	Price          int       `json:"price" validate:"required"`
+	StartDate      time.Time `json:"startDate" validate:"required"`
+	NumberOfPeople int       `json:"numberOfPeople"`
+	EndDate        time.Time `json:"endDate" validate:"required"`
 }
 
 type UserReservations struct {
@@ -78,6 +122,11 @@ func (a *Accommodation) ToJSON(w io.Writer) error {
 }
 
 func (a *Accommodation) FromJSON(r io.Reader) error {
+	d := json.NewDecoder(r)
+	return d.Decode(a)
+}
+
+func (a *Accommodation2) FromJSON(r io.Reader) error {
 	d := json.NewDecoder(r)
 	return d.Decode(a)
 }

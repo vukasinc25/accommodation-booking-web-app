@@ -40,6 +40,7 @@ export class ReservationService {
   } // kreiranje rezervacije za korisnika
 
   getReservations(id: any): Observable<any> {
+    // dobalja sve rezervisane datume
     return this.http.get('/api/reservations/dates_by_acco_id/' + id, {
       headers: this.headers,
       responseType: 'json',
@@ -80,6 +81,7 @@ export class ReservationService {
     });
   }
   getAvailabelDatesForAccomodation(id: any): Observable<any> {
+    // dobalja sve periode dostupnosti za akomodaciju
     return this.http.get(`${'/api/reservations/by_acco/'}${id}`, {
       headers: this.headers,
       responseType: 'json',
