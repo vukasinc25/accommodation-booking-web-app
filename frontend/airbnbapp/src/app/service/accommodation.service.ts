@@ -108,10 +108,18 @@ export class AccommodationService {
     });
   }
 
-  insert(accommodation: Accommodation, imageNames: any): Observable<any> {
-    return this.http.post(
-      '/api/accommodations/create',
-      {
+  getAllByNoGuests(noGuests: string): Observable<any> {
+    return this.http.get('/api/accommodations/search_by_noGuests/' + noGuests, {
+      headers: this.headers,
+      responseType: 'json',
+    });
+  }
+
+  insert(uname: string, accommodation: any, imageNames: any): Observable<any> {
+    let requestBody: any;
+
+    if (accommodation.priceType === 'night') {
+      requestBody = {
         name: accommodation.name,
         location: {
           country: accommodation.location!.country,
@@ -122,12 +130,39 @@ export class AccommodationService {
         amenities: accommodation.amenities,
         minGuests: accommodation.minGuests,
         maxGuests: accommodation.maxGuests,
-        username: accommodation.username,
-        // price: accommodation.price,
+        username: uname,
         images: imageNames,
-      },
-      { headers: this.headers, responseType: 'json' }
-    );
+        numberPeople: 2,
+        priceByPeople: null,
+        priceByAccommodation: accommodation.price,
+        startDate: accommodation.availableFrom,
+        endDate: accommodation.availableUntil,
+      };
+    } else if (accommodation.priceType === 'person') {
+      requestBody = {
+        name: accommodation.name,
+        location: {
+          country: accommodation.location!.country,
+          city: accommodation.location!.city,
+          streetName: accommodation.location!.streetName,
+          streetNumber: accommodation.location!.streetNumber,
+        },
+        amenities: accommodation.amenities,
+        minGuests: accommodation.minGuests,
+        maxGuests: accommodation.maxGuests,
+        username: uname,
+        images: imageNames,
+        numberPeople: 2,
+        priceByPeople: accommodation.price,
+        priceByAccommodation: null,
+        startDate: accommodation.availableFrom,
+        endDate: accommodation.availableUntil,
+      };
+    }
+    return this.http.post('/api/accommodations/create', requestBody, {
+      headers: this.headers,
+      responseType: 'json',
+    });
   }
 
   createImages(images: any): Observable<any> {

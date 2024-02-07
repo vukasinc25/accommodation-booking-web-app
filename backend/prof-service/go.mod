@@ -2,14 +2,14 @@ module github.com/vukasinc25/fst-airbnb
 
 go 1.21
 
-replace github.com/vukasinc25/fst-airbnb/utility => ../utility
+// replace github.com/vukasinc25/fst-airbnb/utility => ../utility
 
 require (
 	github.com/google/uuid v1.5.0
 	github.com/gorilla/mux v1.8.1
-	github.com/hashicorp/consul/api v1.26.1
+	github.com/hashicorp/consul/api v1.27.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
-	github.com/sirupsen/logrus v1.4.2
+	github.com/sirupsen/logrus v1.9.3
 	github.com/sony/gobreaker v0.5.0
 	github.com/thanhpk/randstr v1.0.6
 	go.mongodb.org/mongo-driver v1.13.1
@@ -33,7 +33,6 @@ require (
 	github.com/hashicorp/go-rootcerts v1.0.2 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/hashicorp/serf v0.10.1 // indirect
-	github.com/konsorten/go-windows-terminal-sequences v1.0.1 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.17 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect

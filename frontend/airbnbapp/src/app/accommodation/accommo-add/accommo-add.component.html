@@ -115,6 +115,51 @@
         </div>
       </div>
 
+      <div>
+        <p>Create Availability period:</p>
+        <!-- <form [formGroup]="accommodationForm" (ngSubmit)="onSubmit()"> -->
+        <table class="table table-bordered table-striped-columns">
+          <tbody>
+            <tr>
+              <th scope="row">Available from:</th>
+              <td><input type="date" formControlName="availableFrom" /></td>
+            </tr>
+            <tr>
+              <th scope="row">Available until:</th>
+              <td><input type="date" formControlName="availableUntil" /></td>
+            </tr>
+            <tr>
+              <th scope="row">Price type:</th>
+              <td>
+                <select formControlName="priceType" required>
+                  <option value="night">Price per night</option>
+                  <option value="person">Price per person</option>
+                </select>
+                <div
+                  style="color: red"
+                  *ngIf="form.get('priceType')?.hasError('required')"
+                >
+                  Price type is required.
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <th>Price:</th>
+              <td>
+                <input type="number" formControlName="price" required />
+                <div
+                  style="color: red"
+                  *ngIf="form.get('price')?.hasError('required')"
+                >
+                  Price is required.
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <!-- </form> -->
+      </div>
+
       <div class="d-flex justify-content-end">
         <button
           type="submit"

@@ -789,6 +789,9 @@ func (uh *UserHandler) GetUserById(res http.ResponseWriter, req *http.Request) {
 
 	vars := mux.Vars(req)
 	id := vars["id"]
+	id = strings.Trim(id, "\"")
+
+	log.Println("UserId: ", id)
 
 	user, err := uh.db.GetById(id, ctx)
 	if err != nil {

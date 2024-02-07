@@ -2,6 +2,8 @@ module github.com/vukasinc25/fst-airbnb
 
 go 1.21
 
+// replace github.com/vukasinc25/fst-airbnb/utility => ../utility
+
 require (
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
@@ -18,9 +20,6 @@ require (
 	go.opentelemetry.io/otel/exporters/jaeger v1.17.0
 	go.opentelemetry.io/otel/sdk v1.22.0
 	golang.org/x/crypto v0.13.0
-)
-
-require (
 	github.com/BurntSushi/toml v1.3.2 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/felixge/httpsnoop v1.0.3 // indirect

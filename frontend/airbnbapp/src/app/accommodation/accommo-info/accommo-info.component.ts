@@ -148,7 +148,7 @@ export class AccommoInfoComponent implements OnInit {
       .getAvailabelDatesForAccomodation(this.id)
       .subscribe({
         next: (data) => {
-          console.log(data);
+          console.log('Available dates: ', data);
           this.reservationId = data[0].reservationId;
           this.hostId = data[0].userId;
           // console.log('HostId1:', this.hostId);
@@ -181,7 +181,6 @@ export class AccommoInfoComponent implements OnInit {
               this.toastr.error(err.error.message);
             },
           });
-
           //pretvori sve termine iz baze u ngbDate
           for (let availableDatePeriod of data) {
             let startDate = new NgbDate(
@@ -423,9 +422,11 @@ export class AccommoInfoComponent implements OnInit {
       .subscribe({
         next: (data) => {
           this.toastr.success('Successfully created accommodation review');
+          this.formAccommodation.reset();
           this.ngOnInit();
         },
         error: (err) => {
+          this.formAccommodation.reset();
           this.toastr.error(err.error.message);
         },
       });
