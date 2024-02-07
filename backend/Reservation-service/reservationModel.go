@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"time"
 
@@ -66,6 +67,16 @@ type ReservationsByUser []*UserReservations
 type ReservationDatesByAccomodationId []*ReservationDate
 type ReservationDatesByDate []*ReservationDateByDate
 type ReservationDatesByDateGet []*ReservationDateByDateGet
+
+type ErrResp struct {
+	URL        string
+	Method     string
+	StatusCode int
+}
+
+func (e ErrResp) Error() string {
+	return fmt.Sprintf("error [status code %d] for request: HTTP %s\t%s", e.StatusCode, e.Method, e.URL)
+}
 
 func (o *ReservationByAccommodation) ToJSON(w io.Writer) error {
 	e := json.NewEncoder(w)

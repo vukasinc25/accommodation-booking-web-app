@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"time"
 
@@ -69,6 +70,16 @@ type AccommodationGrade struct {
 
 type ReqList struct {
 	List []string `json:"list"`
+}
+
+type ErrResp struct {
+	URL        string
+	Method     string
+	StatusCode int
+}
+
+func (e ErrResp) Error() string {
+	return fmt.Sprintf("error [status code %d] for request: HTTP %s\t%s", e.StatusCode, e.Method, e.URL)
 }
 
 func (req *ReqList) FromJSON(r io.Reader) error {
