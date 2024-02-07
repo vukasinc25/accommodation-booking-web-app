@@ -9,5 +9,8 @@ RUN go build -o server
 FROM alpine
 WORKDIR /usr/bin
 COPY --from=build_container /app/server .
+RUN mkdir cert
+COPY ./accommodation-service/cert/accommodation-service.crt /cert/accommodation-service.crt
+COPY ./accommodation-service/cert/accommodation-service.key /cert/accommodation-service.key
 EXPOSE 8000
-ENTRYPOINT ["server"]
+ENTRYPOINT ["server","https"]

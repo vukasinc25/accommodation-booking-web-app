@@ -3,7 +3,7 @@ import { FormGroup, FormBuilder, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../service/auth.service';
 // import { MatDialog } from '@angular/material/dialog';
-import { EmailVerificationPopupComponent } from '../email-verification-popup/email-verification-popup.component';
+import { ToastrService } from 'ngx-toastr';
 
 @Component({
   selector: 'app-register',
@@ -18,7 +18,8 @@ export class RegisterComponent {
     // private dialogRef: MatDialog,
     private fb: FormBuilder,
     private router: Router,
-    private authService: AuthService
+    private authService: AuthService,
+    private toastr: ToastrService
   ) {
     this.form = this.fb.group({
       username: [null, Validators.required],
@@ -40,12 +41,12 @@ export class RegisterComponent {
     this.authService.register(this.form.value).subscribe({
       next: (data) => {
         console.log('Register success');
-        alert('Uspesno ste se registrovali, proverite mejl radi verifikacije');
-        this.router.navigate(['login']);
+        this.toastr.success('Successfully registered, check your email for verification code');
+        this.router.navigate(['verify-email']);
       },
       error: (err) => {
         console.log(err);
-        alert(err.error.message);
+        this.toastr.error(err.error.message);
       },
     });
   }

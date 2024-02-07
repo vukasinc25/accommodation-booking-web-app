@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/tls"
 	"context"
 	"encoding/json"
 	"errors"
@@ -318,10 +319,77 @@ func removeFromCSV(csvString, idToRemove string) string {
 	return string(jsonArrayString)
 }
 
+func (ur *UserRepo) UpdateHostGrade(hostId string, userId string, grade int) error {
+	log.Println("Usli u UpdateHostGrade")
+	log.Println("UserId: ", userId)
+	log.Println("Grade:", grade)
+	kv := ur.cli.KV()
+
+	// Check the hostGradeIndex table by userId
+	indexKey := fmt.Sprintf(hostGradeIndex, hostId)
+	indexValue, _, err := kv.Get(indexKey, nil)
+	if err != nil {
+		return err
+	}
+
+	log.Println("hostGradeIndex sta je u njoj: ", indexValue)
+
+	if indexValue == nil {
+		return errors.New("no host grade found for the specified user")
+	}
+
+	var ids []string
+	if err := json.Unmarshal(indexValue.Value, &ids); err != nil {
+		return err
+	}
+
+	log.Println("Pre petlje")
+	for _, id := range ids {
+		log.Println("hostGradeIndex u for petlji: ", id)
+		// Check if there is any data in the hostGrades table with the retrieved ID
+		hostGradeKey := fmt.Sprintf(hostGrades, strings.TrimSpace(id))
+		pair, _, err := kv.Get(hostGradeKey, nil)
+		if err != nil {
+			return err
+		}
+
+		log.Println("hostGrades tabela: ", pair)
+		log.Println("Pre paira")
+
+		if pair != nil {
+			// Data found in hostGrades, update its grade
+			var hg HostGrade
+			if err := json.Unmarshal(pair.Value, &hg); err != nil {
+				return err
+			}
+
+			log.Println("Id : ", userId)
+			log.Println("UserId : ", hg.UserId)
+			log.Println("HostGrade: ", hg)
+			if strings.TrimSpace(hg.UserId) == strings.TrimSpace(userId) {
+				hg.Grade = grade
+				updatedData, err := json.Marshal(hg)
+				if err != nil {
+					return err
+				}
+
+				// Put the updated data back into the hostGrades table
+				_, err = kv.Put(&api.KVPair{Key: hostGradeKey, Value: updatedData}, nil)
+				if err != nil {
+					return err
+				}
+
+				log.Printf("Grade updated successfully for HostGrade with ID: %s\n", id)
+			}
+		}
+	}
+
+	return nil
+}
+
 func (ur *UserRepo) GetAllReservatinsForUserByHostId(userId string, hostId string, ctx context.Context) (*http.Response, error) {
 	ctx, span := ur.tracer.Start(ctx, "userRepo.GetAllReservatinsForUserByHostId")
 	defer span.End()
-
 	url := ur.reservation_service_string + "/api/reservations/by_user_for_host_id/" + userId + "/" + hostId
 
 	log.Println("Url", url)
@@ -333,7 +401,11 @@ func (ur *UserRepo) GetAllReservatinsForUserByHostId(userId string, hostId strin
 
 	req.Header.Set("Content-Type", "application/json")
 
-	httpResp, err := http.DefaultClient.Do(req)
+	tr := http.DefaultTransport.(*http.Transport).Clone()
+	tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+
+	client := http.Client{Transport: tr}
+	httpResp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -432,7 +504,11 @@ func (uh *UserRepo) UpdateUserGrade(userId string, grade float64, ctx context.Co
 
 	req.Header.Set("Content-Type", "application/json")
 
-	httpResp, err := http.DefaultClient.Do(req)
+	tr := http.DefaultTransport.(*http.Transport).Clone()
+	tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+
+	client := http.Client{Transport: tr}
+	httpResp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}

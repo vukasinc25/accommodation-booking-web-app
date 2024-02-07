@@ -1,19 +1,20 @@
 <div class="row row-cols-3 g-4">
-  <div class="col" *ngFor="let accommodation of accommodations">
+  <div class="col" *ngFor="let accommodation of accommodations; let i = index">
     <div class="card h-100">
+      <!-- <div *ngIf="getAccommodationImage(accommodation._id || 0)"></div> -->
       <img src="../../assets/temp.jpg" alt="" />
       <div class="card-body">
-        <p>
+        <h3>{{accommodation.name}}</h3>
+        <p> Location: 
           {{
             accommodation.location!.city +
               ", " +
               accommodation.location!.country
           }}
         </p>
-        <!-- <h3>{{ accommodation.name }}</h3> -->
-        <!-- <p>{{ "Min Guests:" + accommodation.minGuests }}</p> -->
-        <!-- <p>{{ "Max Guests:" + accommodation.maxGuests }}</p> -->
-        <!-- <p>{{ "Price:" + accommodation.price + "€" }}</p> -->
+        <p> Amenities: {{accommodation.amenities}}</p>
+        <p> Number of guests from {{accommodation.minGuests}} to {{accommodation.maxGuests}}</p>
+        <p> Price: {{price[i]}}</p>
         <a
           class="mylink stretched-link opacity-0"
           [routerLink]="['/accommodations/info', accommodation._id]"

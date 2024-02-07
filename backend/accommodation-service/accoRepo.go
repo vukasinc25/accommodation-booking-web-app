@@ -1,21 +1,23 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"go.opentelemetry.io/otel/trace"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.opentelemetry.io/otel/trace"
 
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -126,8 +128,8 @@ func (ar *AccoRepo) GetAllById(id string, ctx context.Context) (Accommodations, 
 	accommoCollection := ar.getCollection()
 
 	var accommodations Accommodations
-	objID, _ := primitive.ObjectIDFromHex(id)
-	accommoCursor, err := accommoCollection.Find(ctx, bson.D{{"_id", objID}})
+	// objID, _ := primitive.ObjectIDFromHex(id)
+	accommoCursor, err := accommoCollection.Find(ctx, bson.D{{"_id", id}})
 	if err != nil {
 		ar.logger.Println(err)
 		return nil, err
@@ -137,6 +139,56 @@ func (ar *AccoRepo) GetAllById(id string, ctx context.Context) (Accommodations, 
 		return nil, err
 	}
 	return accommodations, nil
+}
+
+func (ar *AccoRepo) GetAllThatAreNotApproved() (Accommodations, error) {
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	accommoCollection := ar.getCollection()
+
+	var accommodations Accommodations
+	// objID, _ := primitive.ObjectIDFromHex(id)
+	accommoCursor, err := accommoCollection.Find(ctx, bson.D{{"approved", "false"}})
+	if err != nil {
+		ar.logger.Println(err)
+		return nil, err
+	}
+	if err = accommoCursor.All(ctx, &accommodations); err != nil {
+		ar.logger.Println(err)
+		return nil, err
+	}
+	return accommodations, nil
+}
+
+func (ar *AccoRepo) GetAllRecommended(accoIds *ReqList) (*Accommodations, error) {
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	accommoCollection := ar.getCollection()
+
+	oids := make([]primitive.ObjectID, len(accoIds.List))
+	for i := range accoIds.List {
+		objID, err := primitive.ObjectIDFromHex(accoIds.List[i])
+		if err == nil {
+			oids = append(oids, objID)
+		}
+	}
+
+	var accommodations Accommodations
+	accoByLocationList, err := accommoCollection.Find(ctx, bson.M{"_id": bson.M{"$in": oids}})
+	log.Println(accoByLocationList)
+	if err != nil {
+		ar.logger.Println(err)
+		return nil, err
+	}
+	if err = accoByLocationList.All(ctx, &accommodations); err != nil {
+		ar.logger.Println(err)
+		return nil, err
+	}
+	return &accommodations, nil
+
 }
 
 func (ar *AccoRepo) Delete(username string, ctx context.Context) error {
@@ -158,6 +210,28 @@ func (ar *AccoRepo) Delete(username string, ctx context.Context) error {
 	return nil
 }
 
+func (ar *AccoRepo) UpdateAccommodation(id string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	accommodationCollection := ar.getCollection()
+	// objID, _ := primitive.ObjectIDFromHex(id)
+	filter := bson.M{"_id": id}
+	update := bson.M{"$set": bson.M{
+		"approved": "true",
+	}}
+	result, err := accommodationCollection.UpdateOne(ctx, filter, update)
+	log.Printf("Documents matched: %v\n", result.MatchedCount)
+	log.Printf("Documents updated: %v\n", result.ModifiedCount)
+
+	if err != nil {
+		log.Println("Error ovde:", err)
+		return err
+	}
+
+	return nil
+}
+
 func (ar *AccoRepo) GetById(id string, ctx context.Context) (*Accommodation, error) {
 	ctx, span := ar.tracer.Start(ctx, "AccoRepo.GetById")
 	defer span.End()
@@ -168,13 +242,29 @@ func (ar *AccoRepo) GetById(id string, ctx context.Context) (*Accommodation, err
 	accommoCollection := ar.getCollection()
 
 	var accommodation Accommodation
-	objID, _ := primitive.ObjectIDFromHex(id)
-	err := accommoCollection.FindOne(ctx, bson.M{"_id": objID}).Decode(&accommodation)
+	// objID, _ := primitive.ObjectIDFromHex(id)
+	err := accommoCollection.FindOne(ctx, bson.M{"_id": id}).Decode(&accommodation)
 	if err != nil {
 		ar.logger.Println(err)
 		return nil, err
 	}
 	return &accommodation, nil
+}
+
+func (ar *AccoRepo) DeleteById(id string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	accomodationCollection := ar.getCollection()
+
+	// objID, _ := primitive.ObjectIDFromHex(username)
+	filter := bson.M{"_id": id}
+	result, err := accomodationCollection.DeleteOne(ctx, filter)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	log.Printf("Documents deleted: %v\n", result.DeletedCount)
+	return nil
 }
 
 func (ar *AccoRepo) GetAllByLocation(location string, ctx context.Context) (*Accommodations, error) {
@@ -330,8 +420,8 @@ func (ar *AccoRepo) CreateAverageRating(id string) error {
 	defer cancel()
 
 	accommodationCollection := ar.getCollection()
-	objID, _ := primitive.ObjectIDFromHex(id)
-	filter := bson.M{"_id": objID}
+	// objID, _ := primitive.ObjectIDFromHex(id)
+	filter := bson.M{"_id": id}
 	update := bson.M{"$set": bson.M{
 		"averageGrade": float64(averageRating),
 	}}
@@ -378,7 +468,11 @@ func (ar *AccoRepo) SendRequestToReservationService(token string) (*http.Respons
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
 
-	httpResp, err := http.DefaultClient.Do(req)
+	tr := http.DefaultTransport.(*http.Transport).Clone()
+	tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+
+	client := http.Client{Transport: tr}
+	httpResp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -416,8 +510,8 @@ func (ar *AccoRepo) InsertAccommodationImg(id string, images []string, ctx conte
 	defer cancel()
 
 	accommodationCollection := ar.getCollection()
-	objID, _ := primitive.ObjectIDFromHex(id)
-	filter := bson.M{"_id": objID}
+	// objID, _ := primitive.ObjectIDFromHex(id)
+	filter := bson.M{"_id": id}
 	update := bson.M{"$set": bson.M{
 		"images": images,
 	}}
@@ -431,6 +525,22 @@ func (ar *AccoRepo) InsertAccommodationImg(id string, images []string, ctx conte
 	}
 
 	return nil
+}
+
+func (ar *AccoRepo) GetAccommodationGradeByUserId(id string) (*AccommodationGrade, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	accommoCollection := ar.getCollectionForAccommodationGrade()
+
+	var accommodationGrade AccommodationGrade
+	// objID, _ := primitive.ObjectIDFromHex(id)
+	err := accommoCollection.FindOne(ctx, bson.M{"userId": id}).Decode(&accommodationGrade)
+	if err != nil {
+		ar.logger.Println(err)
+		return nil, err
+	}
+	return &accommodationGrade, nil
 }
 
 func (ar *AccoRepo) getCollection1() (*mongo.Collection, error) {
@@ -449,6 +559,55 @@ func (ar *AccoRepo) getCollection1() (*mongo.Collection, error) {
 	return accommodationCollection, nil
 }
 
+func (ar *AccoRepo) UpdateAccommodationGradeByUserId(id string, grade int) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	accommodationCollection := ar.getCollectionForAccommodationGrade()
+	// objID, _ := primitive.ObjectIDFromHex(id)
+	filter := bson.M{"userId": id}
+	update := bson.M{"$set": bson.M{
+		"grade": grade,
+	}}
+	result, err := accommodationCollection.UpdateOne(ctx, filter, update)
+	log.Printf("Documents matched: %v\n", result.MatchedCount)
+	log.Printf("Documents updated: %v\n", result.ModifiedCount)
+
+	if err != nil {
+		log.Println("Error ovde1:", err)
+		return err
+	}
+
+	return nil
+}
+
+func (ar *AccoRepo) CreateAvailabilityPeriods(token string, reservation_by_acco *ReservationByAccommodation) (*http.Response, error) {
+	url := ar.reservation_service_address + "/api/reservations/for_acco"
+
+	reqBody, err := json.Marshal(reservation_by_acco)
+	if err != nil {
+		fmt.Println("Error marshaling JSON:", err)
+		return nil, err
+	}
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(reqBody))
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+
+	tr := http.DefaultTransport.(*http.Transport).Clone()
+	tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+
+	client := http.Client{Transport: tr}
+	httpResp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	return httpResp, nil
+}
+
 func (ar *AccoRepo) getCollection() *mongo.Collection {
 	accommodationDatabase := ar.cli.Database("mongoDemo")
 	accommodationCollection := accommodationDatabase.Collection("accommodations")
@@ -460,55 +619,72 @@ func (ar *AccoRepo) CreateGrade(accommodatioGrade *AccommodationGrade, token str
 	defer span.End()
 
 	log.Println("Usli u CreateGrade")
-	response, err := ar.SendRequestToReservationService(token)
+
+	grade, err := ar.GetAccommodationGradeByUserId(accommodatioGrade.UserId)
 	if err != nil {
-		log.Println("Error in SendRequestToReservationService method", err)
-		return err
+		ar.logger.Println("Error in GetAccommodationGradeByUserId func in CreateGrade", err)
+		// return err
 	}
 
-	var userReservations ReservationsByUser
-	if err := json.NewDecoder(response.Body).Decode(&userReservations); err != nil {
-		log.Println("Cant decode userReservatins", err)
-		return err
-	}
+	log.Println("Grade: ", grade)
 
-	if userReservations == nil {
-		log.Println("userReservation are empty")
-		return errors.New("user with thid id dont have any reservations")
-	}
-
-	var bool = false
-	for _, reservation := range userReservations {
-		log.Println("Reservation:", reservation)
-		log.Println("Reservation.AccoId:", reservation.AccoId)
-		log.Println("Reservation.AccommodationId:", accommodatioGrade.AccommodationId)
-		if strings.TrimSpace(reservation.AccoId) == strings.TrimSpace(accommodatioGrade.AccommodationId) {
-			bool = true
-			break
+	if grade == nil { // create accommodation grade
+		response, err := ar.SendRequestToReservationService(token)
+		if err != nil {
+			log.Println("Error in SendRequestToReservationService method", err)
+			return err
 		}
-	}
 
-	if !bool {
-		log.Println("check if user have reservations for accommodation")
-		return errors.New("user dont have any reservations for this accommodation")
-	}
-	bool = false
+		var userReservations ReservationsByUser
+		if err := json.NewDecoder(response.Body).Decode(&userReservations); err != nil {
+			log.Println("Cant decode userReservatins", err)
+			return err
+		}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	accommodationCollection := ar.getCollectionForAccommodationGrade()
+		if userReservations == nil {
+			log.Println("userReservation are empty")
+			return errors.New("user with thid id dont have any reservations")
+		}
 
-	result, err := accommodationCollection.InsertOne(ctx, &accommodatioGrade)
-	if err != nil {
-		ar.logger.Println(err)
-		return err
-	}
-	ar.logger.Printf("Documents ID: %v\n", result.InsertedID)
+		var bool = false
+		for _, reservation := range userReservations {
+			log.Println("Reservation:", reservation)
+			log.Println("Reservation.AccoId:", reservation.AccoId)
+			log.Println("Reservation.AccommodationId:", accommodatioGrade.AccommodationId)
+			if strings.TrimSpace(reservation.AccoId) == strings.TrimSpace(accommodatioGrade.AccommodationId) {
+				bool = true
+				break
+			}
+		}
 
-	err = ar.CreateAverageRating(accommodatioGrade.AccommodationId)
-	if err != nil {
-		log.Println(err)
-		return err
+		if !bool {
+			log.Println("check if user have reservations for accommodation")
+			return errors.New("user dont have any reservations for this accommodation")
+		}
+		bool = false
+
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		accommodationCollection := ar.getCollectionForAccommodationGrade()
+
+		result, err := accommodationCollection.InsertOne(ctx, &accommodatioGrade)
+		if err != nil {
+			ar.logger.Println(err)
+			return err
+		}
+		ar.logger.Printf("Documents ID: %v\n", result.InsertedID)
+
+		err = ar.CreateAverageRating(accommodatioGrade.AccommodationId)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+	} else { // update accommodation grade
+		err := ar.UpdateAccommodationGradeByUserId(accommodatioGrade.UserId, accommodatioGrade.Grade)
+		if err != nil {
+			ar.logger.Println("Error in UpdateAccommodationGradeByUserId func in CreateGrade")
+			return err
+		}
 	}
 
 	return nil

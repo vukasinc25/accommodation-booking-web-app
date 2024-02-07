@@ -113,6 +113,7 @@ func (uh *UserHandler) createUser(w http.ResponseWriter, req *http.Request) {
 	rt.IsEmailVerified = false
 	rt.AverageGrade = 0.0
 
+	//XSS ATTACK
 	sanitizedUsername := sanitizeInput(rt.Username)
 	sanitizedPassword := sanitizeInput(rt.Password)
 	sanitizedRole := sanitizeInput(string(rt.Role))
@@ -218,7 +219,7 @@ func (uh *UserHandler) getAllUsers(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (uh *UserHandler) GetUserIdByUsername(w http.ResponseWriter, req *http.Request) {
+func (uh *UserHandler) GetUserByUsername(w http.ResponseWriter, req *http.Request) {
 	ctx, span := uh.tracer.Start(req.Context(), "UserHandler.GetUserIdByUsername") //tracer
 	defer span.End()
 
@@ -705,7 +706,7 @@ func (uh *UserHandler) verifyEmail(w http.ResponseWriter, req *http.Request) {
 
 }
 func jwtToken(user *User, w http.ResponseWriter, uh *UserHandler) {
-	durationStr := "15m" // Should be a constant outside the function
+	durationStr := "45m" // Should be a constant outside the function
 	duration, err := time.ParseDuration(durationStr)
 	if err != nil {
 		uh.logger.Println("Cannot parse duration")
@@ -789,6 +790,9 @@ func (uh *UserHandler) GetUserById(res http.ResponseWriter, req *http.Request) {
 
 	vars := mux.Vars(req)
 	id := vars["id"]
+	id = strings.Trim(id, "\"")
+
+	log.Println("UserId: ", id)
 
 	user, err := uh.db.GetById(id, ctx)
 	if err != nil {

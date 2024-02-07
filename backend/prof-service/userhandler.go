@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"go.opentelemetry.io/otel"
@@ -40,7 +41,7 @@ func (rh *userHandler) MiddlewareRoleCheck(client *http.Client, breaker *gobreak
 			ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 			defer cancel()
 
-			reqURL := "http://auth-service:8000/api/users/auth"
+			reqURL := "https://auth-service:8000/api/users/auth"
 
 			authorizationHeader := r.Header.Get("authorization")
 			fields := strings.Fields(authorizationHeader)
@@ -62,6 +63,9 @@ func (rh *userHandler) MiddlewareRoleCheck(client *http.Client, breaker *gobreak
 				if err != nil {
 					return nil, err
 				}
+				tr := http.DefaultTransport.(*http.Transport).Clone()
+				tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+				client := http.Client{Transport: tr}
 				return client.Do(req)
 			})
 			if err != nil {
@@ -117,7 +121,7 @@ func (rh *userHandler) MiddlewareRoleCheck0(client *http.Client, breaker *gobrea
 			ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 			defer cancel()
 
-			reqURL := "http://auth-service:8000/api/users/auth"
+			reqURL := "https://auth-service:8000/api/users/auth"
 
 			authorizationHeader := r.Header.Get("authorization")
 			fields := strings.Fields(authorizationHeader)
@@ -139,6 +143,9 @@ func (rh *userHandler) MiddlewareRoleCheck0(client *http.Client, breaker *gobrea
 				if err != nil {
 					return nil, err
 				}
+				tr := http.DefaultTransport.(*http.Transport).Clone()
+				tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+				client := http.Client{Transport: tr}
 				return client.Do(req)
 			})
 			if err != nil {
@@ -197,7 +204,7 @@ func (rh *userHandler) MiddlewareRoleCheck00(client *http.Client, breaker *gobre
 			ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 			defer cancel()
 
-			reqURL := "http://auth-service:8000/api/users/auth"
+			reqURL := "https://auth-service:8000/api/users/auth"
 
 			authorizationHeader := r.Header.Get("authorization")
 			fields := strings.Fields(authorizationHeader)
@@ -219,6 +226,9 @@ func (rh *userHandler) MiddlewareRoleCheck00(client *http.Client, breaker *gobre
 				if err != nil {
 					return nil, err
 				}
+				tr := http.DefaultTransport.(*http.Transport).Clone()
+				tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+				client := http.Client{Transport: tr}
 				return client.Do(req)
 			})
 			if err != nil {
@@ -281,6 +291,17 @@ func (uh *userHandler) createUser(w http.ResponseWriter, req *http.Request) {
 		sendErrorWithMessage(w, "Cant decode user", http.StatusNotAcceptable)
 		return
 	}
+
+	//XSS
+	sanitizedEmail := sanitizeInput(rt.Email)
+	sanitizedUsername := sanitizeInput(rt.Username)
+	sanitizedFirstname := sanitizeInput(rt.FirstName)
+	sanitizedLastname := sanitizeInput(rt.LastName)
+
+	rt.Email = sanitizedEmail
+	rt.Username = sanitizedUsername
+	rt.FirstName = sanitizedFirstname
+	rt.LastName = sanitizedLastname
 
 	err = uh.db.Insert(rt, ctx)
 	if err != nil {
@@ -374,43 +395,108 @@ func (uh *userHandler) CreateHostGrade(res http.ResponseWriter, req *http.Reques
 	hostGrade.ID = randstr.String(20)
 	uh.logger.Info("HostGrade:", hostGrade)
 
-	response, err := uh.db.GetAllReservatinsForUserByHostId(hostGrade.UserId, hostGrade.HostId, ctx)
+	//   response, err := uh.db.GetAllReservatinsForUserByHostId(hostGrade.UserId, hostGrade.HostId, ctx)
+
+	grades, err := uh.db.GetAllHostGradesByHostId(hostGrade.HostId, ctx)
 	if err != nil {
-		uh.logger.Info("Error in method GetAllReservatinsForUserByHostId", err)
-		sendErrorWithMessage1(res, "Error in getting reservations for user", http.StatusBadRequest)
-		return
+		uh.logger.Info("HostGrade lavor")
+		// sendErrorWithMessage1(res, "Lavor when tryed to update HostGrade", http.StatusBadRequest)
+		// return
 	}
 
-	body, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		uh.logger.Info("Error in reading response body")
-		sendErrorWithMessage1(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if strings.Contains(string(body), "There is no active reservations for accommodations of this host") {
-		sendErrorWithMessage1(res, "There is no active reservations for accommodations of this host", http.StatusBadRequest)
-		return
-	} else if strings.Contains(string(body), "There is no reservations for hosts accommodations") {
-		sendErrorWithMessage1(res, "There is no reservations for hosts accommodations", http.StatusBadRequest)
-		return
-	} else if strings.Contains(string(body), "There is some reservtions for this user") {
-		err = uh.db.CreateHostGrade(hostGrade, ctx)
+	if len(grades) == 0 {
+		response, err := uh.db.GetAllReservatinsForUserByHostId(hostGrade.UserId, hostGrade.HostId, ctx)
 		if err != nil {
-			uh.logger.Info("HostGrade lavor")
-			sendErrorWithMessage1(res, "Lavor when tryed to save HostGrade", http.StatusBadRequest)
+			uh.logger.Info("Error in method GetAllReservatinsForUserByHostId", err)
+			sendErrorWithMessage1(res, "Error in getting reservations for user", http.StatusBadRequest)
 			return
 		}
 
-		sendErrorWithMessage1(res, "Host grade is succesfully created", http.StatusOK)
-		return
-	} else if strings.Contains(string(body), "There is not reservations for hosts accommodations") {
-		sendErrorWithMessage1(res, "There is not reservations for hosts accommodations", http.StatusBadRequest)
-		return
-	} else {
-		sendErrorWithMessage1(res, string(body), http.StatusOK)
+		body, err := ioutil.ReadAll(response.Body)
+		if err != nil {
+			uh.logger.Info("Error in reading response body")
+			sendErrorWithMessage1(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if strings.Contains(string(body), "There is no active reservations for accommodations of this host") {
+			sendErrorWithMessage1(res, "There is no active reservations for accommodations of this host", http.StatusBadRequest)
+			return
+		} else if strings.Contains(string(body), "There is no reservations for hosts accommodations") {
+			sendErrorWithMessage1(res, "There is no reservations for hosts accommodations", http.StatusBadRequest)
+			return
+		} else if strings.Contains(string(body), "There is some reservtions for this user") {
+			err = uh.db.CreateHostGrade(hostGrade, ctx)
+			if err != nil {
+				uh.logger.Info("HostGrade lavor")
+				sendErrorWithMessage1(res, "Lavor when tryed to save HostGrade", http.StatusBadRequest)
+				return
+			}
+
+			sendErrorWithMessage1(res, "Host grade is succesfully created", http.StatusOK)
+			return
+		} else if strings.Contains(string(body), "There is not reservations for hosts accommodations") {
+			sendErrorWithMessage1(res, "There is not reservations for hosts accommodations", http.StatusBadRequest)
+			return
+		} else {
+			sendErrorWithMessage1(res, string(body), http.StatusOK)
+			return
+		}
 		return
 	}
+	uh.logger.Println("Grades: ", grades)
+	uh.logger.Println("Grades2: ", len(grades) == 0)
+	uh.logger.Println("Pre for")
+	for _, grade := range grades {
+		uh.logger.Println("Grade: ", grade)
+		if strings.TrimSpace(grade.UserId) != strings.TrimSpace(hostGrade.UserId) {
+			response, err := uh.db.GetAllReservatinsForUserByHostId(hostGrade.UserId, hostGrade.HostId, ctx)
+			if err != nil {
+				uh.logger.Info("Error in method GetAllReservatinsForUserByHostId", err)
+				sendErrorWithMessage1(res, "Error in getting reservations for user", http.StatusBadRequest)
+				return
+			}
+
+			body, err := ioutil.ReadAll(response.Body)
+			if err != nil {
+				uh.logger.Info("Error in reading response body")
+				sendErrorWithMessage1(res, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			if strings.Contains(string(body), "There is no active reservations for accommodations of this host") {
+				sendErrorWithMessage1(res, "There is no active reservations for accommodations of this host", http.StatusBadRequest)
+				return
+			} else if strings.Contains(string(body), "There is no reservations for hosts accommodations") {
+				sendErrorWithMessage1(res, "There is no reservations for hosts accommodations", http.StatusBadRequest)
+				return
+			} else if strings.Contains(string(body), "There is some reservtions for this user") {
+				err = uh.db.CreateHostGrade(hostGrade, ctx)
+				if err != nil {
+					uh.logger.Info("HostGrade lavor")
+					sendErrorWithMessage1(res, "Lavor when tryed to save HostGrade", http.StatusBadRequest)
+					return
+				}
+
+				sendErrorWithMessage1(res, "Host grade is succesfully created", http.StatusOK)
+				return
+			} else if strings.Contains(string(body), "There is not reservations for hosts accommodations") {
+				sendErrorWithMessage1(res, "There is not reservations for hosts accommodations", http.StatusBadRequest)
+				return
+			} else {
+				sendErrorWithMessage1(res, string(body), http.StatusOK)
+				return
+			}
+		} else {
+			err = uh.db.UpdateHostGrade(hostGrade.HostId, hostGrade.UserId, hostGrade.Grade)
+			if err != nil {
+				uh.logger.Info("HostGrade lavor")
+				sendErrorWithMessage1(res, "Lavor when tryed to update HostGrade", http.StatusBadRequest)
+				return
+			}
+		}
+	}
+	uh.logger.Println("Posle for")
 }
 
 func (uh *userHandler) DeleteHostGrade(res http.ResponseWriter, req *http.Request) {
@@ -504,6 +590,31 @@ func (uh *userHandler) GetAllHostGrades(res http.ResponseWriter, req *http.Reque
 			sendErrorWithMessage1(res, string(responseBody), response.StatusCode)
 			return
 		}
+	} else {
+		response, err := uh.db.UpdateUserGrade(id, 0, ctx)
+		if err != nil {
+			uh.logger.Println("Error in updating grade", err)
+			sendErrorWithMessage1(res, "Error in updating grade", http.StatusInternalServerError)
+			return
+		}
+
+		responseBody, err := ioutil.ReadAll(response.Body)
+		if err != nil {
+			uh.logger.Println("Error reading response body:", err)
+			sendErrorWithMessage1(res, "Error reading response body", http.StatusInternalServerError)
+			return
+		}
+
+		defer response.Body.Close()
+		if string(responseBody) == "grade updated" {
+			// sendErrorWithMessage1(res, "Grade updated", http.StatusOK)
+			e := json.NewEncoder(res)
+			e.Encode(hostGrades)
+			return
+		} else {
+			sendErrorWithMessage1(res, string(responseBody), response.StatusCode)
+			return
+		}
 	}
 
 	// e := json.NewEncoder(res)
@@ -556,6 +667,12 @@ func (u *ResponseUser) ToJSON(w io.Writer) error {
 	e := json.NewEncoder(w)
 	return e.Encode(u)
 }
+
+func sanitizeInput(input string) string {
+	sanitizedInput := strings.ReplaceAll(input, "<", "&lt;")
+	return sanitizedInput
+}
+
 func (uh *userHandler) UpdateUser(res http.ResponseWriter, req *http.Request) {
 	ctx, span := uh.tracer.Start(req.Context(), "userHandler.UpdateUser") //tracer
 	defer span.End()
@@ -569,6 +686,17 @@ func (uh *userHandler) UpdateUser(res http.ResponseWriter, req *http.Request) {
 		sendErrorWithMessage1(res, "Cant decode body", http.StatusBadRequest)
 		return
 	}
+
+	//XSS ATTACK
+	sanitizedFirstName := sanitizeInput(user.FirstName)
+	sanitizedLastName := sanitizeInput(user.LastName)
+	sanitizedEmail := sanitizeInput(user.Email)
+	sanitizedUsername := sanitizeInput(user.Username)
+
+	user.FirstName = sanitizedFirstName
+	user.LastName = sanitizedLastName
+	user.Email = sanitizedEmail
+	user.Username = sanitizedUsername
 
 	userDb, err := uh.db.Get(user.ID, ctx)
 	if err != nil {

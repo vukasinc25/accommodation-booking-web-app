@@ -14,6 +14,7 @@ import { VerifyEmailComponent } from './auth/verify-email/verify-email.component
 import { MyAccommoComponent } from './accommodation/my-accommo/my-accommo.component';
 import { ReservationsComponent } from './reservations/reservations.component';
 import { NotificationComponent } from './notification/notification.component';
+import { ReservationsHostComponent } from './reservations-host/reservations-host.component';
 
 const routes: Routes = [
   {
@@ -44,6 +45,7 @@ const routes: Routes = [
   {
     path: 'accommodations/myAccommodations',
     component: MyAccommoComponent,
+    canActivate: [loginGuard, roleGuard],
   },
   {
     path: 'accommodations/create',
@@ -58,8 +60,13 @@ const routes: Routes = [
     path: 'verify-email',
     component: VerifyEmailComponent,
   },
+  {
+    path:'my-reservations',
+    component: ReservationsHostComponent,
+    canActivate: [loginGuard, roleGuard]
+  },
   { path: 'reset-password', component: ResetPasswordComponent },
-  { path: 'notifications', component: NotificationComponent },
+  { path: 'notifications', component: NotificationComponent, canActivate: [loginGuard],},
   {
     path: '**',
     redirectTo: '',

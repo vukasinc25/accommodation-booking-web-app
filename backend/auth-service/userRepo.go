@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"go.opentelemetry.io/otel/trace"
@@ -120,10 +121,18 @@ func (uh *UserRepo) Insert(newUser *User, ctx context.Context) (*http.Response, 
 
 	req.Header.Set("Content-Type", "application/json")
 
-	httpResp, err := http.DefaultClient.Do(req)
+	tr := http.DefaultTransport.(*http.Transport).Clone()
+	tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+
+	client := http.Client{Transport: tr}
+	httpResp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
+	// httpResp, err := http.DefaultClient.Do(req)
+	// if err != nil {
+	// 	return nil, err
+	// }
 	return httpResp, nil
 }
 
@@ -171,7 +180,11 @@ func (uh *UserRepo) GetAllReservatinsDatesByHostId(hostId string, ctx context.Co
 
 	req.Header.Set("Content-Type", "application/json")
 
-	httpResp, err := http.DefaultClient.Do(req)
+	tr := http.DefaultTransport.(*http.Transport).Clone()
+	tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+
+	client := http.Client{Transport: tr}
+	httpResp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +207,11 @@ func (uh *UserRepo) GetAllReservatinsForUser(token string, ctx context.Context) 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+token)
 
-	httpResp, err := http.DefaultClient.Do(req)
+	tr := http.DefaultTransport.(*http.Transport).Clone()
+	tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+
+	client := http.Client{Transport: tr}
+	httpResp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -381,7 +398,11 @@ func (uh *UserRepo) DeleteUserInProfService(id string, ctx context.Context) (*ht
 
 	req.Header.Set("Content-Type", "application/json")
 
-	httpResp, err := http.DefaultClient.Do(req)
+	tr := http.DefaultTransport.(*http.Transport).Clone()
+	tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+
+	client := http.Client{Transport: tr}
+	httpResp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -424,7 +445,11 @@ func (uh *UserRepo) DeleteAccommdation(username string, ctx context.Context) (*h
 
 	req.Header.Set("Content-Type", "application/json")
 
-	httpResp, err := http.DefaultClient.Do(req)
+	tr := http.DefaultTransport.(*http.Transport).Clone()
+	tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+
+	client := http.Client{Transport: tr}
+	httpResp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -668,7 +693,11 @@ func (uh *UserRepo) UpdateProfileServiceUser(newUser *UserB, ctx context.Context
 
 	req.Header.Set("Content-Type", "application/json")
 
-	httpResp, err := http.DefaultClient.Do(req)
+	tr := http.DefaultTransport.(*http.Transport).Clone()
+	tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+
+	client := http.Client{Transport: tr}
+	httpResp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -712,7 +741,11 @@ func (uh *UserRepo) IsHostFeatured(id string, ctx context.Context) (*http.Respon
 
 	req.Header.Set("Content-Type", "application/json")
 
-	httpResp, err := http.DefaultClient.Do(req)
+	tr := http.DefaultTransport.(*http.Transport).Clone()
+	tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+
+	client := http.Client{Transport: tr}
+	httpResp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}

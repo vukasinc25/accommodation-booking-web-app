@@ -16,6 +16,8 @@ import {
 import { ProfServiceService } from '../../service/prof.service.service';
 import { NotificationService } from '../../service/notification.service';
 import { Notification1 } from '../../model/notification';
+import { ToastrService } from 'ngx-toastr';
+import { RecommendationService } from '../../service/recommendation.service';
 
 @Component({
   selector: 'app-accommo-info',
@@ -37,7 +39,9 @@ export class AccommoInfoComponent implements OnInit {
     private accommodationService: AccommodationService,
     private authService: AuthService,
     private reservationService: ReservationService,
-    private notificationService: NotificationService
+    private notificationService: NotificationService,
+    private toastr: ToastrService,
+    private recommendationService: RecommendationService
   ) {
     this.form = this.fb.group({
       grade: [
@@ -134,8 +138,7 @@ export class AccommoInfoComponent implements OnInit {
         // console.log(data);
       },
       error: (err) => {
-        alert(err.error.message);
-        console.log(err);
+        this.toastr.error(err.error.message);
         this.isDataEmpty = true;
         this.router.navigate(['']);
       },
@@ -145,7 +148,7 @@ export class AccommoInfoComponent implements OnInit {
       .getAvailabelDatesForAccomodation(this.id)
       .subscribe({
         next: (data) => {
-          console.log(data);
+          console.log('Available dates: ', data);
           this.reservationId = data[0].reservationId;
           this.hostId = data[0].userId;
           // console.log('HostId1:', this.hostId);
@@ -155,7 +158,7 @@ export class AccommoInfoComponent implements OnInit {
               this.grades = data;
             },
             error: (err) => {
-              alert(err.error.message);
+              this.toastr.error(err.error.message);
             },
           });
           this.accommodationService
@@ -166,7 +169,7 @@ export class AccommoInfoComponent implements OnInit {
                 this.accommodationGrades = data;
               },
               error: (err) => {
-                alert(err.error.message);
+                this.toastr.error(err.error.message);
               },
             });
           this.authService.getUserById(this.hostId).subscribe({
@@ -175,10 +178,9 @@ export class AccommoInfoComponent implements OnInit {
               this.hostAverageGrade = data.averageGrade;
             },
             error: (err) => {
-              alert(err.error.message);
+              this.toastr.error(err.error.message);
             },
           });
-
           //pretvori sve termine iz baze u ngbDate
           for (let availableDatePeriod of data) {
             let startDate = new NgbDate(
@@ -211,7 +213,7 @@ export class AccommoInfoComponent implements OnInit {
         },
         error: (err) => {
           console.log(err);
-          alert(err.error.message);
+          this.toastr.error(err.error.message);
           // this.router.navigate(['']);
         },
       });
@@ -239,7 +241,7 @@ export class AccommoInfoComponent implements OnInit {
       },
       error: (err) => {
         console.log(err);
-        alert(err.error.messa);
+        this.toastr.error(err.error.messa);
       },
     });
   }
@@ -344,12 +346,12 @@ export class AccommoInfoComponent implements OnInit {
   submitGrade() {
     this.profService.gradeHost(this.hostId, this.form.value.grade).subscribe({
       next: (data) => {
-        alert('Host graded');
+        this.toastr.success('Host graded');
         this.form.reset();
         this.ngOnInit();
       },
       error: (err) => {
-        alert(err.error.message);
+        this.toastr.error(err.error.message);
         this.form.reset();
       },
     });
@@ -367,13 +369,20 @@ export class AccommoInfoComponent implements OnInit {
       )
       .subscribe({
         next: (data) => {
+          this.toastr.success('Successfully reserved accommodation');
+          this.recommendationService.insert(this.accommodation).subscribe({
+            next: (data) => {
+              console.log('Sent to Recommendation service');
+            },
+            error: (err) => {
+              console.log(err);
+            },
+          });
           alert('Reserved');
           this.router.navigate(['']);
         },
         error: (err) => {
-          console.log(err.error.message);
-          alert(err.error.message);
-          // this.ngOnInit();
+          this.toastr.error(err.error.message);
         },
       });
 
@@ -382,11 +391,11 @@ export class AccommoInfoComponent implements OnInit {
   deleteHostGrade(id: any) {
     this.profService.deleteHostGrades(id).subscribe({
       next: (data) => {
-        alert('Grade deleted');
+        this.toastr.success('Deleted host review');
         this.ngOnInit();
       },
       error: (err) => {
-        alert(err.error.message);
+        this.toastr.error(err.error.message);
       },
     });
 
@@ -395,11 +404,11 @@ export class AccommoInfoComponent implements OnInit {
   deleteAccommodationGrade(id: any) {
     this.accommodationService.deleteAccommodationGrade(id).subscribe({
       next: (data) => {
-        alert('Accommodation deleted');
+        this.toastr.success('Deleted accommodation review');
         this.ngOnInit();
       },
       error: (err) => {
-        alert(err.error.message);
+        this.toastr.error(err.error.message);
       },
     });
     this.createNotification(
@@ -412,11 +421,13 @@ export class AccommoInfoComponent implements OnInit {
       .gradeAccommodation(this.id, this.formAccommodation.value.grade)
       .subscribe({
         next: (data) => {
-          alert('Accommodation graded');
+          this.toastr.success('Successfully created accommodation review');
+          this.formAccommodation.reset();
           this.ngOnInit();
         },
         error: (err) => {
-          alert(err.error.message);
+          this.formAccommodation.reset();
+          this.toastr.error(err.error.message);
         },
       });
 
@@ -430,10 +441,10 @@ export class AccommoInfoComponent implements OnInit {
     this.notification.description = description;
     this.notificationService.createNotification(this.notification).subscribe({
       next: (data) => {
-        alert('Notification Sent');
+        console.log('Notification Sent');
       },
       error: (err) => {
-        alert(err.error.message);
+        this.toastr.warning(err.error.message);
       },
     });
   }
@@ -447,13 +458,11 @@ export class AccommoInfoComponent implements OnInit {
       )
       .subscribe({
         next: (data) => {
-          console.log('Reservation is successfully created');
-          alert('Reservation is successfully created.');
+          this.toastr.success('Reservation is successfully created.');
           this.router.navigate(['accommodations/myAccommodations']);
         },
         error: (err) => {
-          console.log(err.error);
-          alert(err.error);
+          this.toastr.error(err.error);
         },
       });
   }

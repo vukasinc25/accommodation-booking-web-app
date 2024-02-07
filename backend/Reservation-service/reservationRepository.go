@@ -193,9 +193,9 @@ func (rs *ReservationRepo) GetReservationsByAcco(acco_id string, ctx context.Con
 	return reservations, nil
 }
 
-func (rs *ReservationRepo) InsertReservationByAcco(resAcco *ReservationByAccommodation, ctx context.Context) error {
-	ctx, span := rs.tracer.Start(ctx, "NotificationRepo.InsertReservationByAcco")
-	defer span.End()
+func (rs *ReservationRepo) InsertReservationByAcco(resAcco *ReservationByAccommodation) error {
+	//ctx, span := rs.tracer.Start(ctx, "NotificationRepo.InsertReservationByAcco")
+	//defer span.End()
 
 	overlap, err := rs.CheckOverlap1(resAcco.AccoId, resAcco.StartDate, resAcco.EndDate)
 	if err != nil {
@@ -424,6 +424,8 @@ func (rs *ReservationRepo) InsertReservationByUser(resUser *ReservationByUser, c
 		return errors.New("Dates are already reserved for that accommodation")
 	}
 
+	log.Println("Reservation2:", resUser)
+
 	err = rs.session.Query(
 		`INSERT INTO reservations_by_user (user_id, reservation_id, acco_id, price, 
 			begin_reservation_date, numberOfPeople, end_reservation_date) 
@@ -448,7 +450,7 @@ func (rs *ReservationRepo) InsertReservationByUser(resUser *ReservationByUser, c
 
 //--------------//
 
-func (rs *ReservationRepo) UpdateReservationByAcco(accoId string, reservationId string, hostId string, ctx context.Context) error { // nije namesteno
+func (rs *ReservationRepo) UpdateReservationByAcco(accoId string, reservationId string, hostId string) error { // nije namesteno
 	// err := rs.session.Query(
 	// 	`DELETE FROM reservations_by_acco1 where acoo_id = ? and reservation_id = ?`, // delete
 	// 	accoId, reservationId).Exec()

@@ -131,6 +131,7 @@ func main() {
 	authRoutes.HandleFunc("/api/users/changePassword", service.ChangePassword).Methods("PATCH")
 	authRoutes.HandleFunc("/api/users/delete", service.DeleteUser).Methods("DELETE")
 	router.HandleFunc("/api/users/user/{id}", service.GetUserById).Methods("GET")
+	router.HandleFunc("/api/users/username/{username}", service.GetUserByUsername).Methods("GET")
 
 	// Configure the HTTP server
 	server := http.Server{
@@ -151,8 +152,8 @@ func main() {
 
 	// Start the HTTP server in a goroutine
 	go func() {
-		err := server.ListenAndServe()
-		// err := server.ListenAndServeTLS("/cert/auth-service.crt", "/cert/auth-service.key")
+		// err := server.ListenAndServe()
+		err := server.ListenAndServeTLS("/cert/auth-service.crt", "/cert/auth-service.key")
 		if err != nil {
 			logger.Fatal(err)
 		}
@@ -178,11 +179,11 @@ func main() {
 
 func loadConfig() map[string]string {
 	config := make(map[string]string)
-	config["conn_service_address"] = fmt.Sprintf("http://%s:%s", os.Getenv("PROF_SERVICE_HOST"), os.Getenv("PROF_SERVICE_PORT"))
-	config["conn_reservation_service_address"] = fmt.Sprintf("http://%s:%s", os.Getenv("RESERVATION_SERVICE_HOST"), os.Getenv("RESERVATION_SERVICE_PORT"))
+	config["conn_service_address"] = fmt.Sprintf("https://%s:%s", os.Getenv("PROF_SERVICE_HOST"), os.Getenv("PROF_SERVICE_PORT"))
+	config["conn_reservation_service_address"] = fmt.Sprintf("https://%s:%s", os.Getenv("RESERVATION_SERVICE_HOST"), os.Getenv("RESERVATION_SERVICE_PORT"))
 	config["address"] = fmt.Sprintf(":%s", os.Getenv("PORT"))
 	config["jaeger"] = os.Getenv("JAEGER_ADDRESS")
-	config["conn_accommodation_service_address"] = fmt.Sprintf("http://%s:%s", os.Getenv("ACCOMMODATION_SERVICE_HOST"), os.Getenv("ACCOMMODATION_SERVICE_PORT"))
+	config["conn_accommodation_service_address"] = fmt.Sprintf("https://%s:%s", os.Getenv("ACCOMMODATION_SERVICE_HOST"), os.Getenv("ACCOMMODATION_SERVICE_PORT"))
 	return config
 }
 

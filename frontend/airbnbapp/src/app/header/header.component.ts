@@ -21,9 +21,5 @@ export class HeaderComponent implements OnInit {
     this.authService.checkLoggin();
     this.authService.checkRole();
   }
-
-  aaa(){
-    console.log("aaa")
-  }
 }
 

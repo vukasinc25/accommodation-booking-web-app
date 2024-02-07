@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/sony/gobreaker"
 	"log"
 	"net/http"
 	"os"
@@ -25,22 +26,22 @@ import (
 func main() {
 
 	config := loadConfig()
-	//
-	//authClient := &http.Client{
-	//	Transport: &http.Transport{
-	//		MaxIdleConns:        10,
-	//		MaxIdleConnsPerHost: 10,
-	//		MaxConnsPerHost:     10,
-	//	},
-	//}
-	//
-	//authBreaker := gobreaker.NewCircuitBreaker(
-	//	gobreaker.Settings{
-	//		Name:        "auth",
-	//		MaxRequests: 1,
-	//		Timeout:     10 * time.Second,
-	//		Interval:    0,
-	//	})
+
+	authClient := &http.Client{
+		Transport: &http.Transport{
+			MaxIdleConns:        10,
+			MaxIdleConnsPerHost: 10,
+			MaxConnsPerHost:     10,
+		},
+	}
+
+	authBreaker := gobreaker.NewCircuitBreaker(
+		gobreaker.Settings{
+			Name:        "auth",
+			MaxRequests: 1,
+			Timeout:     10 * time.Second,
+			Interval:    0,
+		})
 
 	tracerProvider, err := NewTracerProvider(config["jaeger"])
 	if err != nil {
@@ -84,6 +85,7 @@ func main() {
 
 	router.Use(service.MiddlewareContentTypeSet)
 	router.Use(service.ExtractTraceInfoMiddleware)
+	router.Use(service.MiddlewareRoleCheck(authClient, authBreaker))
 
 	postRouter := router.Methods(http.MethodPost).Subrouter()
 	postRouter.HandleFunc("/api/notifications/create", service.createNotification)
@@ -105,7 +107,8 @@ func main() {
 	logger.Println("Server listening on port", config["port"])
 	//Distribute all the connections to goroutines
 	go func() {
-		err := server.ListenAndServe()
+		// err := server.ListenAndServe()
+		err := server.ListenAndServeTLS("/cert/notification-service.crt", "/cert/notification-service.key")
 		if err != nil {
 			logger.Fatal(err)
 		}
@@ -132,8 +135,8 @@ func loadConfig() map[string]string {
 	config["host"] = os.Getenv("HOST")
 	config["port"] = os.Getenv("PORT")
 	config["address"] = fmt.Sprintf(":%s", os.Getenv("PORT"))
+	config["conn_reservation_service_address"] = fmt.Sprintf("https://%s:%s", os.Getenv("RESERVATION_SERVICE_HOST"), os.Getenv("RESERVATION_SERVICE_PORT"))
 	config["jaeger"] = os.Getenv("JAEGER_ADDRESS")
-	config["conn_reservation_service_address"] = fmt.Sprintf("http://%s:%s", os.Getenv("RESERVATION_SERVICE_HOST"), os.Getenv("RESERVATION_SERVICE_PORT"))
 	return config
 }
 

@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
@@ -429,6 +430,12 @@ func (rh *reservationHandler) CreateReservationDateForDate(res http.ResponseWrit
 		return
 	}
 
+	sanitizedNesto1 := sanitizeInput(reservationDate.AccoId)
+	//sanitizedNesto2 := sanitizeInput(reservationDate.HostId)
+
+	reservationDate.AccoId = sanitizedNesto1
+	//reservationDate.HostId = sanitizedNesto2
+
 	err = rh.repo.InsertReservationDateByDate(reservationDate, ctx)
 	if err != nil {
 		rh.logger.Print("Database exception: ", err)
@@ -456,16 +463,23 @@ func (rh *reservationHandler) CreateReservationDateForDate(res http.ResponseWrit
 // }
 
 func (rh *reservationHandler) CreateReservationForAcco(res http.ResponseWriter, req *http.Request) {
-	ctx, span := rh.tracer.Start(req.Context(), "reservationHandler.CreateReservationForAcco") //tracer
-	defer span.End()
-
+	log.Println("CreateReservationForAcco")
+	//ctx, span := rh.tracer.Start(req.Context(), "reservationHandler.CreateReservationForAcco") //tracer
+	//defer span.End()
 	reservation, err := decodeReservationBody(req.Body)
 	if err != nil {
 		rh.logger.Println("Error in decoding body")
 		sendErrorWithMessage(res, "Error in decoding body", http.StatusBadRequest)
 		return
 	}
-	err = rh.repo.InsertReservationByAcco(reservation, ctx)
+
+	sanitizedNesto1 := sanitizeInput(reservation.AccoId)
+	sanitizedNesto2 := sanitizeInput(reservation.HostId)
+
+	reservation.AccoId = sanitizedNesto1
+	reservation.HostId = sanitizedNesto2
+
+	err = rh.repo.InsertReservationByAcco(reservation)
 	if err != nil {
 		rh.logger.Print("Database exception: ", err)
 		sendErrorWithMessage(res, "Cant create reservation", http.StatusBadRequest)
@@ -483,6 +497,14 @@ func (rh *reservationHandler) CreateReservationForUser(res http.ResponseWriter, 
 		sendErrorWithMessage(res, "Cant decode body", http.StatusBadRequest)
 		return
 	}
+
+	sanitizedNesto1 := sanitizeInput(reservationUser.AccoId)
+	sanitizedNesto2 := sanitizeInput(reservationUser.UserId)
+
+	reservationUser.AccoId = sanitizedNesto1
+	reservationUser.UserId = sanitizedNesto2
+
+	log.Println("Reservation:", reservationUser)
 	err = rh.repo.InsertReservationByUser(reservationUser, ctx)
 	if err != nil {
 		rh.logger.Print("Database exception: ", err)
@@ -510,6 +532,8 @@ func (rh *reservationHandler) UpdateReservationByUser(res http.ResponseWriter, r
 		return
 	}
 
+	//sanitizedNesto := sanitizeInput(reservation.)
+
 	err = rh.repo.UpdateReservationByUser(reservation, ctx)
 	if err != nil {
 		rh.logger.Print("Database exception: ", err)
@@ -526,8 +550,8 @@ func (rh *reservationHandler) UpdateReservationByUser(res http.ResponseWriter, r
 }
 
 func (rh *reservationHandler) UpdateReservationByAcco(res http.ResponseWriter, req *http.Request) {
-	ctx, span := rh.tracer.Start(req.Context(), "reservationHandler.UpdateReservationByAcco") //tracer
-	defer span.End()
+	//ctx, span := rh.tracer.Start(req.Context(), "reservationHandler.UpdateReservationByAcco") //tracer
+	//defer span.End()
 
 	vars := mux.Vars(req)
 	accoId := vars["accoId"]
@@ -538,7 +562,15 @@ func (rh *reservationHandler) UpdateReservationByAcco(res http.ResponseWriter, r
 	d := json.NewDecoder(req.Body)
 	d.Decode(&stepenStudija)
 
-	err := rh.repo.UpdateReservationByAcco(accoId, reservationId, price, ctx)
+	sanitizedAccoId := sanitizeInput(accoId)
+	sanitizedReservationId := sanitizeInput(reservationId)
+	sanitizedPrice := sanitizeInput(price)
+
+	accoId = sanitizedAccoId
+	reservationId = sanitizedReservationId
+	price = sanitizedPrice
+
+	err := rh.repo.UpdateReservationByAcco(accoId, reservationId, price)
 	if err != nil {
 		rh.logger.Print("Database exception: ", err)
 		res.WriteHeader(http.StatusBadRequest)
@@ -583,7 +615,7 @@ func (rh *reservationHandler) MiddlewareRoleCheck(client *http.Client, breaker *
 
 			ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 			defer cancel()
-			reqURL := "http://auth-service:8000/api/users/auth"
+			reqURL := "https://auth-service:8000/api/users/auth"
 
 			authorizationHeader := r.Header.Get("authorization")
 			fields := strings.Fields(authorizationHeader)
@@ -605,6 +637,9 @@ func (rh *reservationHandler) MiddlewareRoleCheck(client *http.Client, breaker *
 				if err != nil {
 					return nil, err
 				}
+				tr := http.DefaultTransport.(*http.Transport).Clone()
+				tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+				client := http.Client{Transport: tr}
 				return client.Do(req)
 			})
 			if err != nil {
@@ -685,7 +720,7 @@ func (rh *reservationHandler) MiddlewareRoleCheck1(client *http.Client, breaker 
 
 			ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 			defer cancel()
-			reqURL := "http://auth-service:8000/api/users/auth"
+			reqURL := "https://auth-service:8000/api/users/auth"
 
 			authorizationHeader := r.Header.Get("authorization")
 			fields := strings.Fields(authorizationHeader)
@@ -707,6 +742,9 @@ func (rh *reservationHandler) MiddlewareRoleCheck1(client *http.Client, breaker 
 				if err != nil {
 					return nil, err
 				}
+				tr := http.DefaultTransport.(*http.Transport).Clone()
+				tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+				client := http.Client{Transport: tr}
 				return client.Do(req)
 			})
 			if err != nil {
@@ -737,7 +775,7 @@ func (rh *reservationHandler) MiddlewareRoleCheck0(client *http.Client, breaker 
 
 			ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 			defer cancel()
-			reqURL := "http://auth-service:8000/api/users/auth"
+			reqURL := "https://auth-service:8000/api/users/auth"
 
 			authorizationHeader := r.Header.Get("authorization")
 			fields := strings.Fields(authorizationHeader)
@@ -759,6 +797,9 @@ func (rh *reservationHandler) MiddlewareRoleCheck0(client *http.Client, breaker 
 				if err != nil {
 					return nil, err
 				}
+				tr := http.DefaultTransport.(*http.Transport).Clone()
+				tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+				client := http.Client{Transport: tr}
 				return client.Do(req)
 			})
 			if err != nil {
@@ -827,6 +868,10 @@ func decodeBody(r io.Reader) (*ReservationDateByDate, error) {
 		log.Println("Error u decode body:", err)
 		return nil, err
 	}
+	err := ValidateReservationDateByDate(&rt)
+	if err != nil {
+		return nil, err
+	}
 
 	return &rt, nil
 }
@@ -838,6 +883,10 @@ func decodeReservationBody(r io.Reader) (*ReservationByAccommodation, error) {
 	var rt ReservationByAccommodation
 	if err := dec.Decode(&rt); err != nil {
 		log.Println("Error u decode body:", err)
+		return nil, err
+	}
+	err := ValidateReservationByAccommodation(&rt)
+	if err != nil {
 		return nil, err
 	}
 
@@ -855,6 +904,11 @@ func decodeIdBody(r io.Reader) (*RequestId, error) {
 	}
 
 	return &rt, nil
+}
+
+func sanitizeInput(input string) string {
+	sanitizedInput := strings.ReplaceAll(input, "<", "&lt;")
+	return sanitizedInput
 }
 
 func decodeReservationByUserBody(r io.Reader) (*ReservationByUser, error) {
