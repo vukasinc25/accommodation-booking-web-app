@@ -2,6 +2,8 @@ module github.com/vukasinc25/fst-airbnb
 
 go 1.21.1
 
+// replace github.com/vukasinc25/fst-airbnb/utility => ../utility
+
 require (
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1

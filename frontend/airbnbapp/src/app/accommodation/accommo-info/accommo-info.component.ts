@@ -40,9 +40,8 @@ export class AccommoInfoComponent implements OnInit {
     private authService: AuthService,
     private reservationService: ReservationService,
     private notificationService: NotificationService,
-    private toastr: ToastrService
+    private toastr: ToastrService,
     private recommendationService: RecommendationService
-    
   ) {
     this.form = this.fb.group({
       grade: [
@@ -113,26 +112,26 @@ export class AccommoInfoComponent implements OnInit {
       next: (data) => {
         this.accommodation = data;
         console.log('Accommodation:', this.accommodation);
-        // for (const image of data.images) {
-        //   // console.log(image);
-        //   this.accommodationService.getAccommodationImage(image).subscribe(
-        //     (blob: Blob) => {
-        //       // console.log('Blob:', blob);
-        //       const reader = new FileReader();
-        //       reader.onloadend = () => {
-        //         const dataUrl = reader.result as string;
-        //         // Now 'dataUrl' contains the data URL representation of the image
-        //         // You can use 'dataUrl' as needed in your application
-        //         this.accommodationImages.push(dataUrl);
-        //         // console.log(dataUrl);
-        //       };
-        //       reader.readAsDataURL(blob);
-        //     },
-        //     (error) => {
-        //       console.error('Error fetching image:', error);
-        //     }
-        //   );
-        // }
+        for (const image of data.images) {
+          // console.log(image);
+          this.accommodationService.getAccommodationImage(image).subscribe(
+            (blob: Blob) => {
+              // console.log('Blob:', blob);
+              const reader = new FileReader();
+              reader.onloadend = () => {
+                const dataUrl = reader.result as string;
+                // Now 'dataUrl' contains the data URL representation of the image
+                // You can use 'dataUrl' as needed in your application
+                this.accommodationImages.push(dataUrl);
+                // console.log(dataUrl);
+              };
+              reader.readAsDataURL(blob);
+            },
+            (error) => {
+              console.error('Error fetching image:', error);
+            }
+          );
+        }
 
         // this.authService.getUserById()
         // console.log(this.accommodation._id);
@@ -149,7 +148,7 @@ export class AccommoInfoComponent implements OnInit {
       .getAvailabelDatesForAccomodation(this.id)
       .subscribe({
         next: (data) => {
-          console.log(data);
+          console.log('Available dates: ', data);
           this.reservationId = data[0].reservationId;
           this.hostId = data[0].userId;
           // console.log('HostId1:', this.hostId);
@@ -182,7 +181,6 @@ export class AccommoInfoComponent implements OnInit {
               this.toastr.error(err.error.message);
             },
           });
-
           //pretvori sve termine iz baze u ngbDate
           for (let availableDatePeriod of data) {
             let startDate = new NgbDate(
@@ -424,9 +422,11 @@ export class AccommoInfoComponent implements OnInit {
       .subscribe({
         next: (data) => {
           this.toastr.success('Successfully created accommodation review');
+          this.formAccommodation.reset();
           this.ngOnInit();
         },
         error: (err) => {
+          this.formAccommodation.reset();
           this.toastr.error(err.error.message);
         },
       });

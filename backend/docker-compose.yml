@@ -76,6 +76,12 @@ services:
       HDFS_URI: ${HDFS_URI}
       REDIS_HOST: ${REDIS_HOST}
       REDIS_PORT: ${REDIS_PORT}
+      NATS_HOST: ${NATS_HOST}
+      NATS_PORT: ${NATS_PORT}
+      NATS_USER: ${NATS_USER}
+      NATS_PASS: ${NATS_PASS}
+      CREATE_ACCOMMODATION_COMMAND_SUBJECT: ${CREATE_ACCOMMODATION_COMMAND_SUBJECT}
+      CREATE_ACCOMMODATION_REPLY_SUBJECT: ${CREATE_ACCOMMODATION_REPLY_SUBJECT}
       JAEGER_ADDRESS: ${JAEGER_ADDRESS}
     depends_on:
       mongo:
@@ -129,6 +135,13 @@ services:
       - 8000:8000
     environment:
       # - PORT=8000
+      CASS_DB: ${CASS_DB}
+      NATS_HOST: ${NATS_HOST}
+      NATS_PORT: ${NATS_PORT}
+      NATS_USER: ${NATS_USER}
+      NATS_PASS: ${NATS_PASS}
+      CREATE_ACCOMMODATION_COMMAND_SUBJECT: ${CREATE_ACCOMMODATION_COMMAND_SUBJECT}
+      CREATE_ACCOMMODATION_REPLY_SUBJECT: ${CREATE_ACCOMMODATION_REPLY_SUBJECT}
       HOST: ${RESERVATION_SERVICE_HOST}
       PORT: ${RESERVATION_SERVICE_PORT}
       CASS_DB: ${CASS_DB}
@@ -207,14 +220,14 @@ services:
     networks:
       - network
 
-  #  nats:
-  #    image: nats
-  #    container_name: nats
-  #    ports:
-  #      - "4222:4222"
-  #    restart: on-failure
-  #    networks:
-  #      - network
+  nats:
+    image: nats
+    container_name: nats
+    ports:
+      - "4222:4222"
+    restart: on-failure
+    networks:
+      - network
 
   # NOSQL: MongoDB
   mongo:

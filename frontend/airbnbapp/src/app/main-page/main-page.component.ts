@@ -4,7 +4,12 @@ import { AccommodationService } from '../service/accommodation.service';
 import { Router } from '@angular/router';
 import { AuthService } from '../service/auth.service';
 import { Subscription, catchError, forkJoin, of, range } from 'rxjs';
-import { AbstractControl, FormArray, FormControl, FormGroup } from '@angular/forms';
+import {
+  AbstractControl,
+  FormArray,
+  FormControl,
+  FormGroup,
+} from '@angular/forms';
 import { NgbDate } from '@ng-bootstrap/ng-bootstrap';
 import { ReservationService } from '../service/reservation.service';
 import { ReservationByDateSearch } from '../model/reservationByDateSearch';
@@ -27,7 +32,7 @@ export class MainPageComponent implements OnInit, OnDestroy {
   userRole: string = '';
   logSub: Subscription;
   rolesub: Subscription;
-  
+
   //Search
   searchAccoForm: FormGroup;
   filterAccoForm: FormGroup;
@@ -61,7 +66,6 @@ export class MainPageComponent implements OnInit, OnDestroy {
     private reservationService: ReservationService,
     private toastr: ToastrService,
     private recommendationService: RecommendationService
-     
   ) {
     this.logSub = this.authService.isLoggedin.subscribe(
       (data) => (this.isLoggedin = data)
@@ -78,11 +82,11 @@ export class MainPageComponent implements OnInit, OnDestroy {
     });
 
     this.filterAccoForm = new FormGroup({
-      priceFrom: new FormControl,
-      priceTo: new FormControl,
+      priceFrom: new FormControl(),
+      priceTo: new FormControl(),
       amenities: new FormArray([]),
-      isFeatured: new FormControl
-    })
+      isFeatured: new FormControl(),
+    });
   }
 
   ngOnInit(): void {
@@ -137,27 +141,35 @@ export class MainPageComponent implements OnInit, OnDestroy {
 
     this.priceFrom = this.filterAccoForm.get('priceFrom')?.value;
     this.priceTo = this.filterAccoForm.get('priceTo')?.value;
-    this.amenities = this.filterAccoForm.get('amenities')?.value
+    this.amenities = this.filterAccoForm.get('amenities')?.value;
     this.isFeatured = this.filterAccoForm.get('isFeatured')?.value;
 
     const observables = [];
 
     if (this.priceFrom > 0 && this.priceTo > 0) {
       this.isFilterPrice = true;
-      for (const accommodation of this.accommodations){
-        this.reservationService.getReservationsByAccoId(accommodation._id).subscribe({
-          next: (data) => {
-            for (const reservation of data) {
-              if ((reservation.priceByAccommodation >= this.priceFrom || reservation.priceByPeople >= this.priceFrom) && (
-                  reservation.priceByAccommodation <= this.priceTo || reservation.priceByPeople <= this.priceTo)) {
-                  this.priceAccommodations.push(accommodation)
+      for (const accommodation of this.accommodations) {
+        this.reservationService
+          .getReservationsByAccoId(accommodation._id)
+          .subscribe({
+            next: (data) => {
+              for (const reservation of data) {
+                if (
+                  (reservation.priceByAccommodation >= this.priceFrom ||
+                    reservation.priceByPeople >= this.priceFrom) &&
+                  (reservation.priceByAccommodation <= this.priceTo ||
+                    reservation.priceByPeople <= this.priceTo)
+                ) {
+                  this.priceAccommodations.push(accommodation);
+                }
               }
-            }
-          },
-        });
+            },
+          });
       }
       if (this.priceAccommodations.length <= 0) {
-        this.toastr.info("No accommodations in that price range have been found")
+        this.toastr.info(
+          'No accommodations in that price range have been found'
+        );
       }
       this.priceFrom = 0;
       this.priceTo = 0;
@@ -170,14 +182,16 @@ export class MainPageComponent implements OnInit, OnDestroy {
           for (const amenity of this.amenities) {
             if (accommodation.amenities.includes(amenity)) {
               if (!this.amenitiesAccommodations.includes(accommodation)) {
-                this.amenitiesAccommodations.push(accommodation)
+                this.amenitiesAccommodations.push(accommodation);
               }
             }
           }
         }
       }
       if (this.amenitiesAccommodations.length <= 0) {
-        this.toastr.info("No accommodations with those amenities have been found")
+        this.toastr.info(
+          'No accommodations with those amenities have been found'
+        );
       }
       this.amenities = [];
     }
@@ -185,84 +199,113 @@ export class MainPageComponent implements OnInit, OnDestroy {
     if (this.isFeatured == true) {
       this.isFilterFeaturedHost = true;
       for (const accommodation of this.accommodations) {
-        this.authService.getUserByUsername(accommodation.username ?? '').subscribe({
-          next: (data) => {
-            this.authService.getUserById(data._id).subscribe({
-              next: (data) => {
-                if (data.isFeatured == true) {
-                  this.featuredHostAccommodations.push(accommodation)
-                }
-              }
-            })
-          }
-        })
+        this.authService
+          .getUserByUsername(accommodation.username ?? '')
+          .subscribe({
+            next: (data) => {
+              this.authService.getUserById(data._id).subscribe({
+                next: (data) => {
+                  if (data.isFeatured == true) {
+                    this.featuredHostAccommodations.push(accommodation);
+                  }
+                },
+              });
+            },
+          });
       }
-      if (this.featuredHostAccommodations.length <= 0){
-        this.toastr.info("No accommodations with featured hosts have been found")
+      if (this.featuredHostAccommodations.length <= 0) {
+        this.toastr.info(
+          'No accommodations with featured hosts have been found'
+        );
       }
     }
-    this.displayFilteredAccos()
+    this.displayFilteredAccos();
   }
 
   sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   async displayFilteredAccos() {
     await this.sleep(500);
-    if (this.isFilterPrice == true && this.isFilterAmenities == false && this.isFilterFeaturedHost == false) {
-      console.log("Price Filter")
+    if (
+      this.isFilterPrice == true &&
+      this.isFilterAmenities == false &&
+      this.isFilterFeaturedHost == false
+    ) {
+      console.log('Price Filter');
       this.accommodations = this.priceAccommodations;
-    }
-    else if (this.isFilterPrice == true && this.isFilterAmenities == true && this.isFilterFeaturedHost == true) {
-      console.log("Everything Filter")
+    } else if (
+      this.isFilterPrice == true &&
+      this.isFilterAmenities == true &&
+      this.isFilterFeaturedHost == true
+    ) {
+      console.log('Everything Filter');
       for (const accommodation1 of this.priceAccommodations) {
         for (const accommodation2 of this.featuredHostAccommodations) {
           for (const accommodation3 of this.amenitiesAccommodations) {
-            if (accommodation1._id == accommodation2._id && accommodation1._id == accommodation3._id) {
-              this.soonToBeAccommodations.push(accommodation1)
+            if (
+              accommodation1._id == accommodation2._id &&
+              accommodation1._id == accommodation3._id
+            ) {
+              this.soonToBeAccommodations.push(accommodation1);
             }
           }
         }
       }
       this.accommodations = this.soonToBeAccommodations;
-    }
-    else if (this.isFilterPrice == false && this.isFilterAmenities == true && this.isFilterFeaturedHost == false) {
-      console.log("Amenities Filter")
+    } else if (
+      this.isFilterPrice == false &&
+      this.isFilterAmenities == true &&
+      this.isFilterFeaturedHost == false
+    ) {
+      console.log('Amenities Filter');
       this.accommodations = this.amenitiesAccommodations;
-    }
-    else if (this.isFilterPrice == false && this.isFilterAmenities == false && this.isFilterFeaturedHost == true) {
-      console.log("Featured Host Filter")
+    } else if (
+      this.isFilterPrice == false &&
+      this.isFilterAmenities == false &&
+      this.isFilterFeaturedHost == true
+    ) {
+      console.log('Featured Host Filter');
       this.accommodations = this.featuredHostAccommodations;
-    }
-    else if (this.isFilterPrice == true && this.isFilterAmenities == true && this.isFilterFeaturedHost == false) {
-      console.log("Price and Amenities")
+    } else if (
+      this.isFilterPrice == true &&
+      this.isFilterAmenities == true &&
+      this.isFilterFeaturedHost == false
+    ) {
+      console.log('Price and Amenities');
       for (const accommodation1 of this.amenitiesAccommodations) {
         for (const accommodation2 of this.priceAccommodations) {
           if (accommodation1._id == accommodation2._id) {
-            this.soonToBeAccommodations.push(accommodation1)
+            this.soonToBeAccommodations.push(accommodation1);
           }
         }
       }
       this.accommodations = this.soonToBeAccommodations;
-    }
-    else if (this.isFilterPrice == true && this.isFilterAmenities == false && this.isFilterFeaturedHost == true) {
-      console.log("Price and Featured Host Filter")
+    } else if (
+      this.isFilterPrice == true &&
+      this.isFilterAmenities == false &&
+      this.isFilterFeaturedHost == true
+    ) {
+      console.log('Price and Featured Host Filter');
       for (const accommodation1 of this.priceAccommodations) {
         for (const accommodation2 of this.featuredHostAccommodations) {
           if (accommodation1._id == accommodation2._id) {
-            this.soonToBeAccommodations.push(accommodation1)
+            this.soonToBeAccommodations.push(accommodation1);
           }
         }
       }
       this.accommodations = this.soonToBeAccommodations;
-    }
-    else if (this.isFilterPrice == false && this.isFilterAmenities == true && this.isFilterFeaturedHost == true) {
-      console.log("Featured Host and Amenities Filter")
+    } else if (
+      this.isFilterPrice == false &&
+      this.isFilterAmenities == true &&
+      this.isFilterFeaturedHost == true
+    ) {
+      console.log('Featured Host and Amenities Filter');
       for (const accommodation1 of this.featuredHostAccommodations) {
         for (const accommodation2 of this.amenitiesAccommodations) {
           if (accommodation1._id == accommodation2._id) {
-            this.soonToBeAccommodations.push(accommodation1)
+            this.soonToBeAccommodations.push(accommodation1);
           }
         }
       }
@@ -284,8 +327,6 @@ export class MainPageComponent implements OnInit, OnDestroy {
     this.endDateInput = this.searchAccoForm.get('endDate')?.value;
     this.noGuestsInput = this.searchAccoForm.get('noGuests')?.value;
 
-    console.log(this.startDateInput);
-    console.log(this.endDateInput);
     const locationObservable =
       this.locationInput != null && this.locationInput !== ''
         ? this.accommodationService.getAllByLocation(this.locationInput)
@@ -296,83 +337,97 @@ export class MainPageComponent implements OnInit, OnDestroy {
         ? this.accommodationService.getAllByNoGuests(this.noGuestsInput)
         : of([]);
 
-    const reservationsDateObservable =
+    const dateObservable =
       this.startDateInput != null && this.endDateInput != null
-        ? this.reservationService.getAllReservationDatesByDate(
+        ? this.accommodationService.getAllByDate(
             this.startDateInput,
             this.endDateInput
           )
         : of([]);
 
-    forkJoin([locationObservable, noGuestsObservable, dateObservable])
-    .subscribe({
-      next: ([locations, noGuests, accoDate]: [Accommodation[], Accommodation[], Accommodation[]]) => {
+    forkJoin([
+      locationObservable,
+      noGuestsObservable,
+      dateObservable,
+    ]).subscribe({
+      next: ([locations, noGuests, accoDate]: [
+        Accommodation[],
+        Accommodation[],
+        Accommodation[]
+      ]) => {
         this.accommodationsByLocation = locations as Accommodation[];
         this.accommodationsByNoGuest = noGuests as Accommodation[];
         this.accommodationsByDate = accoDate as Accommodation[];
 
         if (this.accommodationsByLocation == null) {
-          this.toastr.info("No accommodations with that location have been found")
-          this.accommodations = []
+          this.toastr.info(
+            'No accommodations with that location have been found'
+          );
+          this.accommodations = [];
         }
 
         if (this.accommodationsByDate == null) {
-          this.toastr.info("No accommodations with those reservation dates have been found")
-          this.accommodations = []
+          this.toastr.info(
+            'No accommodations with those reservation dates have been found'
+          );
+          this.accommodations = [];
         }
 
         if (this.accommodationsByNoGuest == null) {
-          this.toastr.info("No accommodations with that number of guests have been found")
-          this.accommodations = []
+          this.toastr.info(
+            'No accommodations with that number of guests have been found'
+          );
+          this.accommodations = [];
         }
-
-        if (this.reservationsByDate.length > 0) {
-          for (const accoDate of this.reservationsByDate) {
-            this.accommodationService.getById(accoDate.acco_id).subscribe({
-              next: (data) => {
-                this.accommodationsByDate.push(data);
-              },
-            });
-          }
-        }
-        console.log(this.accommodationsByDate);
 
         if (
           this.accommodationsByLocation.length > 0 &&
-          this.accommodationsByNoGuest.length == 0
+          this.accommodationsByNoGuest.length == 0 &&
+          this.accommodationsByDate.length == 0
         ) {
-          console.log('Ima lokacija nema gostiju');
+          console.log('Search by location only');
           this.accommodations = this.accommodationsByLocation;
         } else if (
-          this.accommodationsByLocation.length == 0 &&
+          this.accommodationsByLocation.length > 0 &&
+          this.accommodationsByDate.length > 0 &&
           this.accommodationsByNoGuest.length > 0
         ) {
-          console.log('Nema lokacija ima gostiju');
-            for (const accoDate of this.accommodationsByDate){
-              for (const accoLocation of this.accommodationsByLocation){
-                if (accoLocation._id == accoNoGuest._id && accoLocation._id == accoDate._id){
+          console.log('Search by all three');
+          const tempList: Accommodation[] = [];
+          for (const accoNoGuest of this.accommodationsByNoGuest) {
+            for (const accoDate of this.accommodationsByDate) {
+              for (const accoLocation of this.accommodationsByLocation) {
+                if (
+                  accoLocation._id == accoNoGuest._id &&
+                  accoLocation._id == accoDate._id
+                ) {
                   tempList.push(accoLocation);
-                }
-                else{
+                } else {
                   continue;
                 }
               }
             }
           }
-          this.accommodations = tempList
-        }
-        else if (this.accommodationsByDate.length > 0 && this.accommodationsByNoGuest.length == 0 && this.accommodationsByLocation.length == 0) {
-          console.log("Search by date only");
+          this.accommodations = tempList;
+        } else if (
+          this.accommodationsByDate.length > 0 &&
+          this.accommodationsByNoGuest.length == 0 &&
+          this.accommodationsByLocation.length == 0
+        ) {
+          console.log('Search by date only');
           this.accommodations = this.accommodationsByDate;
-        } 
-        else if (this.accommodationsByLocation.length == 0 && this.accommodationsByNoGuest.length > 0 && this.accommodationsByDate.length == 0) {
-          console.log("Search by number of guests only");
+        } else if (
+          this.accommodationsByLocation.length == 0 &&
+          this.accommodationsByNoGuest.length > 0 &&
+          this.accommodationsByDate.length == 0
+        ) {
+          console.log('Search by number of guests only');
           this.accommodations = this.accommodationsByNoGuest;
         } else if (
           this.accommodationsByLocation.length > 0 &&
           this.accommodationsByNoGuest.length > 0
         ) {
-          console.log('Ima oba');
+          console.log('Search by location and number of guests');
           const tempList: Accommodation[] = [];
           for (const accoLocation of this.accommodationsByLocation) {
             for (const accoNoGuest of this.accommodationsByNoGuest) {
@@ -385,37 +440,44 @@ export class MainPageComponent implements OnInit, OnDestroy {
           }
           this.accommodations = tempList;
         } else if (
-          this.accommodationsByLocation.length == 0 &&
+          this.accommodationsByLocation.length > 0 &&
+          this.accommodationsByDate.length > 0 &&
           this.accommodationsByNoGuest.length == 0
         ) {
-          for (const accoLocation of this.accommodationsByLocation){
-            for (const accoNoGuest of this.accommodationsByDate){
-              if (accoLocation._id == accoNoGuest._id){
-                tempList.push(accoLocation);
-              }
-              else{
-                continue;
-              }
-            }
-          }
-          this.accommodations = tempList
-        }
-        else if (this.accommodationsByLocation.length == 0 && this.accommodationsByDate.length > 0 && this.accommodationsByNoGuest.length > 0) {
-          console.log("Search by date and number of guests");
+          console.log('Search by location and date');
           const tempList: Accommodation[] = [];
-          for (const accoLocation of this.accommodationsByNoGuest){
-            for (const accoNoGuest of this.accommodationsByDate){
-              if (accoLocation._id == accoNoGuest._id){
+          for (const accoLocation of this.accommodationsByLocation) {
+            for (const accoNoGuest of this.accommodationsByDate) {
+              if (accoLocation._id == accoNoGuest._id) {
                 tempList.push(accoLocation);
-              }
-              else{
+              } else {
                 continue;
               }
             }
           }
-          this.accommodations = tempList
-        }
-        else if (this.accommodationsByLocation.length == 0 && this.accommodationsByNoGuest.length == 0 && this.accommodationsByDate.length == 0) {
+          this.accommodations = tempList;
+        } else if (
+          this.accommodationsByLocation.length == 0 &&
+          this.accommodationsByDate.length > 0 &&
+          this.accommodationsByNoGuest.length > 0
+        ) {
+          console.log('Search by date and number of guests');
+          const tempList: Accommodation[] = [];
+          for (const accoLocation of this.accommodationsByNoGuest) {
+            for (const accoNoGuest of this.accommodationsByDate) {
+              if (accoLocation._id == accoNoGuest._id) {
+                tempList.push(accoLocation);
+              } else {
+                continue;
+              }
+            }
+          }
+          this.accommodations = tempList;
+        } else if (
+          this.accommodationsByLocation.length == 0 &&
+          this.accommodationsByNoGuest.length == 0 &&
+          this.accommodationsByDate.length == 0
+        ) {
           this.ngOnInit();
         }
 
@@ -428,7 +490,6 @@ export class MainPageComponent implements OnInit, OnDestroy {
       },
       complete: () => {
         console.log('Both observables complete');
-        console.log(this.accommodationsByDate);
       },
     });
   }
@@ -438,7 +499,9 @@ export class MainPageComponent implements OnInit, OnDestroy {
   }
 
   onCheckChange(event: any) {
-    const formArray: FormArray = this.filterAccoForm.get('amenities') as FormArray;
+    const formArray: FormArray = this.filterAccoForm.get(
+      'amenities'
+    ) as FormArray;
 
     if (event.target.checked) {
       formArray.push(new FormControl(event.target.value));

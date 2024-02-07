@@ -60,6 +60,19 @@ func main() {
 			MaxRequests: 1,
 			Timeout:     10 * time.Second,
 			Interval:    0,
+			ReadyToTrip: func(counts gobreaker.Counts) bool {
+				return counts.ConsecutiveFailures > 2
+			},
+			OnStateChange: func(name string, from gobreaker.State, to gobreaker.State) {
+				log.Printf("Circuit Breaker '%s' changed from '%s' to, %s'\n", name, from, to)
+			},
+			IsSuccessful: func(err error) bool {
+				if err == nil {
+					return true
+				}
+				errResp, ok := err.(ErrResp)
+				return ok && errResp.StatusCode >= 400 && errResp.StatusCode < 500
+			},
 		})
 
 	quit := make(chan os.Signal)
@@ -139,8 +152,8 @@ func main() {
 	}
 	go func() {
 		logger.Info("lavor4")
-		err := server.ListenAndServe()
-		// err := server.ListenAndServeTLS("/cert/prof-service.crt", "/cert/prof-service.key")
+		// err := server.ListenAndServe()
+		err := server.ListenAndServeTLS("/cert/prof-service.crt", "/cert/prof-service.key")
 		if err != nil {
 			logger.Println("Error starting server", err)
 			// logMessage(fmt.Sprintf("Error starting server: %s", err), logrus.ErrorLevel)
@@ -183,8 +196,8 @@ func loadConfig() map[string]string {
 	config["port"] = os.Getenv("PORT")
 	config["address"] = fmt.Sprintf(":%s", os.Getenv("PORT"))
 	config["mondo_db_uri"] = os.Getenv("MONGO_DB_URI")
-	config["conn_reservation_service_address"] = fmt.Sprintf("http://%s:%s", os.Getenv("RESERVATION_SERVICE_HOST"), os.Getenv("RESERVATION_SERVICE_PORT"))
-	config["conn_auth_service_address"] = fmt.Sprintf("http://%s:%s", os.Getenv("AUTH_SERVICE_HOST"), os.Getenv("AUTH_SERVICE_PORT"))
+	config["conn_reservation_service_address"] = fmt.Sprintf("https://%s:%s", os.Getenv("RESERVATION_SERVICE_HOST"), os.Getenv("RESERVATION_SERVICE_PORT"))
+	config["conn_auth_service_address"] = fmt.Sprintf("https://%s:%s", os.Getenv("AUTH_SERVICE_HOST"), os.Getenv("AUTH_SERVICE_PORT"))
 	config["address"] = fmt.Sprintf(":%s", os.Getenv("PORT"))
 	config["jaeger"] = os.Getenv("JAEGER_ADDRESS")
 	return config

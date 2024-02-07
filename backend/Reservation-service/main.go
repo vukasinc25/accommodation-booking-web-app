@@ -21,7 +21,14 @@ import (
 	lumberjack "github.com/natefinch/lumberjack"
 	log "github.com/sirupsen/logrus"
 	"github.com/sony/gobreaker"
-	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
+	saga "github.com/vukasinc25/fst-airbnb/utility/saga/messaging"
+	nats "github.com/vukasinc25/fst-airbnb/utility/saga/messaging/nats"
+	// handlers "github.com/vukasinc25/fst-airbnb/handlers"
+  semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
+)
+
+const (
+	QueueGroup = "reservation_service"
 )
 
 func main() {
@@ -65,6 +72,19 @@ func main() {
 			MaxRequests: 1,
 			Timeout:     10 * time.Second,
 			Interval:    0,
+			ReadyToTrip: func(counts gobreaker.Counts) bool {
+				return counts.ConsecutiveFailures > 2
+			},
+			OnStateChange: func(name string, from gobreaker.State, to gobreaker.State) {
+				log.Printf("Circuit Breaker '%s' changed from '%s' to, %s'\n", name, from, to)
+			},
+			IsSuccessful: func(err error) bool {
+				if err == nil {
+					return true
+				}
+				errResp, ok := err.(ErrResp)
+				return ok && errResp.StatusCode >= 400 && errResp.StatusCode < 500
+			},
 		})
 
 	port := os.Getenv("PORT")
@@ -82,7 +102,6 @@ func main() {
 
 	timeoutContext, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-
 	// logger := log.New(os.Stdout, "[reservation-api] ", log.LstdFlags)
 	// storeLogger := log.New(os.Stdout, "[reservation-store] ", log.LstdFlags)
 
@@ -93,6 +112,11 @@ func main() {
 	defer store.CloseSession()
 	store.CreateTables()
 
+	commandSubscriber := initSubscriber(os.Getenv("CREATE_ACCOMMODATION_COMMAND_SUBJECT"), QueueGroup) // commandSubscriber
+	replyPublisher := initPublisher(os.Getenv("CREATE_ACCOMMODATION_REPLY_SUBJECT"))                   // replyPublisher
+	handel := initCreateOrderHandler(store, replyPublisher, commandSubscriber)                         // commandHandle
+
+	log.Println("Reservation handel method:", handel)
 	reservationHandler := NewReservationHandler(logger, store, tracer)
 	router := mux.NewRouter()
 	router.Use(reservationHandler.ExtractTraceInfoMiddleware)
@@ -165,7 +189,8 @@ func main() {
 	logger.Println("Server listening on port", port)
 	//Distribute all the connections to goroutines
 	go func() {
-		err := server.ListenAndServe()
+		// err := server.ListenAndServe()
+		err := server.ListenAndServeTLS("/cert/reservation-service.crt", "/cert/reservation-service.key")
 		if err != nil {
 			logger.Fatal(err)
 		}
@@ -186,6 +211,34 @@ func main() {
 	logger.Println("Server stopped")
 }
 
+func initPublisher(subject string) saga.Publisher {
+	publisher, err := nats.NewNATSPublisher(
+		os.Getenv("NATS_HOST"), os.Getenv("NATS_PORT"),
+		os.Getenv("NATS_USER"), os.Getenv("NATS_PASS"), subject)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return publisher
+}
+
+func initSubscriber(subject, queueGroup string) saga.Subscriber {
+	subscriber, err := nats.NewNATSSubscriber(
+		os.Getenv("NATS_HOST"), os.Getenv("NATS_PORT"),
+		os.Getenv("NATS_USER"), os.Getenv("NATS_PASS"), subject, queueGroup)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return subscriber
+}
+
+func initCreateOrderHandler(store *ReservationRepo, replyPublisher saga.Publisher, commandSubscriber saga.Subscriber) *CreateResrvationCommandHandler {
+	something, err := NewCreateReservationCommandHandler(store, replyPublisher, commandSubscriber) // commandHandle
+	if err != nil {
+		log.Fatal("Ovde1: ", err)
+	}
+
+	return something
+  
 func loadConfig() map[string]string {
 	config := make(map[string]string)
 	config["host"] = os.Getenv("HOST")

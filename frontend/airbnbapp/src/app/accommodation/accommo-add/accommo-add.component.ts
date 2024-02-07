@@ -29,6 +29,7 @@ export class AccommoAddComponent implements OnInit {
   selectedFiles: File[] = [];
   errorMessage: string = '';
   imageCount: number = 0;
+  // accommodationForm!: FormGroup;
 
   onFileChange(event: any) {
     this.errorMessage = '';
@@ -85,6 +86,10 @@ export class AccommoAddComponent implements OnInit {
         maxGuests: [null, Validators.required],
         amenities: new FormArray([], Validators.required),
         images: new FormArray([], [Validators.required]),
+        availableFrom: ['', Validators.required],
+        availableUntil: ['', Validators.required],
+        priceType: ['', Validators.required],
+        price: ['', Validators.required],
       },
       { validators: [this.imageCountValidator.bind(this)] }
     );
@@ -111,30 +116,34 @@ export class AccommoAddComponent implements OnInit {
   }
 
   submit() {
-    let accommodation: Accommodation = { ...this.form.value };
-    console.log(accommodation)
-    accommodation.username = this.authService.getUsername();
+    // let accommodation: Accommodation = { ...this.form.value };
+    // accommodation.username = this.authService.getUsername();
     console.log('ImageNames:', this.imageNames);
     console.log('Images:', this.selectedFiles);
+    console.log('Accommodation:', this.form.value);
 
-    this.accommodationService.insert(accommodation, this.imageNames).subscribe({
-      next: (data) => {
-        this.toastr.error("Successfully created accommodation");
-        // this.router.navigate(['']);
-      },
-      error: (err) => {
-        console.log(err);
-      },
-    });
+    this.accommodationService
+      .insert(this.authService.getUsername(), this.form.value, this.imageNames)
+      .subscribe({
+        next: (data) => {
+          console.log('create success');
+          this.router.navigate(['']);
+        },
+        error: (err) => {
+          alert(err.error.message);
+          console.log(err);
+        },
+      });
 
-    this.accommodationService.createImages(this.selectedFiles).subscribe({
-      next: (data) => {
-        this.router.navigate(['']);
-      },
-      error: (err) => {
-        this.toastr.error(err.error.message);
-      },
-    });
+    // this.accommodationService.createImages(this.selectedFiles).subscribe({
+    //   next: (data) => {
+    //     this.router.navigate(['']);
+    //   },
+    //   error: (err) => {
+    //     console.log(err);
+    //     alert(err.error.message);
+    //   },
+    // });
   }
 
   getRange(obj: any) {

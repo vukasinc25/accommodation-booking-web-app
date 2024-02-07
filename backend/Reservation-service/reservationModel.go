@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"time"
 
@@ -98,6 +99,16 @@ func ValidateReservationByAccommodation(reservation *ReservationByAccommodation)
 	//	return errors.New("endDate is required")
 	//}
 	return nil
+}
+
+type ErrResp struct {
+	URL        string
+	Method     string
+	StatusCode int
+}
+
+func (e ErrResp) Error() string {
+	return fmt.Sprintf("error [status code %d] for request: HTTP %s\t%s", e.StatusCode, e.Method, e.URL)
 }
 
 func (o *ReservationByAccommodation) ToJSON(w io.Writer) error {
