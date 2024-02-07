@@ -13,30 +13,10 @@
       <div class="wrapper">
         <p>Search Accommodations</p>
         <div class="search-container">
-          <input
-            type="text"
-            [formControlName]="'location'"
-            class="location"
-            placeholder="Location"
-          />
-          <input
-            type="date"
-            [formControlName]="'startDate'"
-            class="date-from"
-            placeholder="Check In"
-          />
-          <input
-            type="date"
-            [formControlName]="'endDate'"
-            class="date-to"
-            placeholder="Check Out"
-          />
-          <input
-            type="text"
-            [formControlName]="'noGuests'"
-            class="noPeople"
-            placeholder="Number of people"
-          />
+          <input id="searchInput" type="text" [formControlName]="'location'" class="location" placeholder="Location">
+          <input id="searchInput" type="date" [formControlName]="'startDate'" class="date-from" placeholder="Check In">
+          <input id="searchInput" type="date" [formControlName]="'endDate'" class="date-to" placeholder="Check Out">
+          <input id="searchInput" type="number" [formControlName]="'noGuests'" class="noPeople" placeholder="Number of people" min="0" max="15">
           <button type="submit" class="button">Search</button>
           <button type="button" class="button" (click)="ngOnInit()">
             Reset
@@ -51,8 +31,8 @@
       <div class="wrapper">
         <p>Filter Accommodations</p>
         <div class="search-container">
-          <input id="filterInput" type="text" [formControlName]="'priceFrom'" class="priceFrom" placeholder="Price From">
-          <input id="filterInput" type="text" [formControlName]="'priceTo'" class="priceTo" placeholder="Price To">
+          <input id="filterInput" type="number" [formControlName]="'priceFrom'" class="priceFrom" placeholder="Price From" min="1" max="1000">
+          <input id="filterInput" type="number" [formControlName]="'priceTo'" class="priceTo" placeholder="Price To" min="1" max="1000">
 
           <div
             class="form-check"

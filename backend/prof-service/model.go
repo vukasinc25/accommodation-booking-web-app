@@ -88,31 +88,24 @@ func ValidateUser(user *User) error {
 	if user.Username == "" {
 		return errors.New("username is required")
 	}
-
 	if user.Email == "" {
 		return errors.New("email is required")
 	}
-
 	if user.FirstName == "" {
 		return errors.New("firsName is required")
 	}
-
 	if user.LastName == "" {
 		return errors.New("lastName is required")
 	}
-
 	if user.Location.City == "" {
 		return errors.New("city is required")
 	}
-
 	if user.Location.Country == "" {
 		return errors.New("country is required")
 	}
-
 	if user.Location.StreetName == "" {
 		return errors.New("streetName is required")
 	}
-
 	if user.Location.StreetNumber == "" {
 		return errors.New("streetNumber is required")
 	}

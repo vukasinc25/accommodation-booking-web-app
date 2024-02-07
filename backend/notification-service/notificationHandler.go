@@ -356,6 +356,11 @@ func decodeBody(r io.Reader) (*Notification, error) {
 	if err := dec.Decode(&rt); err != nil {
 		return nil, err
 	}
+
+	err := ValidateNotification(&rt)
+	if err != nil {
+		return nil, err
+	}
 	return &rt, nil
 }
 

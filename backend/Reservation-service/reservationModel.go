@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"time"
@@ -67,6 +68,38 @@ type ReservationsByUser []*UserReservations
 type ReservationDatesByAccomodationId []*ReservationDate
 type ReservationDatesByDate []*ReservationDateByDate
 type ReservationDatesByDateGet []*ReservationDateByDateGet
+
+func ValidateReservationDateByDate(reservation *ReservationDateByDate) error {
+	if reservation.AccoId == "" {
+		return errors.New("accoId is required")
+	}
+	//if reservation.BeginAccomodationDate == nil {
+	//	return errors.New("BeginAccomodationDate is required")
+	//}
+	//if reservation.EndAccomodationDate != nil {
+	//	return errors.New("EndAccomodationDate is required")
+	//}
+	return nil
+}
+
+func ValidateReservationByAccommodation(reservation *ReservationByAccommodation) error {
+	if reservation.HostId == "" {
+		return errors.New("hostId is required")
+	}
+	if reservation.AccoId == "" {
+		return errors.New("accoId is required")
+	}
+	if reservation.NumberPeople == 0 {
+		return errors.New("number of people is required")
+	}
+	//if reservation.StartDate == nil {
+	//	return errors.New("startDate is required")
+	//}
+	//if reservation.EndDate != nil {
+	//	return errors.New("endDate is required")
+	//}
+	return nil
+}
 
 type ErrResp struct {
 	URL        string
