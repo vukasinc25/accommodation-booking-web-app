@@ -85,10 +85,9 @@ export class MainPageComponent implements OnInit, OnDestroy {
     this.accommodationService.getAll().subscribe({
       next: (data) => {
         this.accommodations = data as Accommodation[];
-        // console.log(this.accommodations);
       },
       error: (err) => {
-        console.log(err);
+        this.toastr.error(err);
       },
     });
   }
@@ -174,10 +173,6 @@ export class MainPageComponent implements OnInit, OnDestroy {
       }
     }
     this.displayFilteredAccos()
-  }
-
-  amenityFiltering(){
-    
   }
 
   sleep(ms: number): Promise<void> {
@@ -274,7 +269,7 @@ export class MainPageComponent implements OnInit, OnDestroy {
 
     forkJoin([locationObservable, noGuestsObservable, dateObservable])
     .subscribe({
-      next: ([locations, noGuests, accoDate]: [Accommodation[], Accommodation[], ReservationByDateSearch[]]) => {
+      next: ([locations, noGuests, accoDate]: [Accommodation[], Accommodation[], Accommodation[]]) => {
         this.accommodationsByLocation = locations as Accommodation[];
         this.accommodationsByNoGuest = noGuests as Accommodation[];
         this.accommodationsByDate = accoDate as Accommodation[];

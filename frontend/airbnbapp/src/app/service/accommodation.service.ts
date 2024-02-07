@@ -95,8 +95,6 @@ export class AccommodationService {
     });
   }
 
-  
-
   insert(accommodation: Accommodation, imageNames: any): Observable<any> {
     return this.http.post(
       '/api/accommodations/create',
