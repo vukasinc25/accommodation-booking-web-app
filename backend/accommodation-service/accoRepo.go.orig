@@ -139,6 +139,12 @@ func (ar *AccoRepo) GetAllById(id string, ctx context.Context) (Accommodations, 
 	return accommodations, nil
 }
 
+<<<<<<< Updated upstream
+func (ar *AccoRepo) Delete(username string, ctx context.Context) error {
+	ctx, span := ar.tracer.Start(ctx, "AccoRepo.Delete")
+	defer span.End()
+
+=======
 func (ar *AccoRepo) GetAllRecommended(accoIds *ReqList) (*Accommodations, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -165,13 +171,10 @@ func (ar *AccoRepo) GetAllRecommended(accoIds *ReqList) (*Accommodations, error)
 		return nil, err
 	}
 	return &accommodations, nil
-
 }
 
-func (ar *AccoRepo) Delete(username string, ctx context.Context) error {
-	ctx, span := ar.tracer.Start(ctx, "AccoRepo.Delete")
-	defer span.End()
-
+func (ar *AccoRepo) Delete(username string) error {
+>>>>>>> Stashed changes
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	patientsCollection := ar.getCollection()

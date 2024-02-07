@@ -28,6 +28,19 @@ export class AccommodationService {
     });
   }
 
+  getAllRecommended(list: string[]): Observable<any> {
+    return this.http.post(
+      '/api/accommodations/recommendations',
+      {
+        list,
+      },
+      {
+        headers: this.headers,
+        responseType: 'json',
+      }
+    );
+  }
+
   getAllByUsername(id: string): Observable<any> {
     return this.http.get('/api/accommodations/myAccommodations/' + id, {
       headers: this.headers,

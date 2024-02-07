@@ -162,8 +162,6 @@ services:
     command: [ "--config=/etc/otel-collector-config.yaml" ]
     volumes:
       - ./api-gateway/otel-collector-config.yaml:/etc/otel-collector-config.yaml
-    networks:
-      - network
 
   recommendation-service:
     build:
@@ -172,17 +170,17 @@ services:
     restart: always
     hostname: "recommendation-service"
     #Mapping ports
-#    ports:
-      # <port_on_local>:<port_in_machine>
-#      - 8000:8000
-    #Will be accessible through os.Getenv("PORT")
+    #    ports:
+  # <port_on_local>:<port_in_machine>
+  #      - 8000:8000
+  #Will be accessible through os.Getenv("PORT")
     environment:
-      - PORT=8000
-      # NoSQL: environment variable holding connection URI for Neo4J database
-      # Local DB instance
-      - NEO4J_DB=bolt://neo4j:7687
-      - NEO4J_USERNAME=neo4j
-      - NEO4J_PASS=passwordds
+    - PORT=8000
+    # NoSQL: environment variable holding connection URI for Neo4J database
+    # Local DB instance
+    - NEO4J_DB=bolt://neo4j:7687
+    - NEO4J_USERNAME=neo4j
+    - NEO4J_PASS=passwordds
     depends_on:
       neo4j:
         condition: service_healthy
@@ -202,8 +200,8 @@ services:
       - accommodation-service
       - prof-service
       - reservation-service
-      - notification-service
       - recommendation-service
+      - notification-service
     networks:
       - network
 

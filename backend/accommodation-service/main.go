@@ -155,6 +155,8 @@ func main() {
 	deleteAccommodationGrade.HandleFunc("/api/accommodations/deleteAccommodationGrade/{id}", service.DeleteAccommodationGrade)
 	deleteAccommodationGrade.Use(service.MiddlewareRoleCheck00(authClient, authBreaker))
 
+	router.HandleFunc("/api/accommodations/recommendations", service.GetAllRecommended).Methods("POST")
+
 	router.HandleFunc("/api/accommodations/copy", storageHandler.CopyFileToStorage).Methods("POST")
 
 	router.HandleFunc("/api/accommodations/write", storageHandler.WriteFileToStorage).Methods("POST")

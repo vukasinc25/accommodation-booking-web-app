@@ -17,6 +17,7 @@ import { ProfServiceService } from '../../service/prof.service.service';
 import { NotificationService } from '../../service/notification.service';
 import { Notification1 } from '../../model/notification';
 import { ToastrService } from 'ngx-toastr';
+import { RecommendationService } from 'src/app/service/recommendation.service';
 
 @Component({
   selector: 'app-accommo-info',
@@ -40,6 +41,8 @@ export class AccommoInfoComponent implements OnInit {
     private reservationService: ReservationService,
     private notificationService: NotificationService,
     private toastr: ToastrService
+    private recommendationService: RecommendationService
+    
   ) {
     this.form = this.fb.group({
       grade: [
@@ -110,26 +113,26 @@ export class AccommoInfoComponent implements OnInit {
       next: (data) => {
         this.accommodation = data;
         console.log('Accommodation:', this.accommodation);
-        for (const image of data.images) {
-          // console.log(image);
-          this.accommodationService.getAccommodationImage(image).subscribe(
-            (blob: Blob) => {
-              // console.log('Blob:', blob);
-              const reader = new FileReader();
-              reader.onloadend = () => {
-                const dataUrl = reader.result as string;
-                // Now 'dataUrl' contains the data URL representation of the image
-                // You can use 'dataUrl' as needed in your application
-                this.accommodationImages.push(dataUrl);
-                // console.log(dataUrl);
-              };
-              reader.readAsDataURL(blob);
-            },
-            (error) => {
-              console.error('Error fetching image:', error);
-            }
-          );
-        }
+        // for (const image of data.images) {
+        //   // console.log(image);
+        //   this.accommodationService.getAccommodationImage(image).subscribe(
+        //     (blob: Blob) => {
+        //       // console.log('Blob:', blob);
+        //       const reader = new FileReader();
+        //       reader.onloadend = () => {
+        //         const dataUrl = reader.result as string;
+        //         // Now 'dataUrl' contains the data URL representation of the image
+        //         // You can use 'dataUrl' as needed in your application
+        //         this.accommodationImages.push(dataUrl);
+        //         // console.log(dataUrl);
+        //       };
+        //       reader.readAsDataURL(blob);
+        //     },
+        //     (error) => {
+        //       console.error('Error fetching image:', error);
+        //     }
+        //   );
+        // }
 
         // this.authService.getUserById()
         // console.log(this.accommodation._id);
@@ -369,6 +372,15 @@ export class AccommoInfoComponent implements OnInit {
       .subscribe({
         next: (data) => {
           this.toastr.success('Successfully reserved accommodation');
+          this.recommendationService.insert(this.accommodation).subscribe({
+            next: (data) => {
+              console.log('Sent to Recommendation service');
+            },
+            error: (err) => {
+              console.log(err);
+            },
+          });
+          alert('Reserved');
           this.router.navigate(['']);
         },
         error: (err) => {

@@ -103,19 +103,24 @@ func main() {
 	// router.HandleFunc("/api/prof/email/{code}", service.verifyEmail).Methods("POST") // for sending verification mail
 	router.HandleFunc("/api/prof/create", service.createUser).Methods("POST")
 	router.HandleFunc("/api/prof/users/", service.getAllUsers).Methods("GET")
+
 	getUserInfoByUserId := router.Methods(http.MethodGet).Subrouter()
 	getUserInfoByUserId.HandleFunc("/api/prof/user", service.GetUserById)
 	getUserInfoByUserId.Use(service.MiddlewareRoleCheck(authClient, authBreaker))
+
 	router.Methods(http.MethodPatch).Subrouter()
 	getAllHostGrades := router.Methods(http.MethodGet).Subrouter()
 	getAllHostGrades.HandleFunc("/api/prof/hostGrades/{id}", service.GetAllHostGrades) // treba authorisation
 	getAllHostGrades.Use(service.MiddlewareRoleCheck00(authClient, authBreaker))
+
 	createHostGrade := router.Methods(http.MethodPost).Subrouter()
 	createHostGrade.HandleFunc("/api/prof/hostGrade", service.CreateHostGrade) // treba authorisation
 	createHostGrade.Use(service.MiddlewareRoleCheck0(authClient, authBreaker))
+
 	deleteHostGrade := router.Methods(http.MethodDelete).Subrouter()
 	deleteHostGrade.HandleFunc("/api/prof/hostGrade/{id}", service.DeleteHostGrade) // treba authorisation
 	deleteHostGrade.Use(service.MiddlewareRoleCheck00(authClient, authBreaker))
+
 	router.HandleFunc("/api/prof/update", service.UpdateUser).Methods("PATCH")
 	router.HandleFunc("/api/prof/delete/{id}", service.DeleteUser).Methods("DELETE")
 

@@ -165,30 +165,6 @@ services:
     networks:
       - network
 
-  recommendation-service:
-    build:
-      context: .
-      dockerfile: ./recommendation-service/Dockerfile
-    restart: always
-    hostname: "recommendation-service"
-    #Mapping ports
-#    ports:
-      # <port_on_local>:<port_in_machine>
-#      - 8000:8000
-    #Will be accessible through os.Getenv("PORT")
-    environment:
-      - PORT=8000
-      # NoSQL: environment variable holding connection URI for Neo4J database
-      # Local DB instance
-      - NEO4J_DB=bolt://neo4j:7687
-      - NEO4J_USERNAME=neo4j
-      - NEO4J_PASS=passwordds
-    depends_on:
-      neo4j:
-        condition: service_healthy
-    networks:
-      - network
-
   api_gateway:
     build:
       context: ./api-gateway/
@@ -203,7 +179,6 @@ services:
       - prof-service
       - reservation-service
       - notification-service
-      - recommendation-service
     networks:
       - network
 
@@ -368,34 +343,6 @@ services:
     networks:
       - network
 
-  neo4j:
-    image: neo4j
-    restart: always
-    ports:
-      # bolt
-      - "7687:7687"
-      # http
-      - "7474:7474"
-      # https
-      - "7473:7473"
-    # Docker healtcheck - checks if database is "alive"
-    healthcheck:
-      # test: [ "CMD-SHELL", "echo RETURN 1 | cypher-shell -a <NEO4J_dbms_connector_bolt_listen__address> -u <user defined username> -p <user defined password> || exit 1" ]
-      test:
-        [
-          "CMD-SHELL",
-          "echo RETURN 1 | cypher-shell -a bolt://neo4j:7687 -u neo4j -p passwordds || exit 1",
-        ]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    environment:
-      - NEO4J_AUTH=neo4j/passwordds
-    volumes:
-      - neo4j_data:/data
-    networks:
-      - network
-
 volumes:
   mongo_store:
   mongo_express_data:
@@ -410,7 +357,6 @@ volumes:
   prof_log:
   acco_log:
   res_log:
-  neo4j_data:
 
 networks:
   network:

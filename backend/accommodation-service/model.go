@@ -67,6 +67,20 @@ type AccommodationGrade struct {
 	Grade           int    `bson:"grade,omitempty" json:"grade"`
 }
 
+type ReqList struct {
+	List []string `json:"list"`
+}
+
+func (req *ReqList) FromJSON(r io.Reader) error {
+	d := json.NewDecoder(r)
+	return d.Decode(req)
+}
+
+func (req *ReqList) ToJSON(w io.Writer) error {
+	e := json.NewEncoder(w)
+	return e.Encode(req)
+}
+
 func (as *Accommodations) ToJSON(w io.Writer) error {
 	e := json.NewEncoder(w)
 	return e.Encode(as)

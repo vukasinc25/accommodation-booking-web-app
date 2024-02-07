@@ -136,6 +136,37 @@ func (ah *AccoHandler) GetAllAccommodationsById(w http.ResponseWriter, req *http
 	}
 }
 
+func (ah *AccoHandler) GetAllRecommended(w http.ResponseWriter, req *http.Request) {
+
+	accoIds := &ReqList{}
+	err := accoIds.FromJSON(req.Body)
+	if err != nil {
+		http.Error(w, "Unable to decode json", http.StatusBadRequest)
+		ah.logger.Fatal(err)
+		return
+	}
+
+	ah.logger.Println(accoIds)
+
+	recommended, err := ah.db.GetAllRecommended(accoIds)
+	if err != nil {
+		ah.logger.Print("Database exception: ", err)
+	}
+
+	if recommended == nil {
+		http.Error(w, "Accommodations with given ids not found", http.StatusNotFound)
+		ah.logger.Printf("Accommodations with given ids not found")
+		return
+	}
+
+	err = recommended.ToJSON(w)
+	if err != nil {
+		http.Error(w, "Unable to convert to json", http.StatusInternalServerError)
+		ah.logger.Fatal("Unable to convert to json :", err)
+		return
+	}
+}
+
 func (ah *AccoHandler) GetAllAccommodationsByLocation(w http.ResponseWriter, req *http.Request) {
 	ctx, span := ah.tracer.Start(req.Context(), "AccoHandler.GetAllAccommodationsByLocation") //tracer
 	defer span.End()
