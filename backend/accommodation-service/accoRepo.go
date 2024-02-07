@@ -7,15 +7,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"go.opentelemetry.io/otel/trace"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
+	"go.opentelemetry.io/otel/trace"
+
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -439,7 +441,7 @@ func (ar *AccoRepo) Insert(accommodation *Accommodation, ctx context.Context) er
 	ctx, span := ar.tracer.Start(ctx, "AccoRepo.Insert")
 	defer span.End()
 
-  ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	accommodationCollection, err := ar.getCollection1()
 	if err != nil {
