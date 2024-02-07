@@ -529,8 +529,8 @@ func (rh *reservationHandler) UpdateReservationByUser(res http.ResponseWriter, r
 }
 
 func (rh *reservationHandler) UpdateReservationByAcco(res http.ResponseWriter, req *http.Request) {
-	ctx, span := rh.tracer.Start(req.Context(), "reservationHandler.UpdateReservationByAcco") //tracer
-	defer span.End()
+	//ctx, span := rh.tracer.Start(req.Context(), "reservationHandler.UpdateReservationByAcco") //tracer
+	//defer span.End()
 
 	vars := mux.Vars(req)
 	accoId := vars["accoId"]
@@ -541,7 +541,7 @@ func (rh *reservationHandler) UpdateReservationByAcco(res http.ResponseWriter, r
 	d := json.NewDecoder(req.Body)
 	d.Decode(&stepenStudija)
 
-	err := rh.repo.UpdateReservationByAcco(accoId, reservationId, price, ctx)
+	err := rh.repo.UpdateReservationByAcco(accoId, reservationId, price)
 	if err != nil {
 		rh.logger.Print("Database exception: ", err)
 		res.WriteHeader(http.StatusBadRequest)
