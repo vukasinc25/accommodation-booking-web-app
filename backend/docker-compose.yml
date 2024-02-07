@@ -135,7 +135,6 @@ services:
       - 8000:8000
     environment:
       # - PORT=8000
-      CASS_DB: ${CASS_DB}
       NATS_HOST: ${NATS_HOST}
       NATS_PORT: ${NATS_PORT}
       NATS_USER: ${NATS_USER}
